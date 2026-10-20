@@ -1,0 +1,36 @@
+// phecam.mmp -- OURS (docs/phorepoc/camera-plan.md C1): the ECam plug-in over the 2010 shared-chunk camera driver. = the release's TestCamera plug-in
+// (every CCamera virtual, the viewfinder/still/video machinery) with its pixel source replaced by RDevCameraSc (gen_phecam.py lists the edits). ECOM
+// 0x1020707F, ROM-only resolver: it must be in Z:. The generated sources are committed next to this file.
+#include <ecamuids.hrh>
+#include "TestCameraUids.hrh"
+
+TARGET			phecam.dll
+TARGETTYPE		PLUGIN
+CAPABILITY		ALL -TCB
+UID				0x10009D8D KUidOnboardCameraTestDll
+VENDORID		0
+
+SOURCEPATH		.
+SOURCE			TestCamera.cpp
+SOURCE			test_advanced_settings.cpp
+SOURCE			test_snapshot.cpp
+SOURCE			test_image_processing.cpp
+SOURCE			phecamsource.cpp
+
+USERINCLUDE		.
+USERINCLUDE		../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/Include
+USERINCLUDE		../../third_party/symbian2010-camerasc/kernel/eka/include
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+
+START RESOURCE	E70157E9.rss
+TARGET phecam.rsc
+END
+
+LIBRARY			euser.lib
+LIBRARY			ecampluginsupport.lib
+LIBRARY			ecam.lib
+LIBRARY			fbscli.lib
+LIBRARY			bitgdi.lib
+LIBRARY			ws32.lib
+LIBRARY			efsrv.lib
+LIBRARY			hal.lib

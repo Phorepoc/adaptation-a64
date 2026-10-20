@@ -1,0 +1,16 @@
+// phedetest.mmp -- OURS (DE2 overlay plan, docs/phorepoc/de2-overlay-plan.md): the PheDeOv driver test. A moving NV12
+// pattern (1280x720 and 1920x1080) is put on the DE2 VI plane, scaled by the hardware to the panel, the DE registers
+// are read back and checked, 240 vblank-paced flips are timed; "PH: de2ov" lines, ends "PH: de2ov PASS" / "FAIL".
+// SSM_TEST=phedetest (no ROM data, no extra ROM_TAIL). The VE arena (RPheVde) is the physically contiguous picture memory.
+TARGET			phedetest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157E1
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x400000
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+USERINCLUDE		../phorepoc-arm/vde ../phorepoc-arm/a64/display
+SOURCEPATH		.
+SOURCE			phedetest.cpp
+LIBRARY			euser.lib

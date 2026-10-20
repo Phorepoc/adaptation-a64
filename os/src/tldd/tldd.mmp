@@ -1,0 +1,11 @@
+// tldd.mmp -- OURS (NGA G1b): User::LoadLogicalDevice froze the phone (gpu-lima-research.md progress, G1a) -- probe
+TARGET			tldd.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE701571C
+CAPABILITY		All -TCB
+VENDORID		0
+
+OS_LAYER_SYSTEMINCLUDE
+SOURCEPATH		.
+SOURCE			tldd.cpp
+LIBRARY			euser.lib

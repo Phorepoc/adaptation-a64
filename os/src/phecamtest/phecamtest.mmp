@@ -1,0 +1,15 @@
+// phecamtest.mmp -- OURS (camera-plan.md C0/C1): a minimal CCamera client with a full-screen viewfinder. SSM_TEST=phecamtest.
+TARGET			phecamtest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157EC
+EPOCSTACKSIZE	0x10000
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x1000000
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+MW_LAYER_SYSTEMINCLUDE
+USERINCLUDE		../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/Include
+SOURCEPATH		.
+SOURCE			phecamtest.cpp
+LIBRARY			euser.lib ws32.lib fbscli.lib ecam.lib efsrv.lib imageconversion.lib

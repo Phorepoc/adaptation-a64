@@ -1,0 +1,20 @@
+// phevdec.mmp -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): the DevVideo decoder hardware device on the A64 Video
+// Engine -- an ECOM plug-in (interface 0x101FB4BE) that CMMFDevVideoPlay (devvideo.dll) finds by MIME type: video/H264
+// (Annex B), video/mpeg (MPEG-2). Contract + data flow: phevdec.h. Decoder cores: h264_parser / ve_h264 / ve_mpeg2
+// (plain C++ behind MVeJob / MVeMemory); the VE through RPheVde (phevde, built into ekern).
+TARGET			phevdec.dll
+TARGETTYPE		PLUGIN
+UID				0x10009D8D 0xE70157C2
+CAPABILITY		All -TCB
+VENDORID		0
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+USERINCLUDE		../phorepoc-arm/vde .
+SOURCEPATH		.
+SOURCE			phevdec.cpp h264_parser.cpp ve_h264.cpp ve_mpeg2.cpp
+
+START RESOURCE	E70157C2.rss
+TARGET			phevdec.rsc
+END
+
+LIBRARY			euser.lib devvideo.lib

@@ -1,0 +1,16 @@
+// phevdetest.mmp -- OURS (VDU rung V0, docs/phorepoc/vdu-plan.md): opens the VE driver (RPheVde), reports its info,
+// a register write/read-back and a contiguous arena commit; "PH: ve" lines; SSM_TEST=phevdetest stages it at boot
+TARGET			phevdetest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157B4
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x2000000		// reference frames (ipb.nv12, 2.9 MB) read whole; the H.264 parser tables
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+USERINCLUDE		../phorepoc-arm/vde ../phevdec
+SOURCEPATH		.
+SOURCE			phevdetest.cpp
+SOURCEPATH		../phevdec
+SOURCE			h264_parser.cpp ve_h264.cpp ve_mpeg2.cpp
+LIBRARY			euser.lib efsrv.lib ws32.lib gdi.lib scdv.lib libegl.lib libglesv2.lib

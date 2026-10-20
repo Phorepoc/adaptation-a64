@@ -1,0 +1,24 @@
+# OURS (PinePhone track): the A64 / PinePhone drive map for ESTART. Format: baseport/syborg/estart.txt.
+# C: = SD card partition 3 (local drive 1: Syborg's NVMemory driver over the SD PIO, src/phorepoc-arm/a64/blk/);
+# E: = SD card partition 4 = the rest of the card (local drive 2; the 701's mass memory letter; F: = its memory card, free).
+# D: = the internal RAM drive (local drive 0; lost on reboot -- a Nokia phone's D: is a RAM disk too).
+C:  1  EFAT32  FAT   0       FS_FORMAT_CORRUPT,FS_NOT_RUGGED    # SD P3 (FAT32)
+D:  0  ELOCAL  FAT   0       FS_FORMAT_COLD,FS_SYNC_DRIVE       # IRAM
+E:  2  EFAT32  FAT   0       FS_FORMAT_CORRUPT,FS_NOT_RUGGED    # SD P4 (FAT32) = the mass memory
+# (2026-10-15) E: is back: the 4 GiB size wrap fixed (a64sdblk.cpp SetTotalSizeInBytes) and a format no longer zero-fills
+# (only the boot sector + FATs + root are written: a one-time format of the 254 GB E: is seconds)
+# (2026-10-16) file-server caches (the boot + first Applications-grid freezes: ~3350 synchronous writes per boot, mostly
+# FAT1 + FAT2 sectors, PhoneLab boot 654 [sdblk] hotW). Sections are read by F32Properties (sf_file_cache.cpp, sfat32
+# fat_config.cpp). Write-back is bounded by a 1 s dirty-data flush.
+[DriveC]
+FileCacheRead ON
+FileCacheReadAhead ON
+FileCacheWrite ON
+FileCacheSize 1024
+DirtyDataFlushTime 1000
+FAT_FAT32LruCache 512,12,9
+[DriveE]
+FileCacheRead ON
+FileCacheReadAhead ON
+FAT_FAT32LruCache 512,12,9
+FAT_FAT32_UseBitSupercache 0

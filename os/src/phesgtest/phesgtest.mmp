@@ -1,0 +1,14 @@
+// phesgtest.mmp -- OURS (GPU plan G6b, docs/phorepoc/gpu-lima-research.md): an RSgImage rendered into by GLES2 through
+// eglCreatePixmapSurface and sampled through eglCreateImageKHR(EGL_NATIVE_PIXMAP_KHR), checked by the CPU ("PH: sg" lines,
+// "PH: sg RESULT pass=N fail=M"). SSM_TEST=phesgtest stages it at boot. Contract: phesgtest.cpp.
+TARGET			phesgtest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157E0
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x2000000		// Mesa (the GLSL builtins, the shader compiler) allocates tens of MB: a 4 MB heap made linear_alloc return NULL (boot 623, far=0x10)
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+SOURCEPATH		.
+SOURCE			phesgtest.cpp
+LIBRARY			euser.lib sgresource.lib libegl.lib libglesv2.lib

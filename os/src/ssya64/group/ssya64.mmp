@@ -1,0 +1,18 @@
+// ssya64.mmp -- OURS (PinePhone sensors rung S2): the Sensor Specific plug-in (SSY) of the "Sensors.A64" LDD -- the
+// accelerometer XYZ channel of the 2010 sensor server. Shape: oss.FCL.sf.adapt.stubs/systemswstubs/ssyreference.
+TARGET			ssya64.dll
+TARGETTYPE		PLUGIN
+UID				0x10009D8D 0xE7015734
+CAPABILITY		CAP_ECOM_PLUGIN
+VENDORID		0
+
+SOURCEPATH		../src
+SOURCE			ssya64.cpp
+RESOURCE		ssya64.rss
+USERINCLUDE		../inc
+USERINCLUDE		../../phorepoc-arm/a64/sensors
+OS_LAYER_SYSTEMINCLUDE
+
+LIBRARY			euser.lib
+LIBRARY			ecom.lib
+LIBRARY			sensrvutil.lib

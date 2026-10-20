@@ -1,0 +1,45 @@
+// testcameraapp.mmp -- OURS: the release's TestCameraAppS60.mmp (the Avkon test application of the ECam framework) with ONE change: UID3 0x101F7D31. The S60 mmp says
+// 0x101F7D32 but the registration file it shares with the Techview variant (testcameraapp_reg.rss) says 270499121 = 0x101F7D31, so apparc never found the app
+// (CEikApplication::PreDocConstructL -> RApaLsSession::GetAppInfo -> KErrNotFound, "System error." on x86). Everything else is the release's source.
+TARGET          TestCameraApp.exe
+TARGETTYPE      exe
+
+CAPABILITY 	ALL -TCB
+UID             0x100039CE 0X101F7D31
+VENDORID 	0x70000001
+
+USERINCLUDE     ../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/testapps/testcameraapp
+
+MW_LAYER_SYSTEMINCLUDE_SYMBIAN
+
+SOURCEPATH      ../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/testapps/testcameraapps60
+SOURCE          TestCameraApp.cpp
+
+START RESOURCE	TestCameraApp.rss
+HEADER
+TARGETPATH	/resource/apps
+lang		sc
+END
+
+LIBRARY         euser.lib fbscli.lib
+LIBRARY         apparc.lib ws32.lib cone.lib 
+LIBRARY         avkon.lib
+LIBRARY         eikcore.lib
+LIBRARY         ecam.lib
+
+SOURCEPATH      ../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/testapps/testcameraapp
+START RESOURCE	testcameraapp_reg.rss
+TARGETPATH	/private/10003a3f/apps
+END
+   
+START RESOURCE  testcameraapp_loc.RSS
+TARGETPATH 	/resource/apps
+lang sc
+END
+
+START BITMAP    TestCameraApp.mbm
+HEADER
+TARGETPATH 	 /resource/apps
+SOURCEPATH     ../../baseline/symbian-2010/oss.FCL.sf.os.mm/imagingandcamerafws/camerafw/testapps/testcameraapp
+SOURCE 		c8 AP24.BMP AP24M.BMP AP32.BMP AP32M.BMP AP48.BMP AP48M.BMP
+END 

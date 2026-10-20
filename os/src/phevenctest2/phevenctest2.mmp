@@ -1,0 +1,18 @@
+// phevenctest2.mmp -- OURS (VE encoder ladder rung 2, docs/phorepoc/ve-encoder-plan.md section 11): 640x480 and 1280x720 NV12,
+// a 16-frame GOP (IDR + 15 P) at fixed QP 28 and with frame-level rate control on the A64 VE H.264 encoder, decoded back with
+// our VE decoder (per-frame PSNR, bytes, encode time, fps); "PH: venc2" lines. SSM_TEST=phevenctest2 (no ROM data files).
+TARGET			phevenctest2.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157C6
+EPOCSTACKSIZE	0x10000
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x2000000
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+USERINCLUDE		../phorepoc-arm/vde ../phevdec ../phevenctest
+SOURCEPATH		.
+SOURCE			phevenctest2.cpp
+SOURCEPATH		../phevdec
+SOURCE			h264_parser.cpp ve_h264.cpp
+LIBRARY			euser.lib hal.lib

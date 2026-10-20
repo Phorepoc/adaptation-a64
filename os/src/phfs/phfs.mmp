@@ -1,0 +1,15 @@
+// phfs.mmp -- OURS (PhoneLab Project panel): the user-side helper of the debug link's file service (phfs.cpp). Started by
+// the SSM's non-critical list (board/ssm/noncriticalcmdlist_hw.rss r_cmd_phfs); talks to the kernel LDD "PhFs.A64".
+TARGET			phfs.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE7015739
+CAPABILITY		AllFiles
+VENDORID		0
+
+OS_LAYER_SYSTEMINCLUDE
+USERINCLUDE		../phorepoc-arm/a64/usbcc ../phetty
+SOURCEPATH		.
+SOURCE			phfs.cpp
+SOURCEPATH		../phetty
+SOURCE			pheclient.cpp		// the terminal requests: a client of phettyd
+LIBRARY			euser.lib efsrv.lib

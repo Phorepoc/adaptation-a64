@@ -1,0 +1,9 @@
+// OURS (phecam): the ECOM UIDs of the phecam plug-in (the release's TestCamera ones are 0x102070CC-CE)
+#ifndef TESTCAMERAUIDS_HRH
+#define TESTCAMERAUIDS_HRH
+
+#define KUidOnboardCameraTestDll	0xE70157E9
+#define KUidOnboardCameraTestPlugin	0xE70157EA
+#define KUidOnboardCameraTestInfo	0xE70157EB
+
+#endif

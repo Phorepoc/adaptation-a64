@@ -1,0 +1,40 @@
+// ssya64.rss -- OURS (PinePhone sensors rung S2): the ECOM registration of the A64 sensor SSY. The default_data is the
+// sensor server's channel-info list (the format of ssyreference's 10205089.rss): one accelerometer XYZ channel.
+#include <sensrvresource.hrh>
+#include <ecom/registryinfov2.rh>
+
+RESOURCE REGISTRY_INFO SsyA64
+	{
+	resource_format_version = RESOURCE_FORMAT_VERSION_2;
+	dll_uid = 0xE7015734;
+	interfaces =
+		{
+		INTERFACE_INFO
+			{
+			interface_uid = KSsyControlInterfaceUid;
+			implementations =
+				{
+				BINARY_IMPLEMENTATION_INFO
+					{
+					implementation_uid = 0xE7015735;
+					version_no = 1;
+					display_name = "SSYA64";
+					default_data = {
+						0x01,							// ChannelInfoVersion
+						0x2E,							// ChannelInfoLength (46)
+						0x1E,							// Flags
+						0x7E, 0x50, 0x20, 0x10,			// ChannelType KSensrvChannelTypeIdAccelerometerXYZAxisData
+						0x02, 0x00, 0x00, 0x00,			// ContextType ESensrvContextTypeDevice
+						0x0A, 0x00, 0x00, 0x00,			// Quantity ESensrvQuantityAcceleration
+						0x09, 0x50, 0x69, 0x6E, 0x65, 0x50, 0x68, 0x6F, 0x6E, 0x65,	// Location "PinePhone"
+						0x08, 0x50, 0x68, 0x6F, 0x72, 0x65, 0x70, 0x6F, 0x63,		// VendorId "Phorepoc"
+						0x7E, 0x50, 0x20, 0x10,			// ChannelDataTypeId TSensrvAccelerometerAxisData::KDataTypeId
+						0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF	// ChannelSecurityPolicy: always pass
+						};
+					opaque_data = {};
+					rom_only = 0;
+					}
+				};
+			}
+		};
+	}

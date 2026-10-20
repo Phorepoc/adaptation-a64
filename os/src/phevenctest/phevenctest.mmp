@@ -1,0 +1,18 @@
+// phevenctest.mmp -- OURS (VE encoder one-frame probe, docs/phorepoc/ve-encoder-plan.md): encodes one 64x64 NV12 intra
+// picture on the A64 Video Engine's H.264 encoder through the phevde driver (RPheVde), dumps the stream and decodes it back
+// with the phevdec cores; "PH: venc" lines. SSM_TEST=phevenctest stages it at boot (no ROM data files).
+TARGET			phevenctest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157C5
+EPOCSTACKSIZE	0x10000
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x1000000
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+USERINCLUDE		../phorepoc-arm/vde ../phevdec
+SOURCEPATH		.
+SOURCE			phevenctest.cpp
+SOURCEPATH		../phevdec
+SOURCE			h264_parser.cpp ve_h264.cpp
+LIBRARY			euser.lib

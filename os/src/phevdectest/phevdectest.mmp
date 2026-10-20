@@ -1,0 +1,15 @@
+// phevdectest.mmp -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): drives the phevdec DevVideo plug-in through
+// CMMFDevVideoPlay (the public DevVideo API) over the H.264 / MPEG-2 clips in ROM; "PH: dvp" lines.
+// SSM_TEST=phevdectest stages it at boot (ROM needs devvideo, puresolverutils, codecapiresolver, mmcommonutils, phevdec).
+TARGET			phevdectest.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE70157C4
+EPOCSTACKSIZE	0x20000
+CAPABILITY		All -TCB
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x4000000		// the reference frames (ipb.nv12, 2.9 MB) read whole; the plug-in's parsers + input buffers
+
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+SOURCEPATH		.
+SOURCE			phevdectest.cpp
+LIBRARY			euser.lib efsrv.lib devvideo.lib

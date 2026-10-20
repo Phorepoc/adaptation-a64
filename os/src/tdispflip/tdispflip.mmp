@@ -1,0 +1,11 @@
+// tdispflip.mmp -- OURS (NGA rung G1a, docs/phorepoc/gpu-lima-research.md): the display channel flip test
+TARGET			tdispflip.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE701571A
+CAPABILITY		All -TCB
+VENDORID		0
+
+OS_LAYER_SYSTEMINCLUDE
+SOURCEPATH		.
+SOURCE			tdispflip.cpp
+LIBRARY			euser.lib
