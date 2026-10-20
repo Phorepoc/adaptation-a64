@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevdec.mmp -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): the DevVideo decoder hardware device on the A64 Video
 // Engine -- an ECOM plug-in (interface 0x101FB4BE) that CMMFDevVideoPlay (devvideo.dll) finds by MIME type: video/H264
 // (Annex B), video/mpeg (MPEG-2). Contract + data flow: phevdec.h. Decoder cores: h264_parser / ve_h264 / ve_mpeg2

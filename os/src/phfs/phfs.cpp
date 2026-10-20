@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phfs.cpp -- OURS (2026-10-11, PhoneLab Project panel): the user-side helper of the debug link's file service. The kernel
 // debug link (phlink.cpp) has no file server; it forwards the PC's directory list / file read / file write requests to
 // this process through the LDD "PhFs.A64" (src/phorepoc-arm/a64/usbcc/phfs_ldd.cpp, contract phfs_api.h), which runs them

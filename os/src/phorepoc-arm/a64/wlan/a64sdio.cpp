@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64sdio.cpp -- OURS (2026-10-10, PinePhone WiFi rung 0: docs/phorepoc/pinephone-port.md "WiFi: the decision",
 // docs/phorepoc/research/wifi-linux.md 1.3): the A64's SMHC1 as an SDIO host for the RTL8723CS's WiFi half (SDIO
 // function 1, vendor 024c device b703). Nothing of this exists before us: U-Boot never touches mmc1, so power, pins,

@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the seam's kext loaders + boot-stage signal for
 // BOARD=a64 (tools/kernel/ekern_seam.cpp; virt's are src/phorepoc-arm/virt/specific/virt_glue_null.cpp).
 // No A64 display / input / storage drivers yet (P4), so:

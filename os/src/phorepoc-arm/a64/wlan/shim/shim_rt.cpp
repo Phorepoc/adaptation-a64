@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // shim_rt.cpp -- OURS (2026-10-10, PinePhone WiFi: the chip core): the runtime under the rtw88 Linux shim
 // (shim_rt.h), on nkern. The whole driver runs on ONE kernel thread, the WLAN DFC queue (A64WlanDfcQ, created by
 // a64wlan.cpp): every work item, delayed work, timer callback and the SDIO "interrupt" poll is a DFC on that queue,

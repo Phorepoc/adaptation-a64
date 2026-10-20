@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // rmalichannel.h -- OURS (GPU rung G3, docs/phorepoc/gpu-lima-research.md section 6.2): the user-side API of our Mali
 // Utgard kernel driver (mali.ldd, built into ekern). The Symbian counterpart of Linux's lima DRM uAPI:
 //   GET_PARAM      -> GetInfo

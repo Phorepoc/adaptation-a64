@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64wlansec.cpp -- OURS (2026-10-11, PinePhone WiFi security; docs/phorepoc/wlan-security-design.md sections 3.2, 3.3, 3.5, 4):
 // the host-side half of WLAN encryption under the WHA PDD. The chip (rtl8703b/r8703b_cam.c) holds the keys in its security
 // CAM and does the cipher: WEP (RC4 + CRC-32), TKIP (RC4 with the per-packet key) and CCMP (AES). What the hardware does NOT

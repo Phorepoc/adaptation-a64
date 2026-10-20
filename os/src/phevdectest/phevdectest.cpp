@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevdectest.cpp -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): drives the phevdec DevVideo plug-in THROUGH the public
 // DevVideo API (CMMFDevVideoPlay), exactly as an MMF video controller would:
 //   FindDecodersL(mime) -> SelectDecoderL -> VideoDecoderInfoLC -> SetInputFormatL -> GetOutputFormatListL /

@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // phlz4.h -- OURS: a minimal LZ4 *block* compressor (no libc, no allocation, header-only) for the PhoneLab live
 // view (docs/phorepoc/phonelab-liveview.md). Output is the standard LZ4 block format (any decoder reads it: the Go
 // side is tools/phorepoc-arm/phonelab/server/internal/lz4). Input must be <= 65535 bytes (offsets are 16 bits and the

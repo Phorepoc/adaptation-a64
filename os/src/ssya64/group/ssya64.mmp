@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // ssya64.mmp -- OURS (PinePhone sensors rung S2): the Sensor Specific plug-in (SSY) of the "Sensors.A64" LDD -- the
 // accelerometer XYZ channel of the 2010 sensor server. Shape: oss.FCL.sf.adapt.stubs/systemswstubs/ssyreference.
 TARGET			ssya64.dll

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright The Phorepoc Authors
+# SPDX-License-Identifier: EPL-1.0
+
 """gen_phecam.py -- builds src/phecam/ (the phecam ECam plug-in) from the 2010 TestCamera plug-in (EPL, baseline/symbian-2010/oss.FCL.sf.os.mm/
 mmplugins/cameraplugins/source/testcamera). OURS = a few deliberate edits on top of the release source:
   * new UIDs (TestCameraUids.hrh: DLL 0xE70157E9, plug-in 0xE70157EA, info plug-in 0xE70157EB; ECOM version 4 so it wins over the stock test plug-in when both are in a ROM);

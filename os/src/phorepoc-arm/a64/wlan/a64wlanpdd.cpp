@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64wlanpdd.cpp -- OURS (2026-10-10, PinePhone WiFi W3; docs/phorepoc/pinephone-port.md "WiFi: the chip core"):
 // "wlan.phys", the WHA physical device under the REAL 2010 wlanldd (the UMAC), over the rtw88 chip core
 // (a64wlan_glue.c / shim_mac80211.c, the vendored Linux driver on the WLAN DFC thread). Nokia's own adaptations

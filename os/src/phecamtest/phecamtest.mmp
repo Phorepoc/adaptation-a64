@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phecamtest.mmp -- OURS (camera-plan.md C0/C1): a minimal CCamera client with a full-screen viewfinder. SSM_TEST=phecamtest.
 TARGET			phecamtest.exe
 TARGETTYPE		exe

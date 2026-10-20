@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* shim_core.h -- OURS (2026-10-10, PinePhone WiFi: the chip core). The freestanding "Linux kernel" the vendored rtw88
  * driver (../rtw88, unmodified, GPL-2.0 OR BSD-3-Clause) compiles against inside our EKA2 kernel: types, the kernel.h
  * helpers, bit/byte-order macros, lists, sk_buffs, locks, work, timers, delays and the SDIO function API -- each a

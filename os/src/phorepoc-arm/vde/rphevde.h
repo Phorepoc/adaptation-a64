@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // rphevde.h -- OURS (VDU rung V0, docs/phorepoc/vdu-plan.md): the user-side API of phevde, our kernel driver for
 // the Allwinner A64 Video Engine (built into ekern, like the Mali driver). The VE is stateless: the CPU parses the
 // bitstream and programs every register of a frame; the driver only owns what user mode cannot do safely:

@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // rphedeov.h -- OURS (DE2 overlay plan, docs/phorepoc/de2-overlay-plan.md): the user-side API of phedeov, our kernel driver
 // for the Allwinner A64 Display Engine 2 VI (video) channel -- the plane that scans an NV12 picture out directly, with its own
 // scaler (VSU) and YUV->RGB converter (CCSC), blended over the UI. Built into ekern (a64deov.cpp), like phevde.

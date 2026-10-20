@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // phfs_api.h -- OURS (2026-10-11, PhoneLab Project panel): the user/kernel contract of the file-service LDD "PhFs.A64"
 // (phfs_ldd.cpp). The debug link (phlink.cpp) is kernel side and has no file server; the one client of this LDD is the
 // user-side helper src/phfs (phfs.exe), which asks for the next request, runs it against the file server and replies.

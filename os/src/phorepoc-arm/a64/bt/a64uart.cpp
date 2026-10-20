@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64uart.cpp -- OURS (2026-10-09, Bluetooth rung R1; docs/phorepoc/pinephone-port.md "Bluetooth: the decision"):
 // the PinePhone's UART1 (the RTL8723CS Bluetooth link) as a serial PDD "Comm.A64", unit 1, under the REAL serial LDD
 // (kernel/eka/drivers/ecomm/d_comm.cpp, ECOMM.LDD "Comm", linked into ekern with its entry renamed). The 2010 BT HCI

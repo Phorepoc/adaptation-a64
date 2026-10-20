@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // ssya64.rss -- OURS (PinePhone sensors rung S2): the ECOM registration of the A64 sensor SSY. The default_data is the
 // sensor server's channel-info list (the format of ssyreference's 10205089.rss): one accelerometer XYZ channel.
 #include <sensrvresource.hrh>

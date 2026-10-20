@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevdec.cpp -- OURS (VDU rung V4): the DevVideo decoder hw device on the A64 Video Engine. See phevdec.h for the
 // contract (formats, data units, output pictures, threading).
 #include <e32debug.h>

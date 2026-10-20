@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevenctest.cpp -- OURS (VE encoder one-frame probe, docs/phorepoc/ve-encoder-plan.md): encodes ONE 64x64 NV12 intra
 // picture on the A64 Video Engine's H.264 encoder (register map from research/ve-h264-enc-regs.md, unproven on the A64),
 // dumps the bitstream (size, first bytes, CRC-32) and decodes it back with OUR VE decoder (src/phevdec, bit-exact in V3b),

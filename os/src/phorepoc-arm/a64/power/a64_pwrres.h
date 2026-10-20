@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // a64_pwrres.h -- the A64 power resource manager's ids (a64_pwrres.cpp; docs/phorepoc/power-plan.md P4).
 #ifndef A64_PWRRES_H
 #define A64_PWRRES_H

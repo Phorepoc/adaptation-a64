@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // ssya64.h -- OURS (PinePhone sensors rung S2, docs/phorepoc/pinephone-port.md "Sensors: the decision"): the SSY of
 // the "Sensors.A64" LDD. One class plays the three SSY roles the sensor server expects (CSsyControl = open/close a
 // channel, MSsyChannelDataProvider = fill the server's buffer, MSsyPropertyProvider = the channel's properties) for the

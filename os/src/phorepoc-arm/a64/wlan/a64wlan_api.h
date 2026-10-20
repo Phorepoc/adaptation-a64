@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* a64wlan_api.h -- OURS (2026-10-10, PinePhone WiFi; docs/phorepoc/pinephone-port.md "WiFi: the chip core"): the C
  * face of the chip core (rtl8703b/, the fresh RTL8703B driver: docs/phorepoc/rtl8723cs-fresh-driver.md) for the
  * Symbian side (a64wlan.cpp: the thread + the firmware; a64wlanpdd.cpp: the WHA PDD "wlan.phys" under the real

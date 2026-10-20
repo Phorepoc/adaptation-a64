@@ -28,4 +28,6 @@ the display driver builds.
 
 ## Licence
 
-Eclipse Public License 1.0 (see `LICENSE`), except the third-party files above.
+Eclipse Public License 1.0 (see `LICENSE`), copyright The Phorepoc Authors (`AUTHORS`, `NOTICE`), except the third-party files above.
+
+Contributions are welcome under the same terms: add yourself to `AUTHORS`.

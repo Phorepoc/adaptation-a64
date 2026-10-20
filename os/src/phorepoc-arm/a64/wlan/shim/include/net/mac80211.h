@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* shim net/mac80211.h -- OURS: the mac80211 driver-facing interface as rtw88 uses it (the hw, vif, sta, key, txq
  * objects, the tx-info / rx-status control blocks, the flag enums and the callbacks into the stack). Linux names and
  * semantics, our freestanding definitions; the callbacks are implemented by our mac80211-lite (shim_mac80211.c), which

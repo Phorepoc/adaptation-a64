@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // OURS (PinePhone track P4, docs/phorepoc/pinephone-port.md "Display"): the PinePhone's framebuffer driver = Syborg's
 // REAL framebuffer driver (oss.FCL.sf.adapt.Qemu/baseport/syborg/svpframebuffer/svpframebuffer.cpp, compiled
 // unmodified below) on the A64 display pipeline that a64_display.cpp brings up (DE2 -> TCON0 -> MIPI DSI -> ST7703).

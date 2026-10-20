@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* rtw88_config.h -- OURS: the kernel "config" the vendored rtw88 is built with (forced in via -include). */
 #ifndef RTW88_CONFIG_H
 #define RTW88_CONFIG_H

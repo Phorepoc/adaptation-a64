@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevdetest.mmp -- OURS (VDU rung V0, docs/phorepoc/vdu-plan.md): opens the VE driver (RPheVde), reports its info,
 // a register write/read-back and a contiguous arena commit; "PH: ve" lines; SSM_TEST=phevdetest stages it at boot
 TARGET			phevdetest.exe

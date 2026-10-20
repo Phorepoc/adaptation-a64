@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // enc_sw.cpp -- OURS (pheencbench): the software H.264 encoder leg = Cisco OpenH264 2.4.1 (BSD-2-Clause), Constrained Baseline / CAVLC,
 // low-complexity real-time settings, NEON kernels from the archive (tools/codecpack/openh264_enc.sh). No Symbian types here: the I420 input
 // frames come in as plain pointers.

@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevdec_sw.mmp -- OURS (Path C x86, 2026-10-16): the same DevVideo decoder hardware device as phevdec.mmp (same UIDs, same
 // ECOM registration, the image is also named phevdec.dll) but decoding in SOFTWARE through the separate LGPL pheffmpeg.dll
 // (PheVid* ordinals): the x86 board has no Video Engine. PHE_SW compiles out everything VE-specific (phevdec.h/.cpp);

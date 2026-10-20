@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // tldd.cpp -- OURS (NGA G1b): which User::LoadLogicalDevice freezes the phone? Step 1 loads a driver file that does
 // not exist anywhere; then a display channel open/close (the kernel logs "[disp] DDisplayPddA64 created" = step 1
 // returned); step 2 loads "display0.ldd" (absent as a file; its LDD is built into ekern). The exit reason (kernel

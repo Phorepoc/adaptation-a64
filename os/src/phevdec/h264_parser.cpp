@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // h264_parser.cpp -- OURS (VDU rung V3): see h264_parser.h. Section numbers are ITU-T H.264 (08/2021).
 #include "h264_parser.h"
 #include <string.h>

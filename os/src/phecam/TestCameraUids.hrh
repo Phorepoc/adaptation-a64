@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // OURS (phecam): the ECOM UIDs of the phecam plug-in (the release's TestCamera ones are 0x102070CC-CE)
 #ifndef TESTCAMERAUIDS_HRH
 #define TESTCAMERAUIDS_HRH

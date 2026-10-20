@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // OURS (PinePhone track P4, docs/phorepoc/pinephone-port.md "Display"): bring up the PinePhone's 720x1440 panel.
 // The register-level work is NuttX's A64 display drivers (nuttx/*.c, Apache-2.0, vendored unmodified; written up
 // at lupyuen.github.io/articles/dsi2 & co): AXP803 rails over RSB, the R_PWM backlight, TCON0, MIPI DSI + D-PHY,

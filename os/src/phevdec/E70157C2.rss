@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // E70157C2.rss -- OURS (VDU V4): ECOM registration of the A64 Video Engine DevVideo decoder (interface 0x101FB4BE =
 // KUidDevVideoDecoderHwDevice, the one CMMFDevVideoPlay::FindDecodersL / SelectDecoderL look under).
 #include <ecom/registryinfo.rh>

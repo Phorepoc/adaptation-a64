@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64_cpufreq.cpp -- OURS (power plan P2, docs/phorepoc/power-plan.md): the A64 CPU OPP driver (PLL_CPUX + DCDC2).
 // Facts: docs/phorepoc/research/power-linux-modern.md sections 1.3 and 2 ([V] read in mainline, [U] unverified).
 //

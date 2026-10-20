@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phevenctest2.cpp -- OURS (VE encoder ladder rung 2, docs/phorepoc/ve-encoder-plan.md section 11): real-size NV12 frames
 // (640x480, 1280x720), a 16-frame GOP (one IDR + 15 P frames; the VE does the motion search itself), fixed QP 28 and a simple
 // frame-level rate control, decoded back with OUR VE decoder; per-frame bytes / encode time / PSNR and the fps.

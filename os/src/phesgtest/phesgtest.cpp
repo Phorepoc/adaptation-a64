@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // phesgtest.cpp -- OURS (GPU plan G6b, docs/phorepoc/gpu-lima-research.md "G6b"): RSgImage <-> GLES2 on the Mali, zero copy.
 //   1. RSgImage::Create (ARGB_8888, GLES2 surface + texture usage); the CPU pre-fills it with a pattern
 //   2. eglCreatePixmapSurface(RSgImage*) + GLES2 context: clear + a shader-drawn quad render INTO the image

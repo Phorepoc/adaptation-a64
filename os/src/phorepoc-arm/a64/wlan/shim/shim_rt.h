@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* shim_rt.h -- OURS: the runtime under the rtw88 shim (shim/include/shim_core.h), C-callable, implemented in
  * shim_rt.cpp on nkern (allocation, the big mutex, spin locks, completions, work items + delayed work on the WLAN DFC
  * queue, timers, delays, time, logging) and in a64sdio.cpp (the SDIO function API over SMHC1). Everything the vendored

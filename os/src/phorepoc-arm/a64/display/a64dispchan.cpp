@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // OURS (GPU plan G1a, docs/phorepoc/gpu-lima-research.md): the PinePhone's RDisplayChannel PDD -- the NGA display
 // path (OpenWF-C composes, this driver flips the DE to each composed buffer on the panel's vblank). Split out of
 // a64fb.cpp (2026-10-09, user decision): a64fb.cpp stays the MINIMAL SAFE display driver -- the legacy framebuffer

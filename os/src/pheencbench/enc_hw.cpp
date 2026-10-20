@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // enc_hw.cpp -- OURS (pheencbench): the A64 Video Engine H.264 encoder leg. The register sequence is src/phevenctest2 (rung 2, boot 686+): Bootlin
 // mode enable, headers through the hardware bit writer, one job per frame (IDR then P, the "fast+tf" motion-estimation row = the parked best
 // setting of ve-encoder-plan.md section 15) at 402 MHz. Inputs are NV12 frames staged in the uncached arena before the timed loop (a capture

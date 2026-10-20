@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // ve_h264enc.h -- OURS (VE encoder one-frame probe, docs/phorepoc/ve-encoder-plan.md): the CPU half of the A64 Video
 // Engine H.264 encoder -- the NAL headers (SPS / PPS / IDR slice header) pushed bit by bit through the hardware bit writer
 // (AVC_BASIC_BITS + AVC_TRIGGER), and the register offsets of the AVC encoder block and the ISP input block.

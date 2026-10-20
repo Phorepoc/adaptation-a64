@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64camera.cpp -- OURS (2026-10-17, docs/phorepoc/camera-plan.md C1-phone + C2): the PinePhone camera board glue.
 // C1 (phone): installs the 2010 shared-chunk camera LDD (DCameraScLdd "CameraSc", third_party/symbian2010-camerasc,
 //   unmodified, entry renamed) + the 2010 template PDD "CameraSc.TE" (the timer-driven fake sensor), exactly the pair

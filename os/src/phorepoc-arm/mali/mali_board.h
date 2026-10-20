@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // mali_board.h -- OURS (GPU rung G3): what a board tells the generic Mali Utgard driver (mali_ldd.cpp).
 #ifndef MALI_BOARD_H
 #define MALI_BOARD_H

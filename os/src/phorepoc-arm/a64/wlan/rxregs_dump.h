@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* rxregs_dump.h -- OURS (2026-10-17): one list of RX-relevant RTL8703B registers, dumped the same way by both chip cores
  * (rtl8703b/ = WIFI_DRV=8723cs, a64wlan_glue.c = WIFI_DRV=rtw88) at the Join, so a boot pair diffs line by line:
  *   [rxregs <tag>] mac 0064=........ 0100=........ ...

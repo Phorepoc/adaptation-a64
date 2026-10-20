@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* rtw88_stubs.c -- OURS: the rtw88 modules we do not vendor yet, as no-op stubs with the real signatures, plus the
  * debug sink and the (unused) mac80211 ops table. Each stub is a known hole:
  *   coex.c  -- the BT/WiFi coexistence engine (the 8703B shares its antenna with the Bluetooth half our BT PDD drives;

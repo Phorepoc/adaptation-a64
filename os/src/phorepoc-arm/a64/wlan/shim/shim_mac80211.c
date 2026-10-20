@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 /* shim_mac80211.c -- OURS: "mac80211-lite", the stack side of the rtw88 driver interface (shim/include/net/mac80211.h).
  * The real mac80211 owns the interfaces, stations, keys, scanning and the frame queues; here, in the chip-core stage,
  * there is one hw, no vif and no sta: the iterators visit nothing, the station lookups find nothing, the queues are

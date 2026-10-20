@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // a64_usbcc.cpp -- OURS (PinePhone USB step 2, docs/phorepoc/pinephone-port.md "USB"): the USB device controller
 // PSL for the Allwinner A64's USB OTG port, under the REAL 2010 USB client PIL (kernelhwsrv/kernel/eka/drivers/usbcc:
 // chapter9.cpp, descriptors.cpp, misc.cpp, ps_usbc.cpp, queue.cpp -- compiled unmodified next to this file).

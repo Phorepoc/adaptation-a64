@@ -1,3 +1,6 @@
+/* Copyright The Phorepoc Authors
+ * SPDX-License-Identifier: EPL-1.0 */
+
 // phevdec.h -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): the DevVideo decoder hardware device for the Allwinner A64
 // Video Engine. An ECOM plug-in on interface 0x101FB4BE (KUidDevVideoDecoderHwDevice) implementing
 // CMMFVideoDecodeHwDevice, found and driven by CMMFDevVideoPlay (devvideo.dll) like any 2010 decoder.

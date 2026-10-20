@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // tdispflip.cpp -- OURS (NGA rung G1a, docs/phorepoc/gpu-lima-research.md): drives RDisplayChannel the way an NGA
 // composer does -- GetCompositionBuffer, draw, PostCompositionBuffer, WaitForPost -- alternating red and blue full
 // frames, and logs the post rate. With vblank-paced posts (DDisplayPddA64) the rate is the panel's (~60/s, or an

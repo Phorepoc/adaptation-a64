@@ -1,3 +1,6 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: EPL-1.0
+
 // tmaliclear.mmp -- OURS (GPU rung G3-K2): the first Mali-400 frame (a clear) under Symbian
 TARGET			tmaliclear.exe
 TARGETTYPE		exe
