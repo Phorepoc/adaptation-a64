@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64camera.cpp -- OURS (2026-10-17, docs/phorepoc/camera-plan.md C1-phone + C2): the PinePhone camera board glue.
+// a64camera.cpp -- OURS (2026-10-17, -phone + C2): the PinePhone camera board glue.
 // C1 (phone): installs the 2010 shared-chunk camera LDD (DCameraScLdd "CameraSc", third_party/symbian2010-camerasc,
 //   unmodified, entry renamed) + the 2010 template PDD "CameraSc.TE" (the timer-driven fake sensor), exactly the pair
 //   the x86 image runs (tools/phorepoc-x86/ekern/xk_camerasc.cpp). phecam (ECam plug-in over RDevCameraSc) loads them
@@ -9,7 +9,7 @@
 // C2 (phone): the first hardware proof -- AXP803 camera rails (ALDO1 1.8 V, DLDO3 2.8 V, ELDO3 1.8 V), MCLK 24 MHz on
 //   PE1, the bit-banged CCI bus (SCL PE12, SDA PE13; Linux's i2c-gpio, pp.dtsi), and the chip IDs:
 //   OV5640 (rear, 0x4c) 0x300A/0x300B = 56 40, GC2145 (front, 0x3c) 0xF0/0xF1 = 21 45. Sequences from
-//   docs/phorepoc/research/camera-linux.md section 3. Each sensor is powered alone (they share the parallel bus);
+// Each sensor is powered alone (they share the parallel bus);
 //   afterwards both are held in reset, MCLK is gated and the rails/pins go back to what they were.
 //   On by default (one-shot, ~150 ms at boot); A64DEFS=-DA64_NO_CAMERA_PROBE turns it off.
 #include <kernel/kern_priv.h>

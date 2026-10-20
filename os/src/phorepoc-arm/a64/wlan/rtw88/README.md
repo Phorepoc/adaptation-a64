@@ -13,15 +13,14 @@ until W4 -- without it the shared-antenna arbiter stayed at its power-on default
 the air, 2026-10-10); `rtw8723cs.c`
 (the module/probe table) is replaced by `../a64wlan_glue.c`. `mac80211.c` (rtw88's `rtw_ops`, the driver's side of
 mac80211) is vendored too since 2026-10-10, same commit, unmodified: the glue calls those ops in the order mac80211
-does (`docs/phorepoc/wifi-station-join-transcript.md`).
+does.
 
 Built into the kernel by `tools/kernel/link_ekern.sh` (the `wl_*.o` loop). Design + status:
-`docs/phorepoc/pinephone-port.md` "WiFi: the chip core".
 
 **2026-10-17: build-selectable again, with marked edits.** `WIFI_DRV=rtw88` (link_ekern.sh / `./ph pp-image`) builds this
 driver instead of the default `rtl8703b/`; it joins WPA2, DHCP and NTP since boot 954. It compiles with
 `-DPHE_RTW88_VENDOR_DIFF`, which turns on the only edits in this directory, each a recorded vendor difference
-(docs/phorepoc/rtw88-vs-8723cs.md): (1) no external-XTAL/CLK_REQ bits in the pre-enable sequence (rtw8703b.c); (2)
+: no external-XTAL/CLK_REQ bits in the pre-enable sequence (rtw8703b.c);
 management frames through the HIGH FIFO/queue, not EXTRA (rtw8703b.c rqpn, sdio.c); (3) HWSEQ_CTRL 0xFF (mac.c); (6)
 the WiFi-only coex table 0xAAAAAAAA with BT disabled (coex.c). Without the define the code is upstream as fetched.
 The bug that kept rtw88 deaf from 2026-10-10 to boot 952 was in OUR shim, not here: `__LITTLE_ENDIAN` was undefined, so

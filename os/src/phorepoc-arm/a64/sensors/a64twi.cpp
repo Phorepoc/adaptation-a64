@@ -1,8 +1,8 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64twi.cpp -- OURS (2026-10-10, PinePhone sensors rung S1: docs/phorepoc/pinephone-port.md "Sensors: the decision",
-// docs/phorepoc/research/sensors-linux.md 1-2): the A64's TWI1 (a Marvell mv64xxx I2C core, 0x01C2B000) as the shared
+// a64twi.cpp -- OURS (2026-10-10, PinePhone sensors rung S1:
+// 1-2): the A64's TWI1 (a Marvell mv64xxx I2C core, 0x01C2B000) as the shared
 // bus of the sensors -- the InvenSense MPU-6050 accelerometer+gyro at 0x68, the Sensortek STK3311 proximity/ambient
 // light at 0x48, and the magnetometer: an ST LIS3MDL at 0x1E or, on newer 1.2 boards, a Voltafield AF8133J at 0x1C
 // (PB1 is the one's data-ready output and the other's active-low reset: probe 0x1E first with PB1 left an input).

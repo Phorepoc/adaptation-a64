@@ -1,8 +1,8 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64_ths.cpp -- OURS (power plan P1, docs/phorepoc/power-plan.md): the A64 thermal sensor (THS) driver.
-// Facts: docs/phorepoc/research/power-linux-modern.md section 4 (registers/values/formula written up from mainline
+// a64_ths.cpp -- OURS (power plan P1): the A64 thermal sensor (THS) driver.
+// Facts (registers/values/formula written up from mainline
 // sun8i_thermal.c as facts only). [V] = read in that research, [U] = unverified: check on the phone (PhoneLab).
 //
 // Sensors: 0 = CPU, 1 and 2 = GPU. T (milli-degC) = 260890 - 117 * raw [V]. raw 0 = no sample yet.

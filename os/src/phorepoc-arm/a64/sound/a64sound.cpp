@@ -9,7 +9,7 @@
 // The hardware (Allwinner A64; register documentation = the Linux drivers, read as a datasheet: sound/soc/sunxi/
 // sun4i-i2s.c "allwinner,sun50i-a64-codec-i2s", sun8i-codec.c "allwinner,sun50i-a64-codec", sun50i-codec-analog.c +
 // sun8i-adda-pr-regmap.c, drivers/dma/sun6i-dma.c "allwinner,sun50i-a64-dma"; routing = the PinePhone device tree and
-// the distros' ALSA UCM; the research in docs/phorepoc/research/sound-{linux,2010,701}.md):
+// the distros' ALSA UCM):
 //   CPU --DMA (ch 7, DRQ 15)--> DAI 0x01C22C00 (an I2S controller in the sun4i register layout, TX FIFO at +0x20;
 //   master, I2S, 16-bit, BCLK = 32 fs, MCLK = 128 fs from PLL_AUDIO) --> digital codec 0x01C22E00 (AIF1 slot 0 ->
 //   DAC mixer -> DAC) --> analog codec (5-bit registers behind PRCM+0x1C0: DAC -> output mixers -> LINEOUT as a

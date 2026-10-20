@@ -1,6 +1,6 @@
 # OURS (PinePhone track): the A64 / PinePhone drive map for ESTART. Format: baseport/syborg/estart.txt.
 # C: = SD card partition 3 (local drive 1: Syborg's NVMemory driver over the SD PIO, src/phorepoc-arm/a64/blk/);
-# E: = SD card partition 4 = the rest of the card (local drive 2; the 701's mass memory letter; F: = its memory card, free).
+# E: = SD card partition 4 = the rest of the card (local drive 2; S60's mass memory letter; F: = the memory card letter, free).
 # D: = the internal RAM drive (local drive 0; lost on reboot -- a Nokia phone's D: is a RAM disk too).
 C:  1  EFAT32  FAT   0       FS_FORMAT_CORRUPT,FS_NOT_RUGGED    # SD P3 (FAT32)
 D:  0  ELOCAL  FAT   0       FS_FORMAT_COLD,FS_SYNC_DRIVE       # IRAM

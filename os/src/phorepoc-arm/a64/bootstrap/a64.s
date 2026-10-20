@@ -1,5 +1,5 @@
 ;
-; a64.s -- OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the Allwinner A64 / PinePhone bootstrap PSL,
+; a64.s -- OURS (PinePhone track): the Allwinner A64 / PinePhone bootstrap PSL,
 ; derived from src/phorepoc-arm/virt/bootstrap/virt.s (itself from baseport/syborg/bootstrap/syborg.s). Deltas from
 ; virt are marked A64:. UNVERIFIED ON HARDWARE -- written from the A64 manual / Linux DTS / NuttX; no serial cable
 ; yet, so progress shows on the RGB LED (STAGE_LED below; the stage colours are in pinephone-port.md).
@@ -338,7 +338,7 @@ GetRamBanks	ROUT
 
 ;*******************************************************************************
 ; GetRamMb -- R0 = the RAM Symbian uses, in MB. boot.cmd writes {'PHRM', MB} at KHwRamCfgAddr from the user's boot
-; config (the SD sector 0x1801, docs/phorepoc/pinephone-port.md "RAM size"); no magic or an unsupported value =
+; config (the SD sector 0x1801); no magic or an unsupported value =
 ; KHwRamSizeMb. Supported: multiples of 256 from 512 to 2816 (0x40000000..0xF0000000 -- the top 256 MB of the 3 GB
 ; phone stays outside Symbian: crumbs, later firmware areas; user, 2026-10-12). MMU off (physical read).
 ; Modifies R0, R1 only; no stack needed.

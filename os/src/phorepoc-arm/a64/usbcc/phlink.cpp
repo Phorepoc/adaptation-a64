@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phlink.cpp -- OURS (PinePhone USB step 2, docs/phorepoc/pinephone-port.md "USB"): the Phorepoc debug link -- a
+// phlink.cpp -- OURS (PinePhone USB step 2): the Phorepoc debug link -- a
 // KERNEL-SIDE USB function on top of the real USB client PIL (no LDD, no user side): a CDC ACM serial port, which
 // Windows 10+ binds to its in-box usbser.sys (a COM port, no driver to install), Linux to cdc_acm (/dev/ttyACM0).
 //  * the kernel log (the seam's board log -- the same bytes the SD log holds, from the first line of the boot)
@@ -48,7 +48,7 @@ extern "C" void A64BarsMenuKey();
 // 2 = screenshot rows {first row LE16, rows LE16, RLE}, 3 = screenshot end {id, rows}. RLE over 24-bit RGB pixels
 // (3 bytes R G B): a token t < 0x80 = t + 1 literal pixels follow; t >= 0x80 = the next pixel repeated t - 0x80 + 2
 // times.
-// Protocol v3 adds the LIVE VIEW ('L' which flags, docs/phorepoc/phonelab-liveview.md): changed 32x32 tiles only, each LZ4
+// Protocol v3 adds the LIVE VIEW ('L' which flags): changed 32x32 tiles only, each LZ4
 // block compressed. 8 = begin {id, w | h << 16, tile size, flags (bit 0 = keyframe: every tile)}, 9 = tiles {count LE16,
 // 0 LE16, then count x {tx u8, ty u8, clen LE16 (bit 15 = stored raw), data}} (tile = w x h 24-bit RGB R G B, rows
 // packed; edge tiles are clipped), 10 = end {id, tiles sent, 0}. The shot ops above are unchanged.

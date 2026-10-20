@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// tmaliclear.cpp -- OURS (GPU rung G3-K2, docs/phorepoc/gpu-lima-research.md): the first frame the Mali-400 renders
+// tmaliclear.cpp -- OURS (GPU rung G3-K2): the first frame the Mali-400 renders
 // under Symbian. It builds by hand exactly the jobs Mesa's lima driver issues for a clear-only frame (lima_job.c
 // lima_do_job / lima_pack_head_plbu_cmd / lima_generate_pp_stream / lima_pack_pp_frame_reg, lima_screen.c's pp_buffer:
 // Mesa is MIT) -- a GP job whose PLBU writes the tile lists, then a PP job on both pixel processors that clears every

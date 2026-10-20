@@ -1,6 +1,6 @@
 # a64 — the PinePhone board layer (Allwinner A64, 4 × Cortex-A53 in AArch32)
 
-OURS. Status, history and recipes: `docs/phorepoc/pinephone-port.md` (P3 rung 4 onward).
+OURS.
 **Unverified on the real phone** — written from the A64 manual's memory map, the Linux DTS (as documentation) and
 NuttX's A64 port; tested in QEMU `orangepi-pc` (Allwinner H3), which shares the A64's UART0, GIC-400, CCU/PIO and
 DRAM addresses (`tools/phorepoc-arm/run_h3.sh`).

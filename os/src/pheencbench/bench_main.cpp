@@ -7,7 +7,7 @@
 //   sw1   OpenH264 on the A53, 1 thread, fixed QP 28 and rate control
 //   sw4   OpenH264, 4 threads (4 slices)
 // logging "[encbench] ..." lines (RDebug). CPU load = a spinner thread per core at the lowest priority counts the idle time. Docs:
-// docs/phorepoc/pinephone-port.md "H.264 encode benchmark". SSM_TEST=pheencbench.
+// SSM_TEST=pheencbench.
 #include <e32std.h>
 #include <e32debug.h>
 #include <hal.h>

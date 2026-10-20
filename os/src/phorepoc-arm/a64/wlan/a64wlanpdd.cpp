@@ -1,10 +1,10 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64wlanpdd.cpp -- OURS (2026-10-10, PinePhone WiFi W3; docs/phorepoc/pinephone-port.md "WiFi: the chip core"):
+// a64wlanpdd.cpp -- OURS (2026-10-10, PinePhone WiFi W3):
 // "wlan.phys", the WHA physical device under the REAL 2010 wlanldd (the UMAC), over the rtw88 chip core
 // (a64wlan_glue.c / shim_mac80211.c, the vendored Linux driver on the WLAN DFC thread). Nokia's own adaptations
-// (the 701's wlanpdd.pdd, TI's WVSS) have this exact shape: a DPhysicalDevice whose channel object is an
+// (TI's WVSS) have this exact shape: a DPhysicalDevice whose channel object is an
 // MWlanPddIface handing the UMAC a WHA::Wha.
 //
 // Threads. The UMAC calls every Wha method on the LDD's thread ("WlanDdThread") holding the LDD mutex; the chip core
@@ -18,7 +18,7 @@
 //   Scan  = the channels the UMAC lists, one after another, dwelling max(iMaxChannelTime, 110 ms) -- passive for now
 //           (no probe request transmitted: the TX path is W3b), beacons/probe responses -> ReceivePacket;
 //   Join  = the channel + the BSSID remembered (frames flow to the UMAC from then on); association is the UMAC's.
-// Security (docs/phorepoc/wlan-security-design.md; a64wlansec.cpp): AddKey / RemoveKey write the chip's security CAM, the PDD
+// Security (a64wlansec.cpp): AddKey / RemoveKey write the chip's security CAM, the PDD
 // advertises KNoSecHdrAndTrailer and does the CCMP / TKIP / WEP header + Michael work itself.
 // Holes (recorded in the port doc): the probe template, power save, BSS-lost indication, HT. v1 = scanning.
 #include <kernel/kernel.h>

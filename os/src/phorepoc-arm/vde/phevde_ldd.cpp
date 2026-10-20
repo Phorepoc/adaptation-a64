@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phevde_ldd.cpp -- OURS (VDU rung V0, docs/phorepoc/vdu-plan.md): the kernel driver of the Allwinner Video Engine.
+// phevde_ldd.cpp -- OURS (VDU rung V0): the kernel driver of the Allwinner Video Engine.
 // The user API is RPheVde (rphevde.h). The engine is stateless, so the driver is small: register access, a
 // physically contiguous buffer arena, and one job at a time (register writes, then wait for the interrupt).
 // Board specifics (base, interrupt, clocks, SRAM) come through TPheVdeBoard (src/phorepoc-arm/a64/vde/phevde_a64.cpp).

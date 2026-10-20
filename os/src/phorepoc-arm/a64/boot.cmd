@@ -1,4 +1,4 @@
-# Phorepoc (Symbian) on the PinePhone -- the U-Boot boot script (OURS; docs/phorepoc/pinephone-port.md).
+# Phorepoc (Symbian) on the PinePhone -- the U-Boot boot script (OURS).
 # tools/phorepoc-arm/make_pinephone_image.sh turns this into boot.scr. U-Boot's distro boot finds boot.scr on the
 # boot partition and sets devtype/devnum/distro_bootpart; run by hand they default to the SD card's first partition.
 # symbian.img = the AArch64 shim (padded to 1 MB) + the ROM: loaded at 0x40200000, the ROM lands at 0x40300000 --

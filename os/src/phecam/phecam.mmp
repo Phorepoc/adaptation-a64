@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phecam.mmp -- OURS (docs/phorepoc/camera-plan.md C1): the ECam plug-in over the 2010 shared-chunk camera driver. = the release's TestCamera plug-in
+// phecam.mmp -- OURS: the ECam plug-in over the 2010 shared-chunk camera driver. = the release's TestCamera plug-in
 // (every CCamera virtual, the viewfinder/still/video machinery) with its pixel source replaced by RDevCameraSc (gen_phecam.py lists the edits). ECOM
 // 0x1020707F, ROM-only resolver: it must be in Z:. The generated sources are committed next to this file.
 #include <ecamuids.hrh>

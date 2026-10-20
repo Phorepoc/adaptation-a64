@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// mali_a64.cpp -- OURS (GPU rung G3, docs/phorepoc/gpu-lima-research.md): the PinePhone's (Allwinner A64) half of
+// mali_a64.cpp -- OURS (GPU rung G3): the PinePhone's (Allwinner A64) half of
 // the Mali driver: where the Mali-400 MP2 sits, its interrupts (sun50i-a64.dtsi `mali: gpu@1c40000`), and its clock
 // bring-up -- the same CCU writes G3-K0 verified by hand with PhoneLab (2026-10-09). The GPU rail is always on.
 #include <kernel/kernel.h>

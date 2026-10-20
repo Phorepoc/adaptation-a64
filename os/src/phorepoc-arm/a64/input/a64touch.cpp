@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md "Touch"): the PinePhone's Goodix GT917S touch panel ->
+// OURS (PinePhone track): the PinePhone's Goodix GT917S touch panel ->
 // Symbian pointer events. Reference: NuttX (Apache-2.0) boards/arm64/a64/pinephone/src/pinephone_touch.c +
 // drivers/input/gt9xx.c and Linux i2c-mv64xxx.c (the Allwinner TWI is a Marvell mv64xxx core).
 //   - bus: TWI0 at 0x01C2AC00, pins PH0 (SCK) / PH1 (SDA) function 2, I2C address 0x5D; power = the AXP803

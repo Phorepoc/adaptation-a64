@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phedetest.mmp -- OURS (DE2 overlay plan, docs/phorepoc/de2-overlay-plan.md): the PheDeOv driver test. A moving NV12
+// phedetest.mmp -- OURS (DE2 overlay plan): the PheDeOv driver test. A moving NV12
 // pattern (1280x720 and 1920x1080) is put on the DE2 VI plane, scaled by the hardware to the panel, the DE registers
 // are read back and checked, 240 vblank-paced flips are timed; "PH: de2ov" lines, ends "PH: de2ov PASS" / "FAIL".
 // SSM_TEST=phedetest (no ROM data, no extra ROM_TAIL). The VE arena (RPheVde) is the physically contiguous picture memory.

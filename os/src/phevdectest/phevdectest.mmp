@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phevdectest.mmp -- OURS (VDU rung V4, docs/phorepoc/vdu-plan.md): drives the phevdec DevVideo plug-in through
+// phevdectest.mmp -- OURS (VDU rung V4): drives the phevdec DevVideo plug-in through
 // CMMFDevVideoPlay (the public DevVideo API) over the H.264 / MPEG-2 clips in ROM; "PH: dvp" lines.
 // SSM_TEST=phevdectest stages it at boot (ROM needs devvideo, puresolverutils, codecapiresolver, mmcommonutils, phevdec).
 TARGET			phevdectest.exe

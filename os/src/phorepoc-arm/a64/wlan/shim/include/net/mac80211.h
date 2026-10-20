@@ -194,7 +194,7 @@ struct ieee80211_ops {
 	void (*wake_tx_queue)(struct ieee80211_hw *hw, struct ieee80211_txq *txq);
 	int (*set_sar_specs)(struct ieee80211_hw *hw, const struct cfg80211_sar_specs *sar);
 	/* the members rtw88's own mac80211.c fills (vendored 2026-10-10 so the glue drives the real rtw_ops in mac80211's
-	 * order, docs/phorepoc/wifi-station-join-transcript.md) */
+	 * order) */
 	int (*add_chanctx)(struct ieee80211_hw *hw, struct ieee80211_chanctx_conf *ctx);
 	void (*remove_chanctx)(struct ieee80211_hw *hw, struct ieee80211_chanctx_conf *ctx);
 	void (*change_chanctx)(struct ieee80211_hw *hw, struct ieee80211_chanctx_conf *ctx, u32 changed);

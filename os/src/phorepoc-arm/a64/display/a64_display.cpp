@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// OURS (PinePhone track P4, docs/phorepoc/pinephone-port.md "Display"): bring up the PinePhone's 720x1440 panel.
+// OURS (PinePhone track P4): bring up the PinePhone's 720x1440 panel.
 // The register-level work is NuttX's A64 display drivers (nuttx/*.c, Apache-2.0, vendored unmodified; written up
 // at lupyuen.github.io/articles/dsi2 & co): AXP803 rails over RSB, the R_PWM backlight, TCON0, MIPI DSI + D-PHY,
 // the Sitronix ST7703 panel init sequence (XBD599), and the Display Engine 2 mixer + blender + UI channel 1.
@@ -421,7 +421,7 @@ static TInt PanelRead(TUint8 aCmd)
 	return ((rx & 0xff) == 0x21 || (rx & 0xff) == 0x22) ? (TInt)((rx >> 8) & 0xff) : -2;
 	}
 
-// PANEL HEALTH (docs/phorepoc/dsa-nga-plan.md 6.2): the recurring black-with-backlight boots had every readback right
+// PANEL HEALTH: the recurring black-with-backlight boots had every readback right
 // BEFORE the HS video stream started and nothing looked afterwards. Read the power mode (0x0A: want bits 4:2 set = sleep
 // out, normal mode, display on; 0x9C seen on good boots), display mode (0x0D) and signal mode (0x0E), and log them.
 // 1 = healthy, 0 = unhealthy, -1 = unreadable (an LP read while the HS video runs may fail: never act on that alone).
@@ -833,7 +833,7 @@ extern "C" TInt A64DisplayCaptureSource(TInt aWhich, TLinAddr* aLin, TInt* aW, T
 	return KErrNone;
 	}
 
-// VBLANK + FLIP (NGA rung G1a, docs/phorepoc/gpu-lima-research.md): the display PDD (a64fb.cpp, DDisplayPddA64) posts
+// VBLANK + FLIP (NGA rung G1a): the display PDD (a64fb.cpp, DDisplayPddA64) posts
 // a buffer by pointing UI channel 1 at it + GLB_DBUFFER, and its post completes on the frame after the DE latched it.
 // TCON0 runs the DSI panel in trigger mode, so the per-frame interrupt is TRI_FINISH (Linux sun4i_tcon: GINT0 bit 27
 // enable, bit 11 status, write 0 to clear; GIC SPI 86), verified firing on the phone 2026-10-09. The IRQ is only
@@ -946,7 +946,7 @@ extern "C" void A64DisplayFlipStats()
 	}
 
 // ==================================================================================================================
-// DE2 VIDEO OVERLAY (docs/phorepoc/de2-overlay-plan.md): mixer 0's VI channel (Linux channel 0, regs at mixer + 0x2000),
+// DE2 VIDEO OVERLAY: mixer 0's VI channel (Linux channel 0, regs at mixer + 0x2000),
 // with its scaler (VSU, mixer + 0x20000) and CCSC (mixer + 0xAA050), routed to blender pipe 2 (above the UI channel 1
 // picture in pipe 0 and the status/key-bar channel 2 in pipe 1). Every register below is the one Linux's sun4i-drm writes:
 //   sun8i_mixer.h (offsets), sun8i_vi_layer.c update_coord/update_formats/update_buffer/enable, sun8i_vi_scaler.c
@@ -1356,7 +1356,7 @@ static TBool DisplayUpBody()
 	return ETrue;
 	}
 
-// the bring-up with the panel health check (docs/phorepoc/dsa-nga-plan.md 6.2): after DISPLAY UP + 300 ms read the panel back; on
+// the bring-up with the panel health check: after DISPLAY UP + 300 ms read the panel back; on
 // a bad reading re-send 0x11/0x29 (max 2), then redo the whole bring-up (max 2 more times; its CCU reset-assert block makes
 // it re-entrant), logging every attempt so PhoneLab sees how often it happens. Then the vblank/flip machinery.
 static void DisplayUp(TAny*)
@@ -1390,11 +1390,11 @@ static void DisplayUp(TAny*)
 // keeps scanning: panel sleep-in needs DCS commands in video mode -- later).
 static TInt BlLevel = 90;		// the bring-up's level
 static TBool BlBlanked;
-// the backlight really OFF (PWM 0): the screensaver's lights-off (HAL EBacklightState = 0, SysAp delta) -- the 701's
+// the backlight really OFF (PWM 0): the screensaver's lights-off (HAL EBacklightState = 0, SysAp delta) -- a phone's
 // display off. Any lights-on (unblank) clears it (user, 2026-10-15)
 static TBool BlOff;
 // The LED driver's floor (user, 2026-10-15, boot 445): below ~108 of the PWM's 1199 ticks the backlight is OFF (75 was
-// dark, 108 the lowest lit level) -- the whole brightness range starts there, and "blank" (the 701's light dimming:
+// dark, 108 the lowest lit level) -- the whole brightness range starts there, and "blank" (S60's light dimming:
 // still faintly lit, user 2026-10-15) is the floor itself, never 0
 static const TUint32 KBlFloorTicks = 108;
 static const TUint32 KBlDimTicks = KBlFloorTicks;
@@ -1418,7 +1418,7 @@ extern "C" void A64DisplaySetBrightness(TInt aPercent)
 extern "C" TInt A64DisplayBrightness() { return BlLevel; }
 
 // SCREEN POWER (power plan P4, 2026-10-16). The lights-off state (BlOff: the screensaver's display off, SysAp's delta;
-// the 701's display off) now powers the display pipeline down instead of only dropping the backlight, and lights-on
+// the display off) now powers the display pipeline down instead of only dropping the backlight, and lights-on
 // brings it all back. Off, in Linux's order (st7703 disable/unprepare + sun6i_dsi/sun4i_tcon disable):
 //   backlight off (PWM gated, PH10 low)  ->  flips stop touching the DE  ->  DCS display-off (0x28), sleep-in (0x10),
 //   120 ms  ->  TCON0 off (GCTL, TCON0_CTL bit 31)  ->  panel reset low (PD23)  ->  TCON0/DE/DSI(+D-PHY) in reset, bus

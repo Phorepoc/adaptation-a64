@@ -179,7 +179,7 @@ static const struct rtw_pwr_seq_cmd trans_pre_enable_8703b[] = {
 	 RTW_PWR_ADDR_MAC,
 	 RTW_PWR_CMD_WRITE, BIT(5), BIT(5)},
 #else
-	/* PHE (Phorepoc) difference 1 (docs/phorepoc/rtw88-vs-8723cs.md, power-on table row 1): the vendor driver selects
+	/* PHE (Phorepoc) difference 1 (power-on table row 1): the vendor driver selects
 	 * the external crystal (0x66 bit7) and CLK_REQ high-active (0x69 bit5) only under CONFIG_EXT_CLK, which the
 	 * PinePhone build does not set: leave both at their power-on values */
 #endif

@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the seam's kext loaders + boot-stage signal for
+// OURS (PinePhone track): the seam's kext loaders + boot-stage signal for
 // BOARD=a64 (tools/kernel/ekern_seam.cpp; virt's are src/phorepoc-arm/virt/specific/virt_glue_null.cpp).
 // No A64 display / input / storage drivers yet (P4), so:
 //   display: none;  input: none;  media: the REAL ELOCD + the internal RAM drive as C: (a64/estart.txt).
@@ -599,7 +599,7 @@ extern "C" void A64SdFlushNow(TInt aStage) { A64SdFlush(aStage); }
 // ... only if something was logged since the last flush (the core-retirement test calls this every 2 ms)
 extern "C" void A64SdFlushIfDirty(TInt aStage) { if (LogLen != SdLogDone) A64SdFlush(aStage); }
 
-// ---- A/B SLOTS (2026-10-05, user idea; docs/phorepoc/pinephone-port.md "slots") ----
+// ---- A/B SLOTS (2026-10-05, user idea) ----
 // Slot A = symbian.img on the FAT partition (the golden image: written from the PC / Etcher only).
 // Slot B = partition 2, raw sectors from 1088 MiB (KSlotBSector; the 1 GiB partition, the IMAGE up to 112 MiB), written over USB
 // (phlink 'U'). The CONTROL sector (KCtlSector, in the gap before partition 1) = {magic 'PHSL', state, len, sum}.
@@ -1677,7 +1677,7 @@ static void MonDfcFn(TAny*)
 		}
 	lastNow = now;
 	ekseam_puts("\n[EKERN][mon] free RAM KB="); ekseam_puthex((unsigned)(Kern::FreeRamInBytes() >> 10));
-	{	// the kernel heap (2026-10-07: a 1 MB max ran dry under S60; the 701 reserves 32 MB): committed now + the peak
+	{	// the kernel heap (2026-10-07: a 1 MB max ran dry under S60): committed now + the peak
 	static TInt kheapPeak = 0;
 	const TInt kh = K::Allocator->Size();
 	if (kh > kheapPeak) kheapPeak = kh;

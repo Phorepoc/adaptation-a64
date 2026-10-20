@@ -5,7 +5,7 @@
  * The real mac80211 owns the interfaces, stations, keys, scanning and the frame queues; here, in the chip-core stage,
  * there is one hw, no vif and no sta: the iterators visit nothing, the station lookups find nothing, the queues are
  * never stopped, and every received frame goes to the beacon table (the "beacons listed" demo) -- the W3 rung replaces
- * that sink with the WHA front under the real wlanldd (docs/phorepoc/pinephone-port.md "WiFi: the chip core"). */
+ * that sink with the WHA front under the real wlanldd. */
 #include <net/mac80211.h>
 #include "a64wlan_api.h"
 

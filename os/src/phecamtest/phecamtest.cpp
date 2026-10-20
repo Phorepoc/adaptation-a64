@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phecamtest.cpp -- OURS (docs/phorepoc/camera-plan.md C0/C1): a minimal CCamera client. Opens camera 0 through the ECam framework (ecam.dll -> the ROM's
+// phecamtest.cpp -- OURS: a minimal CCamera client. Opens camera 0 through the ECam framework (ecam.dll -> the ROM's
 // CCameraPlugin: the stock TestCamera plug-in = moving squares, or phecam = the camera driver's fake-sensor frames), starts the bitmap viewfinder and paints every
 // frame into a full-screen window. "PH: camtest" lines count the frames. Boot test: SSM_TEST=phecamtest (x86).
 #include <e32base.h>

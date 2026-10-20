@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR MIT -- used here under the MIT option (see below)
 //
 // mali_ldd.cpp -- the Mali Utgard (Mali-400 MP) kernel driver for Symbian EKA2: GPU rung G3 of
-// docs/phorepoc/gpu-lima-research.md. The user API is RMaliChannel (rmalichannel.h).
+// The user API is RMaliChannel (rmalichannel.h).
 //
 // The HARDWARE sequences -- PMU power-up, L2 flush/enable, GP/PP soft and hard reset, MMU init / VM switch /
 // page-fault recovery, the GP/PP job start and completion rules, the page-table format -- are PORTED from the Linux

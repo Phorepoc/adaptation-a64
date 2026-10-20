@@ -1,8 +1,8 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: EPL-1.0 */
 
-/* a64wlan_api.h -- OURS (2026-10-10, PinePhone WiFi; docs/phorepoc/pinephone-port.md "WiFi: the chip core"): the C
- * face of the chip core (rtl8703b/, the fresh RTL8703B driver: docs/phorepoc/rtl8723cs-fresh-driver.md) for the
+/* a64wlan_api.h -- OURS (2026-10-10, PinePhone WiFi): the C
+ * face of the chip core (rtl8703b/, the fresh RTL8703B driver) for the
  * Symbian side (a64wlan.cpp: the thread + the firmware; a64wlanpdd.cpp: the WHA PDD "wlan.phys" under the real
  * wlanldd). Plain C types only: both languages include it. */
 #ifndef A64WLAN_API_H
@@ -17,7 +17,7 @@ int  a64wlan_probe(void);			/* chip power-on check + the efuse; 0 = ok */
 int  a64wlan_is_probed(void);
 int  a64wlan_last_cfo_khz(void);	/* carrier offset of the frame in the rx sink right now (OFDM frames), kHz */
 void a64wlan_cfo_feed(int khz);		/* CFO tracking: one OFDM frame's offset; steers the crystal cap */
-/* the station sequencer (a64wlan_glue.c: rtw88's own ops in mac80211's order, docs/phorepoc/wifi-station-join-transcript.md) */
+/* the station sequencer (a64wlan_glue.c: rtw88's own ops in mac80211's order) */
 int  a64wlan_core_up(void);			/* ieee80211_do_open + hw_conf_init: start, the station interface, ERP/WMM
 									   defaults; ends idle = powered off (IPS) as Linux; idempotent; 0 = ok */
 int  a64wlan_is_up(void);

@@ -1,8 +1,8 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64_cpufreq.cpp -- OURS (power plan P2, docs/phorepoc/power-plan.md): the A64 CPU OPP driver (PLL_CPUX + DCDC2).
-// Facts: docs/phorepoc/research/power-linux-modern.md sections 1.3 and 2 ([V] read in mainline, [U] unverified).
+// a64_cpufreq.cpp -- OURS (power plan P2): the A64 CPU OPP driver (PLL_CPUX + DCDC2).
+// Facts read from mainline Linux ([V] verified there, [U] unverified).
 //
 // All four cores share one PLL and one rail, so there is one cluster-wide OPP. NOTHING here runs at boot: U-Boot's
 // setting stays until someone calls A64CpuSetOpp. Only A64CpuFreqInit (a64_glue.cpp, boot) maps the CCU and creates
@@ -220,7 +220,7 @@ extern "C" void A64CpuOppSelfTest()
 #endif
 
 // ---------------------------------------------------------------------------------------------------------------
-// Power plan P3: the governor -- a kernel load monitor (the 701's dvfs.dll shape), ondemand-like:
+// Power plan P3: the governor -- a kernel load monitor, ondemand-like:
 //   every 100 ms the busiest core's load; >= 70 % -> straight to the highest allowed OPP; < 25 % for 500 ms -> one
 //   step down. Thermal cap from the THS every second: >= 85 C -> 960 MHz, >= 75 C -> 1056 MHz, < 70 C -> no cap.
 // A summary every 30 s (time per OPP, switches, temperature) instead of a line per switch.

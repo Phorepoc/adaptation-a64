@@ -1,8 +1,8 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: EPL-1.0 */
 
-// ve_h264.h -- OURS (VDU rung V3, docs/phorepoc/vdu-plan.md): H.264 decoding on the stateless A64 Video Engine.
-// The CPU side the VE needs (docs/phorepoc/research/ve-h264-regs.md section 0): picture order count (8.2.1), the
+// ve_h264.h -- OURS (VDU rung V3): H.264 decoding on the stateless A64 Video Engine.
+// The CPU side the VE needs: picture order count, the
 // decoded picture buffer with reference marking (8.2.5: sliding window + MMCO), reference picture lists (8.2.4:
 // initialisation + modification), and one VE job per slice (register writes, SRAM tables, the header skip, the trigger).
 // Frame pictures (progressive, MBAFF flag passed through) and field pictures (PAFF, field_pic_flag = 1): both fields of a

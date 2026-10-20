@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// tdispflip.mmp -- OURS (NGA rung G1a, docs/phorepoc/gpu-lima-research.md): the display channel flip test
+// tdispflip.mmp -- OURS (NGA rung G1a): the display channel flip test
 TARGET			tdispflip.exe
 TARGETTYPE		exe
 UID				0x1000007a 0xE701571A

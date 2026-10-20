@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64uart.cpp -- OURS (2026-10-09, Bluetooth rung R1; docs/phorepoc/pinephone-port.md "Bluetooth: the decision"):
+// a64uart.cpp -- OURS (2026-10-09, Bluetooth rung R1):
 // the PinePhone's UART1 (the RTL8723CS Bluetooth link) as a serial PDD "Comm.A64", unit 1, under the REAL serial LDD
 // (kernel/eka/drivers/ecomm/d_comm.cpp, ECOMM.LDD "Comm", linked into ekern with its entry renamed). The 2010 BT HCI
 // transport plug-ins open this port directly through RBusDevComm (research/bluetooth-2010.md a.1).
@@ -17,7 +17,7 @@
 // The Bluetooth power pins ride on the port (OURS convention): KSignalDTR = the chip's enable PL4 (R_PIO) with the
 // device-wake PH6 asserted (low) together with it; the IO rail (AXP803 DLDO4, 1.8 V) is switched on at create. The
 // timing of the power sequence (enable low 100 ms, high 500 ms) is the client's: SetSignals runs in ISR paths too.
-// Modem rung M1 (2026-10-17, docs/phorepoc/telephony-plan.md; -DPHE_MODEM = the MODEM=1 kernel build only): unit 3 =
+// Modem rung M1 (2026-10-17, -DPHE_MODEM = the MODEM=1 kernel build only): unit 3 =
 // UART3 at 0x01C28C00 (GIC SPI 3, CCU bit 19, PD0 TX / PD1 RX function 3, no hardware flow control -- the DTS says
 // RTS/CTS are not usable) = the Quectel EG25-G's main UART. Opening unit 3 powers the modem (A64ModemPowerUp, a
 // bounded sequence on its own DFC thread, PWRKEY always released); the modem's STATUS (PH9, low = on) reads as

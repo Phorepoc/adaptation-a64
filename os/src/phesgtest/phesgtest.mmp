@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phesgtest.mmp -- OURS (GPU plan G6b, docs/phorepoc/gpu-lima-research.md): an RSgImage rendered into by GLES2 through
+// phesgtest.mmp -- OURS (GPU plan G6b): an RSgImage rendered into by GLES2 through
 // eglCreatePixmapSurface and sampled through eglCreateImageKHR(EGL_NATIVE_PIXMAP_KHR), checked by the CPU ("PH: sg" lines,
 // "PH: sg RESULT pass=N fail=M"). SSM_TEST=phesgtest stages it at boot. Contract: phesgtest.cpp.
 TARGET			phesgtest.exe

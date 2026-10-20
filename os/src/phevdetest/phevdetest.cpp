@@ -1,10 +1,10 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phevdetest.cpp -- OURS (VDU rungs V0-V2, docs/phorepoc/vdu-plan.md): the VE driver test ("PH: ve" lines, forwarded by
+// phevdetest.cpp -- OURS (VDU rungs V0-V2): the VE driver test ("PH: ve" lines, forwarded by
 // the kernel seam). V0: driver info, a register round trip, a contiguous arena commit. V1: one MPEG-2 intra picture.
 // V2: a 25-frame IPB clip (ffmpeg testsrc, GOP 12, 2 B frames) with reference frames. Every decoded picture is compared
-// with ffmpeg's decode (NV12, display order) by PSNR. Register facts: docs/phorepoc/research/ve-mpeg2-regs.md.
+// with ffmpeg's decode (NV12, display order) by PSNR.
 #include <e32base.h>
 #include <e32debug.h>
 #include <e32math.h>
@@ -886,7 +886,7 @@ TInt E32Main()
 		RunH264(ve, arena, phys, size, _L("hh8x8"), 640, 360);
 		RunH264(ve, arena, phys, size, _L("hcqm"), 640, 360);
 		RunH264(ve, arena, phys, size, _L("hhigh"), 640, 360);
-		// interlaced (docs/phorepoc/vdu-plan.md V3b): MBAFF frame pictures (cropped), and PAFF field pictures from
+		// interlaced: MBAFF frame pictures (cropped), and PAFF field pictures from
 		// tests/h264_parser/paffgen.py (mixed frame / field pictures, B fields, field MMCO + list modification)
 		RunH264(ve, arena, phys, size, _L("hmbaffm"), 320, 240);
 		RunH264(ve, arena, phys, size, _L("hmbaffh"), 640, 360);

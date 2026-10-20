@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: EPL-1.0 */
 
-// h264_parser.h -- OURS (VDU rung V3, docs/phorepoc/vdu-plan.md): the CPU half of H.264 decoding for the stateless A64
+// h264_parser.h -- OURS (VDU rung V3): the CPU half of H.264 decoding for the stateless A64
 // Video Engine -- NAL unit splitting, emulation-prevention removal, and the SPS / PPS / slice header fields the
 // hardware needs (ITU-T H.264 (08/2021) sections 7.3.2.1.1, 7.3.2.2, 7.3.3). Written from the specification.
 // Plain C++ with no Symbian dependency, so the host test (tests/) can compile it unmodified.

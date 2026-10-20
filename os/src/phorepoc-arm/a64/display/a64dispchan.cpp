@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// OURS (GPU plan G1a, docs/phorepoc/gpu-lima-research.md): the PinePhone's RDisplayChannel PDD -- the NGA display
+// OURS (GPU plan G1a): the PinePhone's RDisplayChannel PDD -- the NGA display
 // path (OpenWF-C composes, this driver flips the DE to each composed buffer on the panel's vblank). Split out of
 // a64fb.cpp (2026-10-09, user decision): a64fb.cpp stays the MINIMAL SAFE display driver -- the legacy framebuffer
 // the golden image runs, and the pattern for a first display on a new board; this file is the optional NGA layer
@@ -21,7 +21,7 @@ extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
 extern "C" TUint32 A64FbLegacyBase();		// a64fb.cpp: the legacy video RAM (FB_BASE)
 
-// DDisplayPddA64: the PinePhone's RDisplayChannel PDD (docs/phorepoc/gpu-lima-research.md, G1a). The buffer
+// DDisplayPddA64: the PinePhone's RDisplayChannel PDD (G1a). The buffer
 // bookkeeping is Syborg's (DDisplayPddSyborg above, the 2010 reference shape); the difference is WHEN a post
 // completes: A64DisplayFlip (a64_display.cpp) points the DE at the buffer, and the vblank after the DE latched it
 // queues iVSyncDfc. Two composition buffers in the contiguous RAM DLcdPowerHandler allocated for them.

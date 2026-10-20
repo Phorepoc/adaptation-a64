@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: EPL-1.0 */
 
-// a64wlansec.h -- OURS: the host-side WLAN security of the WHA PDD (a64wlansec.cpp). Design: docs/phorepoc/wlan-security-design.md.
+// a64wlansec.h -- OURS: the host-side WLAN security of the WHA PDD (a64wlansec.cpp). Design.
 #ifndef A64WLANSEC_H
 #define A64WLANSEC_H
 #include <kernel/kernel.h>

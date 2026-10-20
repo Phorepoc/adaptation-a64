@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phedetest.cpp -- OURS (DE2 overlay plan, docs/phorepoc/de2-overlay-plan.md): tests PheDeOv (RPheDeOv), the A64 DE2 video
+// phedetest.cpp -- OURS (DE2 overlay plan): tests PheDeOv (RPheDeOv), the A64 DE2 video
 // plane driver. Picture memory = the VE arena (RPheVde: one physically contiguous uncached chunk). Stages:
 //   1 open + info                               6 coarse scaling: a 1920x1080 picture -> 720x405 (VDS programmed)
 //   2 NV12 test frames (1280x720, moving box)   7 argument checks (rotation, bad pointer, odd size, off-panel)

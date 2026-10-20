@@ -5,7 +5,7 @@
  * mmc_host objects the driver expects, the probe, and the station sequencer -- the role mac80211 plays for rtw88:
  * one station interface (vif) and one peer (the AP), driven through rtw88's OWN ops table (rtw88/mac80211.c,
  * vendored unmodified) in the order mac80211 calls them. Every step below cites the mac80211 source it mirrors;
- * the derivation and the diff against the earlier glue: docs/phorepoc/wifi-station-join-transcript.md.
+ * the derivation and the diff against the earlier glue.
  * Called from the WLAN DFC thread (a64wlan.cpp / a64wlanpdd.cpp RunCmd), except a64wlan_tx (any thread: it only
  * queues). */
 #include "rtw88/main.h"

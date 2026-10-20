@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// phevenctest.mmp -- OURS (VE encoder one-frame probe, docs/phorepoc/ve-encoder-plan.md): encodes one 64x64 NV12 intra
+// phevenctest.mmp -- OURS (VE encoder one-frame probe): encodes one 64x64 NV12 intra
 // picture on the A64 Video Engine's H.264 encoder through the phevde driver (RPheVde), dumps the stream and decodes it back
 // with the phevdec cores; "PH: venc" lines. SSM_TEST=phevenctest stages it at boot (no ROM data files).
 TARGET			phevenctest.exe

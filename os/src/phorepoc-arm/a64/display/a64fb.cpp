@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// OURS (PinePhone track P4, docs/phorepoc/pinephone-port.md "Display"): the PinePhone's framebuffer driver = Syborg's
+// OURS (PinePhone track P4): the PinePhone's framebuffer driver = Syborg's
 // REAL framebuffer driver (oss.FCL.sf.adapt.Qemu/baseport/syborg/svpframebuffer/svpframebuffer.cpp, compiled
 // unmodified below) on the A64 display pipeline that a64_display.cpp brings up (DE2 -> TCON0 -> MIPI DSI -> ST7703).
 // Same shape as the QEMU `virt` port's virtfb.cpp: the driver only knows the Syborg framebuffer device's registers,
@@ -105,7 +105,7 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 			v = !A64DisplayBacklightIsOff();
 			kumemput32(a1, &v, sizeof(v));
 			return KErrNone;
-		case EDisplayHalGetDisplayMemoryHandle:		// DSA / the screen-surface stream (docs/phorepoc/dsa-nga-plan.md A1)
+		case EDisplayHalGetDisplayMemoryHandle:		// DSA / the screen-surface stream
 			if (!ekseam_display_memory_handle)
 				return KErrNotSupported;
 			return ekseam_display_memory_handle(0, a1, VIRT_FB_WIDTH * VIRT_FB_HEIGHT * 4);

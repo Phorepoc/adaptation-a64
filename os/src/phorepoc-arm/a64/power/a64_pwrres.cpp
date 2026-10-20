@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64_pwrres.cpp -- OURS (power plan P4, docs/phorepoc/power-plan.md): the A64 power RESOURCE MANAGER, the small
+// a64_pwrres.cpp -- OURS (power plan P4): the A64 power RESOURCE MANAGER, the small
 // kernel-side model of the 2010 drivers/resourceman idea (named, reference-counted resources; the hardware switches
 // only on the 0 <-> 1 transitions) over the AXP803 rails and the A64 module clocks that can be shut while the screen is
 // off. Every consumer takes a reference (A64PwrResGet) before it touches the hardware behind a resource and drops it

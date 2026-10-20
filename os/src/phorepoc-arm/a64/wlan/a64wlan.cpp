@@ -1,9 +1,9 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// a64wlan.cpp -- OURS (2026-10-10, PinePhone WiFi: the chip core; docs/phorepoc/pinephone-port.md "WiFi: the chip
+// a64wlan.cpp -- OURS (2026-10-10, PinePhone WiFi: the chip core; "WiFi: the chip
 // core"): the RTL8723CS's WiFi half brought up by our fresh RTL8703B driver (wlan/rtl8703b,
-// docs/phorepoc/rtl8723cs-fresh-driver.md) over our SMHC1 SDIO host (a64sdio.cpp). This file is the Symbian side:
+// ) over our SMHC1 SDIO host (a64sdio.cpp). This file is the Symbian side:
 //   - the WLAN DFC queue, the one thread the whole driver runs on (shim_rt.cpp);
 //   - the firmware: rtw8703b_fw.bin read straight out of the XIP ROM (Z:\resource\wlan\, staged by tools/zdata_gen.py
 //     from src/phorepoc-arm/board/wlan/fw/) and handed to the driver (a64wlan_set_firmware);

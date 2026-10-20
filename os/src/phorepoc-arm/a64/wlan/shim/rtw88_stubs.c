@@ -31,7 +31,6 @@ void rtw_dbg(struct rtw_dev *rtwdev, enum rtw_debug_mask mask, const char *fmt, 
 }
 
 /* rtw_ops = rtw88's own mac80211.c (vendored unmodified 2026-10-10); a64wlan_glue.c calls its ops in mac80211's order
- * (docs/phorepoc/wifi-station-join-transcript.md) */
 
 /* ---- regd ---- */
 static const struct rtw_regulatory shim_regd_ww = { .alpha2 = "00", .txpwr_regd_2g = RTW_REGD_WW, .txpwr_regd_5g = RTW_REGD_WW };

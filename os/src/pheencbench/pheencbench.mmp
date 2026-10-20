@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-1.0
 
-// pheencbench.mmp -- OURS (docs/phorepoc/pinephone-port.md "H.264 encode benchmark"): A64 hardware VE H.264 encoder vs OpenH264 software
+// pheencbench.mmp -- OURS: A64 hardware VE H.264 encoder vs OpenH264 software
 // encoding on the A53 cores (1 and 4 threads, NEON) at five resolutions, plus RGB->NV12/I420 colour conversion cost. "[encbench]" lines.
 // SSM_TEST=pheencbench. The OpenH264 archive: bash tools/codecpack/openh264_enc.sh (BSD-2-Clause; registry arm_archives).
 TARGET			pheencbench.exe

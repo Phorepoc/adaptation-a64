@@ -1,4 +1,4 @@
-; a64.inc -- OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the Allwinner A64 / PinePhone memory map,
+; a64.inc -- OURS (PinePhone track): the Allwinner A64 / PinePhone memory map,
 ; the sibling of src/phorepoc-arm/virt/bootstrap/virt.inc. UNVERIFIED ON HARDWARE (no serial cable yet): addresses
 ; from the A64 user manual's memory map as the Linux DTS (arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi,
 ; sun50i-a64-pinephone.dtsi) and NuttX (arch/arm64/src/a64) use them -- read as hardware documentation only.
