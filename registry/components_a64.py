@@ -58,3 +58,9 @@ COMPONENTS = {
     "phecamtest": dict(mmp=os.path.join(OS_ROOT, "src/phecamtest/phecamtest.mmp"), test=True),
     "testcameraapp": dict(mmp=os.path.join(OS_ROOT, "src/phecam/testcameraapp.mmp"), rsc_incs=["toolchain/shims/techview_rh"]),
 }
+
+# core components that get this SoC's hardware (core registry: EXTEND)
+EXTEND = {
+    # phgl's GPU channel: the Mali-400 (src/symgl/symmali.cpp over RMaliChannel) instead of core's null one
+    "phgl": dict(drop=["symgpu_null.cpp"], extra=["src/symgl/symmali.cpp"]),
+}

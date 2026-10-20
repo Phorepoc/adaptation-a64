@@ -25,7 +25,7 @@
 #include <kernel/arm/assp.h>
 #include <kernel/cache.h>
 #include "mali_utgard_regs.h"
-#include "../../symgl/rmalichannel.h"   // the channel API lives with its user, core's symgl
+#include "../../symgl/rmalichannel.h"   // the channel API, next to its user-side half (src/symgl/symmali.cpp)
 #include "mali_board.h"
 
 extern "C" void ekseam_puts(const char* s);
