@@ -364,7 +364,9 @@ void DPhLink::Kick()
 	// HIGH SPEED (2026-10-12): an upload receiving while the log streams out froze the link (boots 381/383/385, always
 	// during boot's heavy log; the same push on a settled phone: 91 MB in 17.8 s). Until the IN/OUT interaction in the
 	// PSL is understood, the log waits while an image comes in (the 256 KB ring keeps the newest lines).
-	if (iUpState == EUpData)
+	// A file request ('F', up to 4.5 KB in) is an upload too: receiving one while the log streamed froze the link the
+	// same way, one core spinning (2026-10-20, ph package install's 3 KB writes during the installer's log).
+	if (iUpState == EUpData || iUpState == EUpFs)
 		return;
 	unsigned len = 0;
 	const char* buf = ekseam_board_log_buf(&len);
