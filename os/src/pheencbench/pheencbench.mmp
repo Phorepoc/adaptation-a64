@@ -6,7 +6,7 @@
 // SSM_TEST=pheencbench. The OpenH264 archive: bash tools/codecpack/openh264_enc.sh (BSD-2-Clause; registry arm_archives).
 TARGET			pheencbench.exe
 TARGETTYPE		exe
-UID				0x1000007a 0xE70157E0
+UID				0x1000007a 0xE70157F7
 CAPABILITY		All -TCB
 VENDORID		0
 EPOCHEAPSIZE	0x100000 0x10000000
