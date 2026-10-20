@@ -12,7 +12,7 @@
 // 0xC?xxxxxx = every pixel wrong: xxxxxx = the first pixel's low 24 bits, 0x01000000 set = the middle one is the same.
 #include <e32base.h>
 #include <dispchannel.h>
-#include "../phorepoc-arm/mali/rmalichannel.h"
+#include "../symgl/rmalichannel.h"
 
 static const TInt KW = 360, KH = 640;
 static const TUint32 KColour = 0xFF20A040;			// green-ish, so it is unmistakable on the screen
