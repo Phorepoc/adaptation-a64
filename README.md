@@ -16,6 +16,10 @@ registry/components_a64.py  this adaptation's components (merged into core's reg
 
 `os/` is laid over [core](https://github.com/Phorepoc/core)'s `os/` at build time, so paths match core's.
 
+**Status:** the components here build one by one with the pdk (`ph component build -b pinephone -arch arm <name>`). The
+PinePhone **image** (the ARM kernel and ROM link, the AArch64 boot shim, the U-Boot packaging) is not in the public
+pdk yet; it is being ported. Until then, the PC board is the one that builds a complete image.
+
 ## Third-party code
 
 - `os/src/phorepoc-arm/a64/wlan/rtw88/`: Linux's rtw88 driver, dual-licensed GPL-2.0 OR BSD-3-Clause, used here under
