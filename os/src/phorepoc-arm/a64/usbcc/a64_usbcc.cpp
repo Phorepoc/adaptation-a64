@@ -179,10 +179,10 @@ private:
 	void Ep0Receive();
 	void Ep0Transmit();
 	void Ep0Cancel();
-	void BulkTxLoad(TInt aRealEndpoint);
+	void BulkTxLoad(TInt aRealEndpoint, TUsbcRequestCallback** aDefer = NULL);
 	void BulkTxIntService(TInt aRealEndpoint);
 	void BulkRxIntService(TInt aRealEndpoint);
-	void BulkRxRead(TInt aRealEndpoint, TUint16 aCsr);
+	void BulkRxRead(TInt aRealEndpoint, TUint16 aCsr, TUsbcRequestCallback** aDefer = NULL);
 private:
 	TLinAddr iBase;
 	DPlatChunkHw* iChunk;
@@ -528,9 +528,12 @@ TInt DA64Usbcc::SetupEndpointRead(TInt aRealEndpoint, TUsbcRequestCallback& aCal
 	EnableEpInt(aRealEndpoint, ETrue);
 	R8(KMuIndex) = (TUint8)(aRealEndpoint / 2);
 	const TUint16 csr = R16(KMuRxCsr);
+	TUsbcRequestCallback* done = NULL;
 	if (csr & KRxCsrRxPktRdy)					// a packet waited for this buffer
-		BulkRxRead(aRealEndpoint, csr);
+		BulkRxRead(aRealEndpoint, csr, &done);
 	Unlock(irq);
+	if (done)
+		EndpointRequestComplete(done);			// outside the lock (see BulkTxLoad)
 	return KErrNone;
 	}
 
@@ -553,8 +556,11 @@ TInt DA64Usbcc::SetupEndpointWrite(TInt aRealEndpoint, TUsbcRequestCallback& aCa
 	ep.iZlpPending = EFalse;
 	ep.iRequest = &aCallback;
 	EnableEpInt(aRealEndpoint, ETrue);
-	BulkTxLoad(aRealEndpoint);
+	TUsbcRequestCallback* done = NULL;
+	BulkTxLoad(aRealEndpoint, &done);
 	Unlock(irq);
+	if (done)
+		EndpointRequestComplete(done);			// outside the lock (see BulkTxLoad)
 	return KErrNone;
 	}
 
@@ -583,7 +589,11 @@ TInt DA64Usbcc::CancelEndpointWrite(TInt aRealEndpoint)
 	}
 
 // load the next packet of an IN transfer if the FIFO is free; complete the request once all is sent
-void DA64Usbcc::BulkTxLoad(TInt aRealEndpoint)
+// aDefer (thread-context callers, the lock held): hand a finished request back instead of completing it here -- the
+// PIL completes from thread context with TDfc::Enque, which must not run under our IRQ-off spinlock (SMP: it can wait
+// on another CPU whose ISR spins on this lock: the link wedged with a core at 100 %, 2026-10-20). Linux musb_g_giveback
+// drops the lock around the giveback the same way. The ISR paths complete directly (the PIL uses TDfc::Add there).
+void DA64Usbcc::BulkTxLoad(TInt aRealEndpoint, TUsbcRequestCallback** aDefer)
 	{
 	TEndpoint& ep = iEndpoints[aRealEndpoint];
 	if (!ep.iTxBuf)
@@ -622,7 +632,10 @@ void DA64Usbcc::BulkTxLoad(TInt aRealEndpoint)
 		{
 		req->iTxBytes = ep.iTransmitted;
 		req->iError = KErrNone;
-		EndpointRequestComplete(req);
+		if (aDefer)
+			*aDefer = req;
+		else
+			EndpointRequestComplete(req);
 		}
 	}
 
@@ -638,7 +651,7 @@ void DA64Usbcc::BulkTxIntService(TInt aRealEndpoint)
 	}
 
 // one packet into the request's buffer; each packet completes the request (the PIL / client reads again)
-void DA64Usbcc::BulkRxRead(TInt aRealEndpoint, TUint16 aCsr)
+void DA64Usbcc::BulkRxRead(TInt aRealEndpoint, TUint16 aCsr, TUsbcRequestCallback** aDefer)
 	{
 	TEndpoint& ep = iEndpoints[aRealEndpoint];
 	if (!ep.iRxBuf)
@@ -679,7 +692,10 @@ void DA64Usbcc::BulkRxRead(TInt aRealEndpoint, TUint16 aCsr)
 		{
 		req->iRxPackets = 1;
 		req->iError = KErrNone;
-		EndpointRequestComplete(req);
+		if (aDefer)
+			*aDefer = req;
+		else
+			EndpointRequestComplete(req);
 		}
 	}
 
@@ -700,12 +716,16 @@ void DA64Usbcc::BulkRxIntService(TInt aRealEndpoint)
 
 TInt DA64Usbcc::SetupEndpointZeroRead()
 	{
+	const TInt irq = Lock();					// the ISR reads this endpoint's state too
 	TEndpoint& ep = iEndpoints[KEp0_Out];
-	if (ep.iRxBuf)
-		return KErrGeneral;
-	ep.iRxBuf = iEp0_RxBuf;
-	ep.iReceived = 0;
-	return KErrNone;
+	const TInt r = ep.iRxBuf ? KErrGeneral : KErrNone;
+	if (r == KErrNone)
+		{
+		ep.iRxBuf = iEp0_RxBuf;
+		ep.iReceived = 0;
+		}
+	Unlock(irq);
+	return r;
 	}
 
 TInt DA64Usbcc::SetupEndpointZeroWrite(const TUint8* aBuffer, TInt aLength, TBool aZlpReqd)
