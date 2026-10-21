@@ -17,7 +17,12 @@ OUTD="$REPO/.variant-build"
 
 ROOT="$REPO/baseline/symbian-rcl3/oss.FCL.sf.os.wlan"
 GRP="$ROOT/wlan_bearer/wlanldd/wlan_symbian/wlanldd_symbian/group"
-SHIM="$REPO/toolchain/shims/wlanldd_gcc"
+# <am_platform_libraries.h> and <gendebug.h> are bld.inf exports of the wlanengine (to the epoc32 include tree, which
+# the from-source kernel build does not have): forwarding headers to the real files in the wlanengine inc dir
+SHIM="$OUTD/wlshim"; mkdir -p "$SHIM"
+for h in am_platform_libraries.h gendebug.h; do
+  echo "#include \"$ROOT/wlan_bearer/wlanengine/wlan_symbian/wlanengine_symbian_3.1/inc/$h\"" > "$SHIM/$h"
+done
 # am_platform_libraries.h / gendebug.h are bld.inf exports of the wlanengine (to the epoc32 include tree, which this kernel build does not have): use the wlanengine inc dir (added to SYMCC_PREINC below)
 
 B="$REPO/baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka"
