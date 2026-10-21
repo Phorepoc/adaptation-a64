@@ -1,0 +1,110 @@
+// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the QEMU `virt` variant, derived from
+// oss.FCL.sf.adapt.Qemu/baseport/syborg/specific/interrupts.cia. Deltas marked VIRT:.
+// (syborg.cia is not carried over: its Syborg counter-timer accessors have no device here, and the interrupt
+// enable/disable moved to interrupts.cpp as GICv2 register writes.)
+
+#include <e32cia.h>
+#include <syborg_priv.h>
+#include <cpudefs.h>
+
+// CIA symbol macros for EABI assemblers
+#define CSM_ZN7NTimerQ4TickEv " _ZN7NTimerQ4TickEv"
+
+// VIRT SMP: the tick moves to the PHYSICAL timer (CNTP_TVAL c14,c2,0 / CNTP_CTL c14,c2,1, PPI 30) -- the
+// nanokernel's timeslice owns the virtual timer (src/phorepoc-arm/nkernsmp-gt/arm_tmr.h).
+#ifdef __SMP__
+#define TICK_TVAL "c2, 0 "
+#define TICK_CTL "c2, 1 "
+#define TICK_CVAL_OP "2"		// CNTP_CVAL = mrrc/mcrr p15, 2, Rt, Rt2, c14
+#else
+#define TICK_TVAL "c3, 0 "
+#define TICK_CTL "c3, 1 "
+#define TICK_CVAL_OP "3"		// CNTV_CVAL = mrrc/mcrr p15, 3, Rt, Rt2, c14
+#endif
+
+__NAKED__ void SyborgWFIIdle()
+	{
+	// Enter an idle state and wait for interrupts
+	asm("dsb ");
+	asm("wfi ");									// VIRT: ARMv7 wfi (the cp15 c7,c0,4 form is ARMv6)
+	asm("bx lr");
+	}
+
+// VIRT: the 1 ms tick is the ARM generic timer's VIRTUAL timer (PPI 27). It counts down from CNTV_TVAL at
+// CNTFRQ (QEMU: 62.5 MHz); the interrupt is level-sensitive, so the handler re-arms TVAL before it returns.
+__NAKED__ void SyborgInterrupt::StartTick()
+	{
+	asm("mrc p15, 0, r0, c14, c0, 0 ");				// CNTFRQ
+	asm("ldr r1, =274877907 ");						// 2^38 / 1000, rounded: r0/1000 = (r0 * r1) >> 38
+	asm("umull r2, r3, r0, r1 ");
+	asm("lsr r0, r3, #6 ");
+	asm("ldr r1, __TickReload ");
+	asm("str r0, [r1] ");
+	asm("mcr p15, 0, r0, c14, " TICK_TVAL);			// CNTV_TVAL (SMP: CNTP_TVAL)
+	asm("mov r0, #1 ");
+	asm("mcr p15, 0, r0, c14, " TICK_CTL);				// CNTV_CTL (SMP: CNTP_CTL): enable, unmasked
+	asm("isb ");
+	asm("bx lr ");
+	asm("__TickReload: ");
+	asm(".word TheTickReload ");
+	}
+
+__NAKED__ void SyborgInterrupt::MsTimerTick(TAny* /*aPtr*/)
+	{
+	// Service 1ms tick interrupt
+	asm("ldr r1, __TickReload2 ");
+	asm("ldr r1, [r1] ");
+	// re-arm one period after the PREVIOUS deadline (CVAL += reload), not after now (TVAL = reload): a TVAL re-arm
+	// adds the interrupt latency to every period (ticks stretched to ~1.5 ms under load, 2026-10-06). Behind by
+	// more than a period, the next interrupt is immediate -- the tick count catches up instead of losing time.
+	asm("mrrc p15, " TICK_CVAL_OP ", r2, r3, c14 ");
+	asm("adds r2, r2, r1 ");
+	asm("adc r3, r3, #0 ");
+	asm("mcrr p15, " TICK_CVAL_OP ", r2, r3, c14 ");	// drops the level
+	asm("isb ");
+	asm("b "CSM_ZN7NTimerQ4TickEv);
+	asm("__TickReload2: ");
+	asm(".word TheTickReload ");
+	}
+
+// IRQ dispatcher
+// Enter with r0-r3, r12 and return address on IRQ stack
+// Must preserve r4-r11
+// VIRT: GICv2 -- GICC_IAR gives the id (1023 = spurious), the handler table is indexed by it, GICC_EOIR
+// completes it with the same IAR value.
+#ifndef __SMP__
+__NAKED__ void SyborgInterrupt::IrqDispatch()
+	{
+	asm("push {r4,r5,lr} ");
+	asm("ldr r4, __KHwBaseGicCpu ");
+	asm("ldr r5, [r4, #%a0]" : : "i" ((TInt)KGiccIar));
+	asm("bic r0, r5, #0x1c00 ");					// interrupt id (bits 0-9; 10-12 = the source CPU of an SGI)
+	asm("cmp r0, #%a0" : : "i" ((TInt)KNumSyborgInts));
+	asm("bhs 1f ");									// spurious (1023) or out of the table: nothing to complete
+	asm("ldr r12, __SicHandlerStart ");
+	asm("add r12, r12, r0, lsl #3 ");
+	asm("adr lr, 2f ");
+	asm("ldm r12, {r0, pc} ");
+	asm("2: ");
+	asm("str r5, [r4, #%a0]" : : "i" ((TInt)KGiccEoir));
+	asm("1: ");
+	asm("pop {r4,r5,pc} ");
+
+	asm("__KHwBaseGicCpu: ");
+	asm(".word %a0" : : "i" ((TInt)KHwBaseGicCpu));
+	asm("__SicHandlerStart: ");
+	asm(".word %a0" : : "i" (&Handlers[0]));
+	}
+#endif
+
+__NAKED__ void SyborgInterrupt::FiqDispatch()
+	{
+	// FIQ dispatcher
+	// Enter with return address on FIQ stack
+	// We may use r8-r12, but must preserve other registers
+	// NOTE: STACK IS MISALIGNED ON ENTRY (1 WORD PUSHED)
+	asm("push {r0-r3,lr}");
+	// FIQ Handler to go in here.
+	// Not needed because no FIQs are currently used
+	asm("pop {r0-r3,pc}");
+	}
