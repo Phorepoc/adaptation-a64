@@ -18,6 +18,7 @@ OUTD="$REPO/.variant-build"
 ROOT="$REPO/baseline/symbian-rcl3/oss.FCL.sf.os.wlan"
 GRP="$ROOT/wlan_bearer/wlanldd/wlan_symbian/wlanldd_symbian/group"
 SHIM="$REPO/toolchain/shims/wlanldd_gcc"
+# am_platform_libraries.h / gendebug.h are bld.inf exports of the wlanengine (to the epoc32 include tree, which this kernel build does not have): use the wlanengine inc dir (added to SYMCC_PREINC below)
 
 B="$REPO/baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka"
 MM="$B/memmodel"
@@ -31,7 +32,7 @@ SMPDEF=(-D__SMP__ -D__CPU_HAS_VFP -D__VFP_V3 -U__CPU_CORTEX_A8N__ -D__CPU_CORTEX
         -D__NKERN_TIMESTAMP_USE_INLINE_BSP_CODE__ -D__CPU_ARM_HAS_GENERIC_TIMER)
 NO=.nkernsmp-build
 export SYMCC_NKERN=nkernsmp
-export SYMCC_PREINC="$SHIM $REPO/src/phorepoc-arm/nkernsmp-gt $REPO/$NO/gt/inc"
+export SYMCC_PREINC="$SHIM $ROOT/wlan_bearer/wlanengine/wlan_symbian/wlanengine_symbian_3.1/inc $REPO/src/phorepoc-arm/nkernsmp-gt $REPO/$NO/gt/inc"
 EXTRA=(-march=armv7-a -mno-unaligned-access -U__MARM_ARMV5__ -D__MARM_ARMV7__ -D__CPU_CORTEX_A8N__ -D__DEMAND_PAGING__
   "${MMDEF[@]}" -D__IN_KERNEL__ -D__EXPORT_MEMCPY__
   -I"$B/include/memmodel/epoc" -I"$B/include/memmodel/epoc/$MMN" -I"$B/include/memmodel/epoc/$MMN/arm"
