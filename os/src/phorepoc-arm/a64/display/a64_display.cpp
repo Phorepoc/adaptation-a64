@@ -957,7 +957,14 @@ extern "C" void A64DisplayFlipStats()
 //   setup/set_coeff/enable, sun8i_csc.c (yuv2rgb tables, ccsc_base), A64 config sun50i_a64_mixer0_cfg (vi_num 1, ui_num 3,
 //   scaler_mask 0xf, scanline_yuv 4096, mod_rate 297 MHz). The line numbers are cited in the plan. Written by a64deov.cpp's
 //   caller in thread context; all DE writes under VblankLock + DisplayReady like the UI flips.
-#include "a64_vi_coeff.h"
+// The scaler's coefficient tables (a64_vi_coeff.h, generated from the Linux sun4i-drm tables, GPL-2.0) are not part of
+// this repository: without the file the scaler keeps its reset coefficients (1:1 video works, scaled video is soft).
+#if defined(__has_include)
+#  if __has_include("a64_vi_coeff.h")
+#    include "a64_vi_coeff.h"
+#    define A64_HAVE_VI_COEFF 1
+#  endif
+#endif
 
 struct TOvState
 	{
@@ -1015,6 +1022,7 @@ static TInt CoefIndex(TUint32 aStep)
 // left/right, luma V: lan2). The vertical index follows the VERTICAL step (Linux 6.6 reuses hstep there -- see the plan).
 static void WriteCoeffs(TUint32 aHStep, TUint32 aVStep)
 	{
+#ifdef A64_HAVE_VI_COEFF
 	const TInt ho = CoefIndex(aHStep) * 32, vo = CoefIndex(aVStep) * 32;
 	for (TInt i = 0; i < 32; ++i)
 		{
@@ -1025,6 +1033,9 @@ static void WriteCoeffs(TUint32 aHStep, TUint32 aVStep)
 		MW(KVsu + 0x400 + 4 * i, KVi_lan2coefftab32[vo + i]);			// YVCOEFF
 		MW(KVsu + 0x800 + 4 * i, KVi_bicubic4coefftab32[vo + i]);		// CVCOEFF
 		}
+#else
+	(void)aHStep; (void)aVStep;
+#endif
 	}
 
 // All state in Ov is final; program everything (VblankLock held, DisplayReady). aAll = geometry + format too, else only the addresses.
