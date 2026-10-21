@@ -27,7 +27,7 @@ ROM_BASE="${ROM_BASE:-0x80000000}"
 MM_MODEL="${MM_MODEL:-flexible}"
 echo "[1/4] h2inc: regenerate bootstrap includes (MM_MODEL=$MM_MODEL)"
 SMP="${SMP:-}" MM_MODEL="$MM_MODEL" py tools/armasm2gas/h2inc.py \
-  --out-dir "tools/armasm2gas/generated/bootstrap-inc$([ "$MM_MODEL" = multiple ] && echo -multiple)$([ "${SMP:-}" = 1 ] && echo -smp)" >/dev/null
+  --out-dir ".bootstrap-gen/bootstrap-inc$([ "$MM_MODEL" = multiple ] && echo -multiple)$([ "${SMP:-}" = 1 ] && echo -smp)" >/dev/null
 
 echo "[2/4] translate + assemble + link bootstrap${EXTRA_DEFS:+ ($EXTRA_DEFS)}"
 OUT="$OUT" MM_MODEL="$MM_MODEL" EXTRA_DEFS="${EXTRA_DEFS:-}" bash tools/armasm2gas/build_bootstrap.sh | sed 's/^/      /'
