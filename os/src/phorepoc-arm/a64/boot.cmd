@@ -94,8 +94,17 @@ mmc read 0x7F000000 0x1800 1
 # config sector's word, the slot B read failed and the copy booted the stale golden image left at 0x80000000)
 setexpr.l phsize *0x7F000008
 mw.l 0x7F100000 0x4C534850
-mw.l 0x7F100004 1
+# INSTALLED (GOOD, 3): a release card (make_pinephone_sd.sh RELEASE=1) keeps its image in slot B and boots it every
+# time; nothing is written back. A development upload (PENDING) replaces the state, as below.
+mw.l 0x7F100004 3
 if cmp.l 0x7F000000 0x7F100000 2; then
+	echo "Phorepoc: booting the installed image (slot B)"
+	setenv phslot b
+fi
+mw.l 0x7F100004 1
+if test "${phslot}" = b; then
+	setenv phslot b
+elif cmp.l 0x7F000000 0x7F100000 2; then
 	# ONE-SHOT: an armed slot B (phlink upload or 'B' re-arm) boots exactly once; marked TRYING now, so the next
 	# reset -- whatever caused it -- is slot A again. No health timing (2026-10-06: S60 trials looped through it).
 	echo "Phorepoc: slot B armed -- one-shot boot"
