@@ -7,7 +7,7 @@
 # (they leave objects in .nkern-build/ and .ekern-build/), plus the variant + seam objects
 # this script builds. Produces .ekern-build/ekern.elf.
 set -eu
-cd "$(dirname "$0")/../.."
+cd "${KVIEW:-$(dirname "$0")/../..}"   # KVIEW: the tree root (the pdk assembles it for the public repos)
 
 B="baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka"
 QB="baseline/symbian-2010/oss.FCL.sf.adapt.Qemu/baseport/syborg"
@@ -29,6 +29,7 @@ MM="$B/memmodel"
 BIN_DEFAULT="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin"
 BIN="${ARM_BIN:-$BIN_DEFAULT}"
 LD="$BIN/arm-none-eabi-ld"; GCC="$BIN/arm-none-eabi-gcc"
+[ -x "$GCC" ] || GCC="$(command -v arm-none-eabi-gcc)"   # (Linux / the toolchain image: on the PATH)
 [ -x "$LD" ] || LD="$(command -v arm-none-eabi-ld)"
 LIBGCC="$(dirname "$("$GCC" -mcpu=cortex-a8 -print-libgcc-file-name 2>/dev/null)")"
 
@@ -148,6 +149,7 @@ if [ "$BOARD" = a64 ]; then
   # Display (P4): NuttX's A64 display drivers (Apache-2.0, vendored unmodified) + our glue a64_display.cpp
   DN=src/phorepoc-arm/a64/display/nuttx
   ARMGCC="$(dirname "${SYMBIAN_GXX:-/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin/arm-none-eabi-g++}")/arm-none-eabi-gcc"
+  [ -x "$ARMGCC" ] || ARMGCC="$GCC"
   for c in "$DN"/*.c; do
     ccq --raw "$ARMGCC" -c -O2 -march=armv5te -marm -mthumb-interwork -fno-short-enums -ffreestanding -fno-strict-aliasing \
       -I"$DN/compat" -I"$DN" -include nuttx/config.h "$c" -o ".variant-build/nx_$(basename "$c" .c).o"
@@ -240,7 +242,7 @@ if [ "$BOARD" = a64 ]; then
   # RTL8703B subset) against our freestanding Linux shim (wlan/shim/include), mac80211-lite + the module stubs, the
   # nkern runtime (shim_rt.cpp) and the Symbian side (a64wlan.cpp + a64wlan_glue.c). A64DEFS=-DA64_WLAN_TEST = the W2
   # demo at boot (power on, firmware, channel hop, the beacons of nearby APs logged).
-  WL=src/phorepoc-arm/a64/wlan; WLI="$(dirname "$GCC")/../lib/gcc/arm-none-eabi/14.2.1/include"
+  WL=src/phorepoc-arm/a64/wlan; WLI="$("$GCC" -print-file-name=include)"   # (the compiler's own freestanding headers)
   # WIFI_DRV=rtw88 (default since 2026-10-17, boots 954/957/980: OFDM rx at least as good as 8723cs) or WIFI_DRV=8723cs = the fresh vendor-derived driver (rtl8703b/); WIFI_DRV=rtw88 = the vendored rtw88 (its
   # BSD-3 alternative) + the Linux shim + a64wlan_glue.c, with the recorded vendor differences applied
   # (PHE_RTW88_VENDOR_DIFF blocks in rtw88/). Same a64wlan_api.h face either way.

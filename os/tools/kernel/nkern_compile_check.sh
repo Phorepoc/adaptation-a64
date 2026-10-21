@@ -17,7 +17,7 @@
 # .cia TUs need -fno-{function,data}-sections (PC-relative literal pools in hand asm,
 # same fix as euser's uc_realx.cia).
 set -eu
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="${KVIEW:-$(cd "$(dirname "$0")/../.." && pwd)}"
 B="$REPO/baseline/kernelhwsrv/kernel/eka"
 MM="$B/memmodel"
 OUT="${OUT:-$REPO/.nkern-build}"; mkdir -p "$OUT"

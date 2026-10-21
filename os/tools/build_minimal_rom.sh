@@ -12,7 +12,7 @@
 # Output artifacts land in .bootstrap-build/ (gitignored).  A *bootable* ROM still needs
 # a real from-source ekern.exe as the primary (M3); this proves the ROM-build capability.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "${KVIEW:-$(dirname "$0")/..}"   # KVIEW: the tree root (the pdk assembles it for the public repos)
 
 BIN_DEFAULT="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin"
 BIN="${ARM_BIN:-$BIN_DEFAULT}"

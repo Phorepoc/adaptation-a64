@@ -9,7 +9,7 @@
 # linker script splits .data/.bss to run at the kernel data RAM base (KERN_DATA_BASE);
 # the bootstrap copies .data (ROM LMA) -> that RAM and zeroes .bss using the header fields.
 set -eu
-cd "$(dirname "$0")/../.."
+cd "${KVIEW:-$(dirname "$0")/../..}"   # KVIEW: the tree root (the pdk assembles it for the public repos)
 
 BIN_DEFAULT="/c/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin"
 BIN="${ARM_BIN:-$BIN_DEFAULT}"

@@ -10,7 +10,7 @@
 # Kern::Fault); WLDD_FLAGS=-DNDEBUG compiles the urel form (verified on 3 TUs). TraceDump needs _DEBUG/TRACES: nothing here.
 # Header overlays (OURS) live in toolchain/shims/wlanldd_gcc/. Run from anywhere; WL_JOBS=n (default 12). Objects are cached (toolchain/cc_cached).
 set -u
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="${KVIEW:-$(cd "$(dirname "$0")/../.." && pwd)}"
 cd "$REPO"
 LOG="$REPO/.wlanldd-check.log"
 OUTD="$REPO/.variant-build"

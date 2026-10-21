@@ -8,7 +8,7 @@
 # reference). Does NOT link (that's the next step). Run from repo root:
 #   bash tools/kernel/ekern_compile_check.sh
 set -u
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="${KVIEW:-$(cd "$(dirname "$0")/../.." && pwd)}"
 B="$REPO/baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka"
 # SMP=1: the SMP build (nkernsmp headers + __SMP__ + GIC), objects in .ekernsmp-build/ (PinePhone SMP rung 1).
 NK=nkern; SMPD=()

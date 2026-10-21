@@ -10,7 +10,7 @@
 # __SMP__ + an ARMv7 CPU (SMP needs LDREX/STREX/DMB); the GIC/SCU/local-timer access is via TScheduler/
 # TSubScheduler fields (include/nkernsmp/arm),.
 set -eu
-REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="${KVIEW:-$(cd "$(dirname "$0")/../.." && pwd)}"
 B="$REPO/baseline/kernelhwsrv/kernel/eka"
 MM="$B/memmodel"
 OUT="${OUT:-$REPO/.nkernsmp-build}"; mkdir -p "$OUT"
