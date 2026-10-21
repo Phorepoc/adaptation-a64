@@ -73,7 +73,7 @@ echo "[1/3] compile the $BOARD variant (kasyborg: HwInit hooks, interrupts, assp
 # the objects persist between builds (toolchain/cc_cached: a TU recompiles only when it, a header it includes, or its
 # command line changed); FULL=1 = from scratch
 [ "${FULL:-0}" = 1 ] && rm -rf .variant-build
-mkdir -p .variant-build
+mkdir -p .variant-build "$KO" "$NO"
 # every TU below is QUEUED (ccq = symcc's arguments, ccq --raw = a plain compiler line) and compiled by ONE
 # toolchain/cc_batch.py run before the link: only the stale ones, in parallel, straight into g++ -- a Git Bash start
 # per TU cost ~1.4 s on this machine (2026-10-10), the per-TU wrapper + workers were the build time
