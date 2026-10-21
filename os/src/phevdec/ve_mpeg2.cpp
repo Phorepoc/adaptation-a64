@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // ve_mpeg2.cpp -- OURS: see ve_mpeg2.h. Moved (logic unchanged) from phevdetest.cpp (VDU V1/V2).
 #include "ve_mpeg2.h"

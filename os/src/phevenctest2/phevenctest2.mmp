@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevenctest2.mmp -- OURS (VE encoder ladder rung 2): 640x480 and 1280x720 NV12,
 // a 16-frame GOP (IDR + 15 P) at fixed QP 28 and with frame-level rate control on the A64 VE H.264 encoder, decoded back with

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phedetest.cpp -- OURS (DE2 overlay plan): tests PheDeOv (RPheDeOv), the A64 DE2 video
 // plane driver. Picture memory = the VE arena (RPheVde: one physically contiguous uncached chunk). Stages:

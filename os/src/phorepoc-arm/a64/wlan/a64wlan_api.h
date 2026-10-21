@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 /* a64wlan_api.h -- OURS (2026-10-10, PinePhone WiFi): the C
  * face of the chip core (rtl8703b/, the fresh RTL8703B driver) for the

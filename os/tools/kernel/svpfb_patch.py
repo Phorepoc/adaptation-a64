@@ -1,5 +1,5 @@
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 """svpfb_patch.py -- the one delta to the 2010 Syborg framebuffer driver that BOARD=virt compiles (virtfb.cpp).
 

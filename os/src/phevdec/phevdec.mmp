@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevdec.mmp -- OURS (VDU rung V4): the DevVideo decoder hardware device on the A64 Video
 // Engine -- an ECOM plug-in (interface 0x101FB4BE) that CMMFDevVideoPlay (devvideo.dll) finds by MIME type: video/H264

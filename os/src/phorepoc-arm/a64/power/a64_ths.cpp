@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64_ths.cpp -- OURS (power plan P1): the A64 thermal sensor (THS) driver.
 // Facts (registers/values/formula written up from mainline

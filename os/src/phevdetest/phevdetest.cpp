@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevdetest.cpp -- OURS (VDU rungs V0-V2): the VE driver test ("PH: ve" lines, forwarded by
 // the kernel seam). V0: driver info, a register round trip, a contiguous arena commit. V1: one MPEG-2 intra picture.

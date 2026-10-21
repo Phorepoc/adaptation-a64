@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // ve_rphevde.h -- OURS (VDU V4): the Symbian-side adapters from the plain-C++ VE decoder cores (ve_h264, ve_mpeg2) to the
 // phevde driver: MVeJob -> one RPheVde::Run job, MVeMemory -> a bump allocator over the committed arena chunk.

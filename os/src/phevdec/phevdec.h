@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // phevdec.h -- OURS (VDU rung V4): the DevVideo decoder hardware device for the Allwinner A64
 // Video Engine. An ECOM plug-in on interface 0x101FB4BE (KUidDevVideoDecoderHwDevice) implementing

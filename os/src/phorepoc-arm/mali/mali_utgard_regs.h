@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // mali_utgard_regs.h -- OURS (GPU rung G3): the ARM Mali Utgard (Mali-400 MP)
 // register map our Mali driver uses. Written for this project (Linux's lima_regs.h is GPL-2.0-only and is NOT copied):

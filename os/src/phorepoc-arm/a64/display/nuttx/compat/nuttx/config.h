@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 /* OURS: the NuttX environment the vendored A64 display drivers (../../*.c, Apache-2.0, apache/nuttx master,
  * fetched 2026-10-06) compile against inside the Phorepoc kernel. Every NuttX header they include lands here or

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (PinePhone, 2026-10-08): what the kernel draws in the panel's own
 // layer (a64_display.cpp: UI channel 2 over the OS picture, see-through in the middle) --

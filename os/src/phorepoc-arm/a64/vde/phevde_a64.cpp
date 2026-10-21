@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevde_a64.cpp -- OURS (VDU rung V0): the PinePhone's (Allwinner A64) half of the VE
 // driver: where the Video Engine sits (0x01C0E000, GIC SPI 58), its clock bring-up and the SRAM C1 claim -- the CCU

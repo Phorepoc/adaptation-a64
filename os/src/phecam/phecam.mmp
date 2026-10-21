@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phecam.mmp -- OURS: the ECam plug-in over the 2010 shared-chunk camera driver. = the release's TestCamera plug-in
 // (every CCamera virtual, the viewfinder/still/video machinery) with its pixel source replaced by RDevCameraSc (gen_phecam.py lists the edits). ECOM

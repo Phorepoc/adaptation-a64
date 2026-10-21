@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Portions Copyright (c) Nokia Corporation and/or its subsidiary(-ies)
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # nkernsmp_compile_check.sh -- PinePhone SMP rung 0: compile the UNMODIFIED 2010 ARM SMP nanokernel
 # (kernel/eka/nkernsmp + nkernsmp/arm, the source list of nkernsmp/nkern.mmp under MARM) with our modern

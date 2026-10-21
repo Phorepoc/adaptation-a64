@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 /* a64wlan_glue.c -- OURS: the C half of a64wlan.cpp, the part that sees the rtw88 headers: the Linux sdio_func /
  * mmc_host objects the driver expects, the probe, and the station sequencer -- the role mac80211 plays for rtw88:

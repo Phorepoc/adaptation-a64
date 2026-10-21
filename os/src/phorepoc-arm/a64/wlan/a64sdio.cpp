@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64sdio.cpp -- OURS (2026-10-10, PinePhone WiFi rung 0:
 // 1.3): the A64's SMHC1 as an SDIO host for the RTL8723CS's WiFi half (SDIO

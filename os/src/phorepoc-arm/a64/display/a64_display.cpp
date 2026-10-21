@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (PinePhone track P4): bring up the PinePhone's 720x1440 panel.
 // The register-level work is NuttX's A64 display drivers (nuttx/*.c, Apache-2.0, vendored unmodified; written up

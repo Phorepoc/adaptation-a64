@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // shim.S -- OURS (PinePhone P3): enter the 32-bit Symbian kernel on a Cortex-A53.
 //

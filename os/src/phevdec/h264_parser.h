@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // h264_parser.h -- OURS (VDU rung V3): the CPU half of H.264 decoding for the stateless A64
 // Video Engine -- NAL unit splitting, emulation-prevention removal, and the SPS / PPS / slice header fields the

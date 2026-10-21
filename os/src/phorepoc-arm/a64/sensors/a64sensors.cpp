@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64sensors.cpp -- OURS (2026-10-10, PinePhone sensors rung S2: "Sensors: the
 // decision"): the sensor LDD "Sensors.A64", one unit per chip on the TWI1 bus (a64twi.cpp). v1 = unit 0, the

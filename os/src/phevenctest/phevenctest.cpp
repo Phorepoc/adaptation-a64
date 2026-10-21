@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevenctest.cpp -- OURS (VE encoder one-frame probe): encodes ONE 64x64 NV12 intra
 // picture on the A64 Video Engine's H.264 encoder (register map from research/ve-h264-enc-regs.md, unproven on the A64),

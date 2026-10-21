@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // bench_common.cpp -- OURS (pheencbench): the test content, colour conversion (scalar + NEON) and PSNR. C++03.
 #include "bench_common.h"

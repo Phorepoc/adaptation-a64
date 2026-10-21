@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (GPU plan G1a): the PinePhone's RDisplayChannel PDD -- the NGA display
 // path (OpenWF-C composes, this driver flips the DE to each composed buffer on the panel's vblank). Split out of

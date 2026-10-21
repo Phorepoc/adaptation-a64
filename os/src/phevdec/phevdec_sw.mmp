@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phevdec_sw.mmp -- OURS (Path C x86, 2026-10-16): the same DevVideo decoder hardware device as phevdec.mmp (same UIDs, same
 // ECOM registration, the image is also named phevdec.dll) but decoding in SOFTWARE through the separate LGPL pheffmpeg.dll

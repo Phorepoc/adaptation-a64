@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // ekern_dsa_glue.cpp -- OURS: the memory behind direct screen access under the
 // NGA window server. The 2010 stack (openwfsupport surfacestream.cpp GetBufferPtrL, scdv scnew.cpp / Cdsb.cpp

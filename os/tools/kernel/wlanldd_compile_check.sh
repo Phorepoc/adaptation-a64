@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # wlanldd_compile_check.sh -- compile the REAL 2010 (RCL_3) Symbian WLAN logical device driver (UMAC + OSA + LDD,
 # the five mmps of wlan_bearer/wlanldd/wlan_symbian/wlanldd_symbian/group) unmodified for the ARM kernel with the

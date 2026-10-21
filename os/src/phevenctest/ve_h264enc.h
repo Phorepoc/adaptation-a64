@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // ve_h264enc.h -- OURS (VE encoder one-frame probe): the CPU half of the A64 Video
 // Engine H.264 encoder -- the NAL headers (SPS / PPS / IDR slice header) pushed bit by bit through the hardware bit writer

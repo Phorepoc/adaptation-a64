@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // ve_h264.cpp -- OURS (VDU rung V3): see ve_h264.h. Section numbers: ITU-T H.264 (08/2021); register facts:
 #include "ve_h264.h"

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64deov.cpp -- OURS (DE2 overlay plan): "PheDeOv", the kernel driver of the A64 Display
 // Engine 2 video (VI) plane. User API: rphedeov.h. This file is the validation + lifetime half: it never trusts a physical

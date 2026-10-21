@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phlink.cpp -- OURS (PinePhone USB step 2): the Phorepoc debug link -- a
 // KERNEL-SIDE USB function on top of the real USB client PIL (no LDD, no user side): a CDC ACM serial port, which

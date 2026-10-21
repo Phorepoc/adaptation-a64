@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 /* shim net/cfg80211.h -- OURS: the configuration-layer types rtw88 uses (bands, channels, chandef, bit rates, SSIDs,
  * scan requests, the wiphy and its flags). Linux names, our own freestanding definitions. See shim_core.h. */

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 """gcc2_aliases.py <link.log> <obj>... -- turn GCC 2.95-mangled undefined references into `--defsym old=new` aliases.
 

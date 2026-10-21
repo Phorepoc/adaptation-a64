@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // ssya64.cpp -- OURS (2026-10-10, PinePhone sensors rung S2): the SSY of the "Sensors.A64" LDD (see ssya64.h). The
 // sensor server loads every KSsyControlInterfaceUid implementation into an SSY thread of its own, calls NewL with its

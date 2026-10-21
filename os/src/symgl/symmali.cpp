@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // symmali.cpp -- OURS (GPU rung G4): the Symbian side of Mesa's lima driver -- RMaliChannel (our Mali-400 kernel
 // driver) behind the C seam of tools/mesa/symbian/include/symmali.h. The DRM shim (drm_symbian.c) does the lima

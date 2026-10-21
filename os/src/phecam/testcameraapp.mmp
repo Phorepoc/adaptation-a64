@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // testcameraapp.mmp -- OURS: the release's TestCameraAppS60.mmp (the Avkon test application of the ECam framework) with ONE change: UID3 0x101F7D31. The S60 mmp says
 // 0x101F7D32 but the registration file it shares with the Techview variant (testcameraapp_reg.rss) says 270499121 = 0x101F7D31, so apparc never found the app

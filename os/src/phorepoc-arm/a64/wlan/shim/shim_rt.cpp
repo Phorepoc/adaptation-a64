@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // shim_rt.cpp -- OURS (2026-10-10, PinePhone WiFi: the chip core): the runtime under the rtw88 Linux shim
 // (shim_rt.h), on nkern. The whole driver runs on ONE kernel thread, the WLAN DFC queue (A64WlanDfcQ, created by

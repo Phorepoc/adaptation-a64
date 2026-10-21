@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # build_shim.sh -- build the AArch64 -> AArch32 entry shim (src/phorepoc-arm/a53shim/shim.S) in the phorepoc-arm
 # container. TARGET = the AArch32 bootstrap's physical entry:

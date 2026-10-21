@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-1.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64wlanpdd.cpp -- OURS (2026-10-10, PinePhone WiFi W3):
 // "wlan.phys", the WHA physical device under the REAL 2010 wlanldd (the UMAC), over the rtw88 chip core

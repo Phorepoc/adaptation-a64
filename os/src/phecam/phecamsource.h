@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-1.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // phecamsource.h -- OURS: the pixel source of the phecam ECam plug-in -- the 2010 shared-chunk camera driver
 // (DCameraScLdd, device "CameraSc") through RDevCameraSc: opens unit 0, runs the sensor in viewfinder mode (YUV 4:2:2 interleaved, 320x240), and keeps

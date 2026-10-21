@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-1.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # nkern_compile_check.sh — compile the UNMODIFIED 2010 nanokernel
 # (nkern + its ARM CPU layer) from source with our modern toolchain (toolchain/symcc -k,
