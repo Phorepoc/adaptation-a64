@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // enc_hw.h -- OURS (pheencbench): the hardware (A64 VE) and software encoder legs' interfaces.
 #ifndef PHE_ENC_HW_H

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64uart.cpp -- OURS (2026-10-09, Bluetooth rung R1):
 // the PinePhone's UART1 (the RTL8723CS Bluetooth link) as a serial PDD "Comm.A64", unit 1, under the REAL serial LDD

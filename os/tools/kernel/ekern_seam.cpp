@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // ekern_seam.cpp -- the modern-toolchain glue seam for linking the from-source EKA2
 // kernel (Track B M4). Everything here bridges a difference between the 2010 RVCT/GCCE

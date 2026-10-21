@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64wlan.cpp -- OURS (2026-10-10, PinePhone WiFi: the chip core; "WiFi: the chip
 // core"): the RTL8723CS's WiFi half brought up by our fresh RTL8703B driver (wlan/rtl8703b,

@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // a64_pwrres.h -- the A64 power resource manager's ids (a64_pwrres.cpp).
 #ifndef A64_PWRRES_H

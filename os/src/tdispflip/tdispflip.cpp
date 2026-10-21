@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // tdispflip.cpp -- OURS (NGA rung G1a): drives RDisplayChannel the way an NGA
 // composer does -- GetCompositionBuffer, draw, PostCompositionBuffer, WaitForPost -- alternating red and blue full

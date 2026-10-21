@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // tldd.mmp -- OURS (NGA G1b): User::LoadLogicalDevice froze the phone (gpu-lima-research.md progress, G1a) -- probe
 TARGET			tldd.exe

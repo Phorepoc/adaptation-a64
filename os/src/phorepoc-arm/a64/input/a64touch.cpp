@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // OURS (PinePhone track): the PinePhone's Goodix GT917S touch panel ->
 // Symbian pointer events. Reference: NuttX (Apache-2.0) boards/arm64/a64/pinephone/src/pinephone_touch.c +

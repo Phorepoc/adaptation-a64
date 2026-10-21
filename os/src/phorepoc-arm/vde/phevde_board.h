@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // phevde_board.h -- OURS (VDU rung V0): what a board tells the generic VE driver (phevde_ldd.cpp).
 #ifndef PHEVDE_BOARD_H

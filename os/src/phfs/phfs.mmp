@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phfs.mmp -- OURS (PhoneLab Project panel): the user-side helper of the debug link's file service (phfs.cpp). Started by
 // the SSM's non-critical list (board/ssm/noncriticalcmdlist_hw.rss r_cmd_phfs); talks to the kernel LDD "PhFs.A64".

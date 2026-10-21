@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phevdetest.mmp -- OURS (VDU rung V0): opens the VE driver (RPheVde), reports its info,
 // a register write/read-back and a contiguous arena commit; "PH: ve" lines; SSM_TEST=phevdetest stages it at boot

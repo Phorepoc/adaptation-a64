@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64sound.cpp -- OURS (2026-10-09): the PinePhone's audio as a SOUND PDD ("SoundSc.A64") under the REAL shared-chunk
 // sound LDD (kernel/eka/drivers/soundsc/soundldd.cpp, linked into ekern unmodified with its entry renamed, exactly as

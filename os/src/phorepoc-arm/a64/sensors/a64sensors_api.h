@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // a64sensors_api.h -- OURS (PinePhone sensors S2): the
 // user/kernel contract of the sensor LDD "Sensors.A64" (a64sensors.cpp). One unit per chip; v1 = unit 0, the MPU-6050

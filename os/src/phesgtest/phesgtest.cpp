@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phesgtest.cpp -- OURS (GPU plan G6b): RSgImage <-> GLES2 on the Mali, zero copy.
 //   1. RSgImage::Create (ARGB_8888, GLES2 surface + texture usage); the CPU pre-fills it with a pattern

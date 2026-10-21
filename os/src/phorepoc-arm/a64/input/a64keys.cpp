@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64keys.cpp -- OURS (2026-10-09): the PinePhone's volume buttons. Both sit on the A64's LRADC (a 6-bit "low-rate
 // ADC" key scanner at 0x01C21800, GIC SPI 30; Linux drivers/input/keyboard/sun4i-lradc-keys.c, the PinePhone DTS

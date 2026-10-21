@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phfs_ldd.cpp -- OURS (2026-10-11, PhoneLab Project panel): the kernel half of the debug link's file service, the LDD
 // "PhFs.A64" (contract: phfs_api.h). phlink.cpp (kernel side, no file server) hands every 'F' command to

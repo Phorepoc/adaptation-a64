@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* OURS: the A64 memory map as RUNTIME linear bases (the kernel maps each window with DPlatChunkHw, a64_display.cpp).
  * Physical addresses: DE 0x01000000 (3M) | SYSCTL..PWM 0x01C00000 | DSI/DPHY 0x01CA0000 | R_* 0x01F00000. */

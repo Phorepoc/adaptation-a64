@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64twi.cpp -- OURS (2026-10-10, PinePhone sensors rung S1:
 // 1-2): the A64's TWI1 (a Marvell mv64xxx I2C core, 0x01C2B000) as the shared

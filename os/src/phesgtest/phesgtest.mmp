@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phesgtest.mmp -- OURS (GPU plan G6b): an RSgImage rendered into by GLES2 through
 // eglCreatePixmapSurface and sampled through eglCreateImageKHR(EGL_NATIVE_PIXMAP_KHR), checked by the CPU ("PH: sg" lines,

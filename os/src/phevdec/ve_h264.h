@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // ve_h264.h -- OURS (VDU rung V3): H.264 decoding on the stateless A64 Video Engine.
 // The CPU side the VE needs: picture order count, the

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // OURS (PinePhone track): the seam's kext loaders + boot-stage signal for
 // BOARD=a64 (tools/kernel/ekern_seam.cpp; virt's are src/phorepoc-arm/virt/specific/virt_glue_null.cpp).

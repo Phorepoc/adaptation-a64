@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // ekern_nga_glue.cpp -- OURS (GPU plan rung G1b): the NGA kernel side, linked
 // into ekern on the boards with a display channel (a64, virt: tools/kernel/link_ekern.sh): the surface manager

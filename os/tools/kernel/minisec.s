@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 @ minisec.s -- a minimal from-source USER-mode "secondary" EXE for Track B.
 @ The kernel launches the ROM's iSecondaryFile (normally EFILE.EXE) as the first user process

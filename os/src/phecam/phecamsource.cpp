@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phecamsource.cpp -- OURS (camera-plan.md C1). See phecamsource.h.
 #include <hal.h>

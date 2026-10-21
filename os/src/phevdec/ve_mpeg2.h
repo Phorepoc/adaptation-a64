@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // ve_mpeg2.h -- OURS (VDU rung V1/V2, moved out of phevdetest for V4): MPEG-2 video
 // (ISO/IEC 13818-2) on the stateless A64 Video Engine. The elementary-stream walker (sequence / GOP / picture headers)

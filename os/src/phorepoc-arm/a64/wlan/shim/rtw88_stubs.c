@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* rtw88_stubs.c -- OURS: the rtw88 modules we do not vendor yet, as no-op stubs with the real signatures, plus the
  * debug sink and the (unused) mac80211 ops table. Each stub is a known hole:

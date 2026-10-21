@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 
 """gen_phecam.py -- builds src/phecam/ (the phecam ECam plug-in) from the 2010 TestCamera plug-in (EPL, baseline/symbian-2010/oss.FCL.sf.os.mm/
 mmplugins/cameraplugins/source/testcamera). OURS = a few deliberate edits on top of the release source:

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phevenctest.mmp -- OURS (VE encoder one-frame probe): encodes one 64x64 NV12 intra
 // picture on the A64 Video Engine's H.264 encoder through the phevde driver (RPheVde), dumps the stream and decodes it back

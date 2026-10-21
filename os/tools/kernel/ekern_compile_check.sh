@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 
 # ekern_compile_check.sh -- compile the UNMODIFIED 2010 EKA2 kernel (ekern.exe)
 # from source with our modern toolchain (toolchain/symcc -k, arm-none-eabi-g++ 14.2), the

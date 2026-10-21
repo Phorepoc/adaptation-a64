@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // OURS: the display LDD header with KDisplayCBMax = 3 lives in drivers/display.h beside this file; the Syborg
 // framebuffer driver includes it as <display.h>, the LDD as <drivers/display.h> -- both must see the SAME copy (a

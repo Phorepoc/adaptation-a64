@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // rphedeov.h -- OURS (DE2 overlay plan): the user-side API of phedeov, our kernel driver
 // for the Allwinner A64 Display Engine 2 VI (video) channel -- the plane that scans an NV12 picture out directly, with its own

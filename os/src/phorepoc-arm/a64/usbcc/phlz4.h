@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // phlz4.h -- OURS: a minimal LZ4 *block* compressor (no libc, no allocation, header-only) for the PhoneLab live
 // view. Output is the standard LZ4 block format (any decoder reads it: the Go

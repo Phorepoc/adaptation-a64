@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 // bench_common.h -- OURS (pheencbench): shared declarations. Plain C++03 + libc (no Symbian types) so enc_sw.cpp / bench_common.cpp
 // build against the OpenH264 headers; Symbian services come through the extern "C" functions defined in bench_main.cpp.

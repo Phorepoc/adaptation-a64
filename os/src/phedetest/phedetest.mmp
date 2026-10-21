@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // phedetest.mmp -- OURS (DE2 overlay plan): the PheDeOv driver test. A moving NV12
 // pattern (1280x720 and 1920x1080) is put on the DE2 VI plane, scaled by the hardware to the panel, the DE registers

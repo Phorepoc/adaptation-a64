@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // tmaliclear.cpp -- OURS (GPU rung G3-K2): the first frame the Mali-400 renders
 // under Symbian. It builds by hand exactly the jobs Mesa's lima driver issues for a clear-only frame (lima_job.c

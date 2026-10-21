@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64_pwrres.cpp -- OURS (power plan P4): the A64 power RESOURCE MANAGER, the small
 // kernel-side model of the 2010 drivers/resourceman idea (named, reference-counted resources; the hardware switches

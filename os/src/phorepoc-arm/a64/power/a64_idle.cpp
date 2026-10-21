@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // a64_idle.cpp -- OURS (power plan P5): idle tick suppression + core retirement for the
 // A64 / PinePhone, on the 2010 SMP idle framework (drivers/power/smppower: DSMPIdleHandler + TIdleSupport, the model

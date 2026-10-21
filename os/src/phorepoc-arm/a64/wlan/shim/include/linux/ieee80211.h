@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* shim linux/ieee80211.h -- OURS: the IEEE 802.11 wire-format definitions rtw88 uses (frame control, the MAC header,
  * management frames, HT/VHT capability fields, EIDs, cipher suites). Layouts follow the 802.11 standard; the names

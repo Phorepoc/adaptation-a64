@@ -32,6 +32,6 @@ the display driver builds.
 
 ## Licence
 
-Eclipse Public License 2.0 with GPL-2.0-or-later as a Secondary License (see `LICENSES/EPL-2.0.txt`; the Nokia-derived files are our updated versions relicensed from EPL-1.0 under its section 7, unmodified Symbian sources are fetched from upstream and remain EPL-1.0), copyright The Phorepoc Authors (`AUTHORS`, `NOTICE`), except the third-party files above.
+Apache-2.0 for our own code (see `LICENSES/Apache-2.0.txt`); the Nokia-derived files are our updated versions under EPL-2.0 with GPL-2.0-or-later as a Secondary License (`LICENSES/EPL-2.0.txt`; relicensed from EPL-1.0 under its section 7); unmodified Symbian sources are fetched from upstream and remain EPL-1.0, copyright The Phorepoc Authors (`AUTHORS`, `NOTICE`), except the third-party files above.
 
 Contributions are welcome under the same terms: add yourself to `AUTHORS`.

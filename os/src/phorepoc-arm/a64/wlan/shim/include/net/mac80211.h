@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* shim net/mac80211.h -- OURS: the mac80211 driver-facing interface as rtw88 uses it (the hw, vif, sta, key, txq
  * objects, the tx-info / rx-status control blocks, the flag enums and the callbacks into the stack). Linux names and

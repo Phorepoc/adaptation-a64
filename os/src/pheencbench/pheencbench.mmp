@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 // pheencbench.mmp -- OURS: A64 hardware VE H.264 encoder vs OpenH264 software
 // encoding on the A53 cores (1 and 4 threads, NEON) at five resolutions, plus RGB->NV12/I420 colour conversion cost. "[encbench]" lines.
