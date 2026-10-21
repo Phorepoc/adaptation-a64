@@ -15,7 +15,13 @@ import re
 import subprocess
 import sys
 
-NM = r"C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin/arm-none-eabi-nm"
+import os
+import shutil
+# arm-none-eabi-nm: next to SYMBIAN_GXX when that is a full path, else on the PATH, else the Windows install
+_gxx = os.environ.get("SYMBIAN_GXX", "")
+NM = (os.path.join(os.path.dirname(_gxx), "arm-none-eabi-nm") if os.path.dirname(_gxx) else None)
+if not NM or not os.path.exists(NM):
+    NM = shutil.which("arm-none-eabi-nm") or r"C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/14.2 rel1/bin/arm-none-eabi-nm"
 
 # GCC 2.95 builtin type codes -> Itanium codes (the subset kernel signatures use)
 TYPES = {"v": "v", "i": "i", "Ui": "j", "l": "l", "Ul": "m", "c": "c", "Uc": "h", "s": "s", "Us": "t",
