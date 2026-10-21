@@ -224,7 +224,7 @@ if [ "$BOARD" = a64 ]; then
   # Bluetooth rung R1 (pinephone-port.md "Bluetooth: the decision"): the REAL serial LDD (ECOMM, d_comm.cpp, entry
   # renamed) + our UART1 PDD "Comm.A64" (src/phorepoc-arm/a64/bt/a64uart.cpp) = the RTL8723CS's HCI link
   # (one modern-GCC delta: `if (a1<0)` compares a TAny* with 0 -- an error since GCC 11; the overlay casts it)
-  sed 's/^\(\s*\)if (a1<0)$/\1if ((TInt)a1<0)/' "$B/drivers/ecomm/d_comm.cpp" > .variant-build/d_comm_a64.cpp
+  sed 's/^\(\s*\)if (a1<0)\(\r\?\)$/\1if ((TInt)a1<0)\2/' "$B/drivers/ecomm/d_comm.cpp" > .variant-build/d_comm_a64.cpp
   grep -q "if ((TInt)a1<0)" .variant-build/d_comm_a64.cpp || { echo "d_comm.cpp: the a1<0 line not found"; exit 1; }
   ccq -k .variant-build/d_comm_a64.cpp -I"$B/drivers/ecomm" -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -DCreateLogicalDevice=CreateLogicalDevice_ecomm \
