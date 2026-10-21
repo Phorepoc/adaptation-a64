@@ -41,6 +41,12 @@ fi
 
 T0=$SECONDS; step_time() { echo "      ($1: $((SECONDS-T0)) s)"; T0=$SECONDS; }
 echo "[1/5] link ekern @ code_base=$CODE_BASE (data/bss @ $KERN_DATA_BASE)"
+if [ "${SMP:-0}" = 1 ] && [ "${MMODEL:-multiple}" = flexible ]; then
+  # a clean tree has no kernel objects yet: the SMP nanokernel + the flexible-model kernel compile checks make them
+  # (unchanged objects are cached)
+  bash tools/kernel/nkernsmp_compile_check.sh >"$O.nk.log" 2>&1 || { tail -20 "$O.nk.log"; echo "nkernsmp compile failed" >&2; exit 1; }
+  SMP=1 MMODEL=flexible bash tools/kernel/ekern_compile_check.sh >"$O.ek.log" 2>&1 || { tail -20 "$O.ek.log"; echo "ekern compile failed" >&2; exit 1; }
+fi
 CODE_BASE="$CODE_BASE" KERN_DATA_BASE="$KERN_DATA_BASE" bash tools/kernel/link_ekern.sh >/dev/null
 sym() { "$NM" "$O/ekern.elf" | awk -v s="$1" '$3==s{print "0x"$1}'; }
 ENTRY=$(sym "${ENTRY_SYM:-_ekern_entry}"); CODE_SIZE=$(sym __code_size__); DATA_LMA=$(sym __data_lma__)
