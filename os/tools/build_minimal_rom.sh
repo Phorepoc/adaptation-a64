@@ -6,7 +6,7 @@
 #
 #   h2inc (bootstrap .inc)  ->  translate+assemble+link bootstrap (armasm2gas)
 #   ->  objcopy raw binary  ->  rombuild.py  ->  a structurally valid XIP ROM
-#   ->  round-trip verify through tools/rom.py (the RE'd EKA2L1 loader).
+#   (the pdk rombuild has no round-trip verify).
 #
 # Everything here is from the EPL-2010 open source + our own tools -> publishable.
 # Output artifacts land in .bootstrap-build/ (gitignored).  A *bootable* ROM still needs
@@ -44,8 +44,8 @@ echo "[3/4] link bootstrap @ 0x0 (offsets) + objcopy -> raw binary"
 "$OC" -O binary "$OUT/boot.elf" "$OUT/boot.bin"
 echo "      boot.bin = $(wc -c < "$OUT/boot.bin") bytes"
 
-echo "[4/4] rombuild + round-trip verify"
-py tools/rombuild.py "$OUT/boot.bin" "$OUT/minimal.rom" --rom-base "$ROM_BASE" --verify \
+echo "[4/4] rombuild"
+py tools/rombuild.py "$OUT/boot.bin" "$OUT/minimal.rom" --rom-base "$ROM_BASE" \
   | sed 's/^/      /'
 
 echo "M2 pipeline OK -> $OUT/minimal.rom"
