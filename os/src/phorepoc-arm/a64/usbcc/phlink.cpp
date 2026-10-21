@@ -175,6 +175,7 @@ private:
 	TInt iShotNextStage, iShotNextRow;	// applied when the frame in flight is sent (a failed one is rebuilt)
 	const TUint32* iShotPix;
 	const TUint32* iShotPanel;			// which 2: the panel layer composited over iShotPix (the OS picture)
+	TInt ShotPitch() const { return (iShotW == 360 && iShotH == 640) ? 368 : iShotW; }	// pixels per row of the OS picture (the screen buffer pitch is 64-byte aligned: 1472 B, svpfb_patch.py)
 	TUint32 iShotRowBuf[360];
 	// live view ('L'): iShotStage / iShotRow (= the next TILE) are shared with the shot machinery
 	TBool iLive, iLiveKey;
@@ -836,7 +837,7 @@ TBool DPhLink::ShotFrame()
 		n = 4;
 		while (row < iShotH && 16 + n + worst <= KFrameMax)
 			{
-			const TUint32* src = iShotPix + row * iShotW;
+			const TUint32* src = iShotPix + row * ShotPitch();
 			if (iShotPanel)
 				{
 				const volatile TUint32* pp = iShotPanel + (row * 2) * 720;
@@ -845,7 +846,7 @@ TBool DPhLink::ShotFrame()
 					{
 					TUint32 p = pp[x * 2];
 					if (!(p >> 24))
-						p = (oy >= 0 && oy < 640) ? iShotPix[oy * 360 + x] : 0;
+						p = (oy >= 0 && oy < 640) ? iShotPix[oy * 368 + x] : 0;
 					iShotRowBuf[x] = p;
 					}
 				src = iShotRowBuf;
@@ -946,13 +947,13 @@ TBool DPhLink::LiveFrame()
 							{
 							TUint32 p = pp[x * 2];
 							if (!(p >> 24))
-								p = (oy >= 0 && oy < 640) ? iShotPix[oy * 360 + x] : 0;
+								p = (oy >= 0 && oy < 640) ? iShotPix[oy * 368 + x] : 0;
 							out[x] = p;
 							}
 						}
 					else
 						{
-						const TUint32* src = iShotPix + row * w;
+						const TUint32* src = iShotPix + row * ShotPitch();
 						for (TInt x = 0; x < w; ++x)
 							out[x] = src[x];
 						}

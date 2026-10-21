@@ -15,6 +15,10 @@
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
 
+// OURS (2026-10-22): when nonzero, the DSA chunk is a window over this physical RAM (the legacy video RAM) instead of its own pages,
+// so the screen memory an app writes directly (UserSvr::ScreenInfo's iScreenAddress) IS the surface the compositor reads
+extern "C" TPhysAddr ekseam_dsa_backing_phys;
+TPhysAddr ekseam_dsa_backing_phys;
 static DChunk* TheDsaChunk;
 static TUint TheDsaSize;
 static volatile TInt TheDsaState;	// 0 = none, 1 = being created, 2 = ready, 3 = failed
@@ -34,8 +38,8 @@ extern "C" TInt ekseam_display_memory_handle(TInt aScreen, TAny* a1, TUint aByte
 		TChunkCreateInfo info;
 		info.iType = TChunkCreateInfo::ESharedKernelMultiple;
 		info.iMaxSize = size;
-		info.iMapAttr = EMapAttrCachedMax;
-		info.iOwnsMemory = ETrue;
+		info.iMapAttr = ekseam_dsa_backing_phys ? (TUint)EMapAttrBufferedC : (TUint)EMapAttrCachedMax;	// the same attributes as the video RAM's own mapping
+		info.iOwnsMemory = ekseam_dsa_backing_phys ? EFalse : ETrue;
 		info.iDestroyedDfc = 0;
 		DChunk* chunk = 0;
 		TLinAddr lin = 0;
@@ -43,7 +47,7 @@ extern "C" TInt ekseam_display_memory_handle(TInt aScreen, TAny* a1, TUint aByte
 		r = Kern::ChunkCreate(info, chunk, lin, attr);
 		if (r == KErrNone)
 			{
-			r = Kern::ChunkCommit(chunk, 0, size);
+			r = ekseam_dsa_backing_phys ? Kern::ChunkCommitPhysical(chunk, 0, size, ekseam_dsa_backing_phys) : Kern::ChunkCommit(chunk, 0, size);
 			if (r != KErrNone)
 				Kern::ChunkClose(chunk);
 			}

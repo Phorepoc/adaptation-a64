@@ -35,6 +35,7 @@ extern "C" TBool A64DisplayBacklightIsOff();
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
 // the NGA direct-screen-access chunk (tools/kernel/ekern_dsa_glue.cpp); weak so A64_DISPLAY=legacy / NGA_KERNEL=0 still link
+extern "C" TPhysAddr ekseam_dsa_backing_phys;
 extern "C" TInt ekseam_display_memory_handle(TInt aScreen, TAny* a1, TUint aBytes) __attribute__((weak));
 
 const TUint KHwBaseClcd = 0;			// the driver's iPortAddr: nothing behind it, the model below is the device
@@ -108,7 +109,8 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 		case EDisplayHalGetDisplayMemoryHandle:		// DSA / the screen-surface stream
 			if (!ekseam_display_memory_handle)
 				return KErrNotSupported;
-			return ekseam_display_memory_handle(0, a1, VIRT_FB_WIDTH * VIRT_FB_HEIGHT * 4);
+			ekseam_dsa_backing_phys = TSyborg::VideoRamPhys();		// the DSA surface = the legacy video RAM (ekern_dsa_glue.cpp)
+			return ekseam_display_memory_handle(0, a1, ((VIRT_FB_WIDTH * 4 + 63) & ~63) * VIRT_FB_HEIGHT);
 		case EDisplayHalSetState:
 			ekseam_puts((TBool)a1 ? "[EKERN][disp] HAL display state ON\n" : "[EKERN][disp] HAL display state OFF\n");
 			return DoHalFunction(aPtr, aFunction, a1, a2);

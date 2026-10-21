@@ -736,6 +736,8 @@ int a64_de_blender_init(void)
  *
  ****************************************************************************/
 
+uint32_t a64_de_ui_pitch;   /* PHOREPOC: nonzero = the next a64_de_ui_channel_init uses this row pitch (bytes) */
+
 int a64_de_ui_channel_init(uint8_t channel,
                            const void *fbmem,
                            size_t fblen,
@@ -828,7 +830,7 @@ int a64_de_ui_channel_init(uint8_t channel,
    * Set to (width * 4), number of bytes per row
    */
 
-  putreg32(xres * 4, OVL_UI_PITCH(channel));
+  putreg32(a64_de_ui_pitch ? a64_de_ui_pitch : xres * 4, OVL_UI_PITCH(channel));   /* PHOREPOC: row pitch override */
 
   /* UI Overlay Memory Block Size (DE Page 104)
    * Set to (height-1) << 16 + (width-1)

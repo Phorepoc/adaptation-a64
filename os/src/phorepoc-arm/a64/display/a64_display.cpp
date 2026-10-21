@@ -540,6 +540,7 @@ static TSpinLock VblankLock(TSpinLock::EOrderGenericIrqLow2);
 
 static inline TUint32 WH(TInt aW, TInt aH) { return ((TUint32)(aH - 1) << 16) | (TUint32)(aW - 1); }
 
+extern "C" TUint32 a64_de_ui_pitch;
 static void ProgramSource()
 	{
 	TPhysAddr phys = SrcPhys ? SrcPhys : FbPhys;
@@ -547,7 +548,10 @@ static void ProgramSource()
 	const TInt scale = (w * 2 <= KPanelW && h * 2 <= KPanelH) ? 2 : 1;
 	const TInt outW = w * scale, outH = h * scale;
 	const TInt offY = (KPanelH - outH) / 2, offX = (KPanelW - outW) / 2;
-	a64_de_ui_channel_init(1, (const void*)phys, w * h * 4, (TUint16)w, (TUint16)h, 0, 0);
+	// the legacy / composition buffers have the real phones' 64-byte aligned row pitch (svpfb_patch.py PHFB_PITCH)
+	a64_de_ui_pitch = SrcPhys ? (TUint32)((w * 4 + 63) & ~63) : 0;
+	a64_de_ui_channel_init(1, (const void*)phys, (a64_de_ui_pitch ? a64_de_ui_pitch : w * 4) * h, (TUint16)w, (TUint16)h, 0, 0);
+	a64_de_ui_pitch = 0;
 	volatile TUint32* mixer = (volatile TUint32*)ph_a64_de + 0x100000 / 4;
 	// a64_de_ui_channel_init (NuttX) sizes the mixer canvas + blender output to the LAYER: the panel needs them at the
 	// panel size, or everything past the 360x640 canvas is undriven junk (white scanlines, found 2026-10-06)
@@ -691,7 +695,7 @@ static void MapSourceForCapture()
 	ekseam_puthex(SrcPhys);
 	// the SAME attributes svpframebuffer.cpp maps this video RAM with (EMapAttrBufferedC): a strongly-ordered
 	// alias of cached RAM (the first attempt) hung the phone
-	const TLinAddr lin = Map(5, SrcPhys & ~0xFFFu, Kern::RoundToPageSize((TInt)(SrcPhys & 0xFFF) + SrcW * SrcH * 4),
+	const TLinAddr lin = Map(5, SrcPhys & ~0xFFFu, Kern::RoundToPageSize((TInt)(SrcPhys & 0xFFF) + (((SrcW * 4 + 63) & ~63) * SrcH)),
 		EMapAttrSupRw | EMapAttrBufferedC);
 	NKern::ThreadLeaveCS();
 	ekseam_puts("[EKERN][disp] capture map lin=");
@@ -705,7 +709,7 @@ static void MapSourceForCapture()
 		// The video RAM comes straight from the page allocator and a warm reset (every phlink push) keeps RAM: it still
 		// holds the previous boot's last frame (privacy, and "imprints" under the new image). Black it, once, before the
 		// DE is pointed at it (ProgramSource follows); clean the cache so the scan-out sees it. (bug-backlog.md "Display")
-		const TInt bytes = SrcW * SrcH * 4;
+		const TInt bytes = (((SrcW * 4 + 63) & ~63) * SrcH);
 		memclr((TAny*)SrcLin, bytes);
 		Cache::SyncMemoryBeforeDmaWrite(SrcLin, bytes);
 		ekseam_puts("[EKERN][disp] source video RAM cleared\n");
@@ -819,7 +823,7 @@ extern "C" TInt A64DisplayCaptureSource(TInt aWhich, TLinAddr* aLin, TInt* aW, T
 			if (reg >= 0x40000000u)
 				phys = reg;
 			}
-		lin = ScanoutLin(phys, SrcW * SrcH * 4);
+		lin = ScanoutLin(phys, (((SrcW * 4 + 63) & ~63) * SrcH));
 		if (!lin)
 			{
 			ekseam_puts("[EKERN][disp] capture: scan-out buffer "); ekseam_puthex(phys);
