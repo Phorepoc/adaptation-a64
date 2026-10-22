@@ -6,7 +6,7 @@
 TARGET			phfs.exe
 TARGETTYPE		exe
 UID				0x1000007a 0xE7015739
-CAPABILITY		AllFiles
+CAPABILITY		AllFiles TCB   // TCB: the debug file service writes sysbin (installs a test binary)
 VENDORID		0
 
 OS_LAYER_SYSTEMINCLUDE
