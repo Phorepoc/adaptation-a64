@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, no py launcher
 # Copyright The Phorepoc Authors
 # SPDX-License-Identifier: Apache-2.0
 

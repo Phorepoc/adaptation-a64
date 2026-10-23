@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, no py launcher
 # Portions Copyright (c) Nokia Corporation and/or its subsidiary(-ies)
 # Copyright The Phorepoc Authors
 # SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
