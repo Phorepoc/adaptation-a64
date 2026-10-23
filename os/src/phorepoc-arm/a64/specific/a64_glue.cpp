@@ -174,7 +174,9 @@ const TUint KSdLogSectorB = 4608;		// the log of the B trial that just died; bot
 static TUint SdLogBase = KSdLogSector;
 enum { KSdGctl = 0x00, KSdBlkSz = 0x10, KSdBytCnt = 0x14, KSdCmd = 0x18, KSdArg = 0x1C, KSdRint = 0x38,
 	   KSdStatus = 0x3C, KSdFifo = 0x200 };
-const TUint32 KSdRintCmdDone = 1u << 2, KSdRintDataOver = 1u << 3, KSdRintErrors = 0xBBC2u;
+// KSdRintErrors = the sunxi-mmc error mask (resp error/CRC/timeout, data CRC/timeout, FIFO run, HW locked, start/end bit) + bit 10, the
+// host data-starvation timeout: a stalled transfer raises one of these once the TMOUT below has run out
+const TUint32 KSdRintCmdDone = 1u << 2, KSdRintDataOver = 1u << 3, KSdRintErrors = 0xBBC2u | (1u << 10);
 const TUint32 KSdStatusFifoFull = 1u << 3, KSdStatusCardBusy = 1u << 9;
 static volatile TUint32* Smhc;
 static DPlatChunkHw* SmhcChunk;
@@ -184,12 +186,59 @@ static TUint SdFlushes;
 
 static inline volatile TUint32& Sd(TUint aOffset) { return Smhc[aOffset >> 2]; }
 
+// SMHC TMOUT (+0x08): data timeout in bits 31:8 (card clocks), response timeout in bits 7:0. Left at U-Boot's maximum a card that
+// stalls mid-sector never raised DRTO (boot 1371: rint=0x14 and only our software timeout ended it); a finite value makes the
+// controller flag the stall (sunxi-mmc programs the register at host init and after every reset). 0x800000 clocks = ~168 ms at 50 MHz,
+// well above a card's read latency (SD spec: 100 ms), so only a real stall trips it.
+const TUint KSdTmout = 0x08;
+const TUint32 KSdTmoutValue = (0x800000u << 8) | 0x40u;
+static inline void SdSetTimeouts() { Sd(KSdTmout) = KSdTmoutValue; }
+const TUint KSdWaitMs = 2000;			// the longest a status wait runs (a card's write busy is <= 500 ms); the iteration cap is for stopped ticks
+
 static TBool SdWaitClear(TUint aOffset, TUint32 aMask)
 	{
+	const TUint32 t0 = NKern::TickCount();
 	for (TUint i = 0; i < 50000000u; ++i)
+		{
 		if (!(Sd(aOffset) & aMask))
 			return ETrue;
+		if (!(i & 0xFFFF) && NKern::TickCount() - t0 > KSdWaitMs)
+			break;
+		}
 	return EFalse;
+	}
+
+// A FIFO-status wait that also ends as soon as the controller flags an error/timeout in RINT (a stalled transfer), or after
+// KSdWaitMs: used by the PIO loops, which used to spin their full iteration count on a card that had stopped answering.
+static TBool SdWaitFifo(TUint32 aMask)
+	{
+	const TUint32 t0 = NKern::TickCount();
+	for (TUint i = 0; i < 50000000u; ++i)
+		{
+		if (!(Sd(KSdStatus) & aMask))
+			return ETrue;
+		if (!(i & 15) && (Sd(KSdRint) & KSdRintErrors))
+			break;
+		if (!(i & 0xFFFF) && NKern::TickCount() - t0 > KSdWaitMs)
+			break;
+		}
+	return EFalse;
+	}
+
+// Wait for the end of a transfer in RINT: an error/timeout bit, or the wanted bits (all of them, or any). Returns the last RINT.
+static TUint32 SdWaitRint(TUint32 aWant, TBool aAll)
+	{
+	const TUint32 t0 = NKern::TickCount();
+	TUint32 r = 0;
+	for (TUint i = 0; i < 50000000u; ++i)
+		{
+		r = Sd(KSdRint);
+		if ((r & KSdRintErrors) || (aAll ? (r & aWant) == aWant : (r & aWant) != 0))
+			break;
+		if (!(i & 0xFFFF) && NKern::TickCount() - t0 > KSdWaitMs)
+			break;
+		}
+	return r;
 	}
 
 static TBool SdWriteSector(TUint aSector, const TUint32* aData)
@@ -205,17 +254,11 @@ static TBool SdWriteSector(TUint aSector, const TUint32* aData)
 	Sd(KSdCmd) = (1u << 31) | (1u << 13) | (1u << 10) | (1u << 9) | (1u << 8) | (1u << 6) | 24;
 	for (TUint w = 0; w < 128; ++w)
 		{
-		if (!SdWaitClear(KSdStatus, KSdStatusFifoFull))
+		if (!SdWaitFifo(KSdStatusFifoFull))
 			return EFalse;
 		Sd(KSdFifo) = aData[w];
 		}
-	TUint32 r = 0;
-	for (TUint i = 0; i < 50000000u; ++i)
-		{
-		r = Sd(KSdRint);
-		if ((r & KSdRintErrors) || ((r & (KSdRintCmdDone | KSdRintDataOver)) == (KSdRintCmdDone | KSdRintDataOver)))
-			break;
-		}
+	const TUint32 r = SdWaitRint(KSdRintCmdDone | KSdRintDataOver, ETrue);
 	Sd(KSdRint) = 0xFFFFFFFFu;
 	if ((r & KSdRintErrors) || !(r & KSdRintDataOver))
 		return EFalse;
@@ -237,17 +280,11 @@ static TBool SdReadSector(TUint aSector, TUint32* aData)
 	Sd(KSdCmd) = (1u << 31) | (1u << 13) | (1u << 9) | (1u << 8) | (1u << 6) | 17;
 	for (TUint w = 0; w < 128; ++w)
 		{
-		if (!SdWaitClear(KSdStatus, KSdStatusFifoEmpty))
+		if (!SdWaitFifo(KSdStatusFifoEmpty))
 			return EFalse;
 		aData[w] = Sd(KSdFifo);
 		}
-	TUint32 r = 0;
-	for (TUint i = 0; i < 50000000u; ++i)
-		{
-		r = Sd(KSdRint);
-		if ((r & KSdRintErrors) || (r & KSdRintDataOver))
-			break;
-		}
+	const TUint32 r = SdWaitRint(KSdRintDataOver, EFalse);
 	Sd(KSdRint) = 0xFFFFFFFFu;
 	return !(r & KSdRintErrors) && (r & KSdRintDataOver);
 	}
@@ -352,25 +389,19 @@ static TBool SdMulti(TUint aSector, TUint aCount, TUint32* aBuf, TBool aWrite)
 		{
 		if (aWrite)
 			{
-			ok = SdWaitClear(KSdStatus, KSdStatusFifoFull);
+			ok = SdWaitFifo(KSdStatusFifoFull);
 			if (ok) Sd(KSdFifo) = aBuf[w];
 			}
 		else
 			{
-			ok = SdWaitClear(KSdStatus, KSdStatusFifoEmpty);
+			ok = SdWaitFifo(KSdStatusFifoEmpty);
 			if (ok) aBuf[w] = Sd(KSdFifo);
 			}
 		if (!(w & 127) && (Sd(KSdRint) & KSdRintErrors))
 			ok = EFalse;
 		}
-	TUint32 r = 0;
 	const TUint32 want = KSdRintDataOver | KSdRintAutoCmdDone;
-	for (TUint i = 0; ok && i < 50000000u; ++i)
-		{
-		r = Sd(KSdRint);
-		if ((r & KSdRintErrors) || (r & want) == want)
-			break;
-		}
+	const TUint32 r = ok ? SdWaitRint(want, ETrue) : Sd(KSdRint);
 	ok = ok && !(r & KSdRintErrors) && (r & want) == want;
 	Sd(KSdRint) = 0xFFFFFFFFu;
 	if (!ok)
@@ -423,6 +454,32 @@ static void SdDmaInit()
 	ekseam_puts(KSdDmaWrites ? " (reads + writes)\n" : " (reads)\n");
 	}
 
+// Error recovery after a failed or stalled transfer, as sunxi-mmc's error path does it: abort the card's open data transfer (CMD12
+// STOP_TRANSMISSION with the abort bit, R1b; no wait for the previous data: there is none to wait for), reset the FIFO and the DMA
+// engine, wait for the card to leave busy, and program the timeouts again. Harmless on an idle card (it answers ILLEGAL_COMMAND).
+// Caller holds the SD lock.
+static void SdRecover()
+	{
+	Sd(KSdRint) = 0xFFFFFFFFu;
+	Sd(KSdArg) = 0;
+	Sd(KSdCmd) = KSdCmdStart | KSdCmdResp | KSdCmdCrc | (1u << 14) | 12;		// STOP_ABORT_CMD
+	const TUint32 t0 = NKern::TickCount();
+	for (TUint i = 0; i < 5000000u; ++i)
+		{
+		if (Sd(KSdRint) & (KSdRintCmdDone | KSdRintErrors))
+			break;
+		if (!(i & 0xFFF) && NKern::TickCount() - t0 > 200)
+			break;
+		}
+	Sd(KSdDmac) = 1u;															// IDMAC soft reset, off
+	Sd(KSdIdst) = 0xFFFFFFFFu;
+	Sd(KSdGctl) = (Sd(KSdGctl) & ~(1u << 5)) | (1u << 1) | (1u << 2);		// DMA off; FIFO + DMA reset
+	SdWaitClear(KSdGctl, (1u << 1) | (1u << 2));
+	Sd(KSdRint) = 0xFFFFFFFFu;
+	SdWaitClear(KSdStatus, KSdStatusCardBusy);
+	SdSetTimeouts();
+	}
+
 static TBool SdMultiDma(TUint aSector, TUint aCount, TUint32* aBuf, TBool aWrite)
 	{
 	const TUint bytes = aCount * 512;
@@ -460,14 +517,8 @@ static TBool SdMultiDma(TUint aSector, TUint aCount, TUint32* aBuf, TBool aWrite
 	Sd(KSdArg) = aSector;
 	Sd(KSdCmd) = (1u << 31) | (1u << 13) | (1u << 12) | (aWrite ? 1u << 10 : 0) | (1u << 9) | (1u << 8) | (1u << 6)
 		| (aWrite ? 25 : 18);
-	TUint32 r = 0;
 	const TUint32 want = KSdRintDataOver | KSdRintAutoCmdDone;
-	for (TUint i = 0; i < 50000000u; ++i)
-		{
-		r = Sd(KSdRint);
-		if ((r & KSdRintErrors) || (r & want) == want)
-			break;
-		}
+	const TUint32 r = SdWaitRint(want, ETrue);
 	const TBool ok = !(r & KSdRintErrors) && (r & want) == want;
 	// back to the PIO configuration the other paths expect: IDMAC reset + off, DMA off, its state cleared
 	Sd(KSdDmac) = 1u;
@@ -506,6 +557,8 @@ extern "C" TBool A64SdTransfer(TUint aSector, TUint aCount, TUint32* aBuf, TBool
 			ok = SdMultiDma(aSector + done, n, aBuf + done * 128, aWrite);		// (a failure: PIO below)
 		if (!ok)
 			ok = n > 1 && SdMulti(aSector + done, n, aBuf + done * 128, aWrite);
+		if (!ok)
+			SdRecover();								// a stalled run leaves the card's transfer open
 		SdUnlock(locked);
 		if (ok)
 			{
@@ -524,6 +577,21 @@ extern "C" TBool A64SdTransfer(TUint aSector, TUint aCount, TUint32* aBuf, TBool
 			const TUint s = aSector + done + i;
 			ok = aWrite ? SdWriteSector(s, aBuf + (done + i) * 128) : SdReadSector(s, aBuf + (done + i) * 128);
 			SdUnlock(locked);
+			if (!ok)
+				{
+			// 2026-10-23: a marginal flash block (E: FAT sector 0x424ac4) stalls the card mid-sector with no error bit. With the finite
+			// TMOUT the controller now flags it; abort the open transfer (CMD12), reset FIFO/DMA, retry the sector (the 2nd try
+			// succeeded in boot 1371). Reads and writes, under the SD lock.
+			for (TUint tries = 0; !ok && tries < 3; ++tries)
+				{
+				locked = SdLock();
+				SdRecover();
+				ok = aWrite ? SdWriteSector(s, aBuf + (done + i) * 128) : SdReadSector(s, aBuf + (done + i) * 128);
+				SdUnlock(locked);
+				ekseam_puts("[sdblk] retry sector="); ekseam_puthex(s); ekseam_puts(aWrite ? " write" : " read");
+				ekseam_puts(ok ? " ok" : " failed"); ekseam_puts(KNl);
+				}
+				}
 			if (!ok)
 				{
 				ekseam_puts("[sdblk] PIO FAILED sector="); ekseam_puthex(s);
@@ -1199,6 +1267,8 @@ static void A64MapSd()
 		ekseam_puts("[sdblk]   CLKDIV=");           ekseam_puthex(Smhc[0x04 / 4]);
 		ekseam_puts("[sdblk]   CTYPE=");            ekseam_puthex(Smhc[0x0C / 4]);
 		ekseam_puts("[sdblk]   NTSR=");             ekseam_puthex(Smhc[0x5C / 4]);
+		ekseam_puts("[sdblk]   TMOUT=");            ekseam_puthex(Smhc[0x08 / 4]); ekseam_puts(" -> "); ekseam_puthex(KSdTmoutValue); ekseam_puts(KNl);
+		SdSetTimeouts();
 		SdDmaInit();
 		}
 	}
