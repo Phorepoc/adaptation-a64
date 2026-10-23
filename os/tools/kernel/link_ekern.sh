@@ -64,6 +64,11 @@ EXTRA+=("${SMPDEF[@]}")   # after the A8 define: -U__CPU_CORTEX_A8N__ must come 
 [ "$BOARD" = a64 ] && EXTRA+=(-D__A64__)   # the A64 deltas in the shared virt variant (syborg.h, assp.cpp)
 # the golden image (the text-shell ROM, not PHOREPOC=1): the kernel menu + keyboard on the Menu soft key (a64_bars.cpp)
 GOLDEN=(); [ "${PHOREPOC:-0}" = 1 ] || GOLDEN=(-DA64_GOLDEN)
+# PH_FB_CACHED=1: the legacy video RAM (the DSA surface games write and the CPU compositor reads) mapped CACHED in every place (svpfb_patch.py, ekern_dsa_glue.cpp, a64_display.cpp): NGA images only (the DE does not scan it)
+# default ON for the a64 NGA image (r35: the compositor read of the uncached RAM was ~15 ms/frame; 0 drops on the DH2 clips); PH_FB_CACHED=0 = the old uncached mapping
+if [ "$BOARD" = a64 ] && [ "${A64_DISPLAY:-}" != legacy ]; then PH_FB_CACHED="${PH_FB_CACHED:-1}"; fi
+export PH_FB_CACHED
+[ "${PH_FB_CACHED:-0}" = 1 ] && EXTRA+=(-DA64_FB_CACHED)
 # PH_BOOT_GUARD_S=<s> / PH_LIVE_GUARD_S=<s>: the slot-B boot-completion / liveness guard of a64_glue.cpp (180 / 60 s) -- a plain env var that
 # reaches the compile through ./ph pp-image (A64DEFS did not in the 2026-10-16 ALF runs: the recorded a64_glue.o.cmd had no -D for it)
 [ "${NO_MON1S:-0}" = 1 ] && A64DEFS="${A64DEFS:-} -DA64_NO_MON1S"   # A/B: no 1 s cpu/RAM monitor

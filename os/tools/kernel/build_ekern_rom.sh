@@ -246,10 +246,15 @@ fi
 # the file list goes through an @response file (one argument per line): the GUI bundle's
 # ~200 components overflow the Windows command line ("Argument list too long")
 printf '%s\n' "${SEC_ARGS[@]}" > "$O/rombuild_sec.args"
+# STABLE FILE PLACEMENT (2026-10-23; BOARD=a64): each ROM file keeps its address while it still fits its slot (the map is
+# $O/rom.placement.json), so two builds differ only where a file changed and a PhoneLab delta push sends just that.
+# FULL=1 repacks compactly (a new map); ROM_STABLE=0 = the old sequential layout.
+PLACE_ARGS=()
+[ "${BOARD:-syborg}" = a64 ] && [ "${ROM_STABLE:-1}" != 0 ] && PLACE_ARGS=(--placement "$O/rom.placement.json")
 py tools/rombuild.py .bootstrap-build/boot.bin .bootstrap-build/ekern.rom --primary "$O/ekern.bin" \
   --kinfo "place_at=$PLACE_AT,entry=$ENTRY,code_size=$CODE_SIZE,data_lma=$DATA_LMA,data_size=$DATA_SIZE,bss_size=$BSS_SIZE,kern_data_base=$KERN_DATA_BASE,trace_mask=${TRACE_MASK:-0},uid1=0x1000007A" \
   --variant "entry=$V_ENTRY,exports=$EXPORTS" \
-  "@$O/rombuild_sec.args" || { echo "Error: rombuild failed"; exit 1; }
+  "@$O/rombuild_sec.args" "${PLACE_ARGS[@]}" || { echo "Error: rombuild failed"; exit 1; }
 
 step_time "rombuild"
 echo "[5/5] boot"

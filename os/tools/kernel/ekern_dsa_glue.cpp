@@ -38,7 +38,11 @@ extern "C" TInt ekseam_display_memory_handle(TInt aScreen, TAny* a1, TUint aByte
 		TChunkCreateInfo info;
 		info.iType = TChunkCreateInfo::ESharedKernelMultiple;
 		info.iMaxSize = size;
-		info.iMapAttr = ekseam_dsa_backing_phys ? (TUint)EMapAttrBufferedC : (TUint)EMapAttrCachedMax;	// the same attributes as the video RAM's own mapping
+#ifdef A64_FB_CACHED
+		info.iMapAttr = (TUint)EMapAttrCachedMax;	// the video RAM is mapped cached everywhere (svpfb_patch.py PH_FB_CACHED): same attributes
+#else
+		info.iMapAttr = ekseam_dsa_backing_phys ? (TUint)EMapAttrBufferedC : (TUint)EMapAttrCachedMax;
+#endif
 		info.iOwnsMemory = ekseam_dsa_backing_phys ? EFalse : ETrue;
 		info.iDestroyedDfc = 0;
 		DChunk* chunk = 0;

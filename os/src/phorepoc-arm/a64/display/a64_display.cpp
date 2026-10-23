@@ -696,7 +696,11 @@ static void MapSourceForCapture()
 	// the SAME attributes svpframebuffer.cpp maps this video RAM with (EMapAttrBufferedC): a strongly-ordered
 	// alias of cached RAM (the first attempt) hung the phone
 	const TLinAddr lin = Map(5, SrcPhys & ~0xFFFu, Kern::RoundToPageSize((TInt)(SrcPhys & 0xFFF) + (((SrcW * 4 + 63) & ~63) * SrcH)),
+#ifdef A64_FB_CACHED
+		EMapAttrSupRw | EMapAttrCachedMax);		// the legacy video RAM is cached everywhere (PH_FB_CACHED): equal attributes for every alias
+#else
 		EMapAttrSupRw | EMapAttrBufferedC);
+#endif
 	NKern::ThreadLeaveCS();
 	ekseam_puts("[EKERN][disp] capture map lin=");
 	ekseam_puthex((TUint32)lin);

@@ -69,6 +69,9 @@ const TInt KFsMaxRequest = 4096 + 512;
 const TInt KBlobMax = 256 * 1024;
 static TUint8 BlobBuf[KBlobMax];
 static TUint8 FsBuf[KFsMaxRequest];
+// the OS picture is copied here when a capture starts (r34): the rows are streamed over ~160 ms, and the scan-out buffer is
+// recycled by the compositor meanwhile (a seam in animated content). 368 words = the 64-byte-aligned 360x640 pitch.
+static TUint32 ShotSnap[368 * 640];
 
 // live view state (one link, one viewer): the hash of each tile as last SENT (and acked by the next request), the
 // composed 32-row band being tiled, and the tile coder's scratch
@@ -734,6 +737,11 @@ TBool DPhLink::ShotSource(TUint32 aWhich)
 		}
 	else if (A64DisplayCaptureSource((TInt)aWhich, &lin, &w, &h) != KErrNone || !lin || w <= 0 || h <= 0)
 		return EFalse;
+	if (w == 360 && (h == 640 || (aWhich == 2 && h == 720)))
+		{
+		memcpy(ShotSnap, (const TAny*)lin, sizeof(ShotSnap));
+		lin = (TLinAddr)ShotSnap;
+		}
 	iShotPix = (const TUint32*)lin;
 	iShotW = w;
 	iShotH = h;
