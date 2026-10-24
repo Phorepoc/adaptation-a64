@@ -172,7 +172,9 @@ void a64wlan_irq_poll(void)
 		a64_func.irq_handler(&a64_func);
 	if (a64_powered() && (long)(jiffies - a64_cfo_next) >= 0) {	/* the vendor's 2 s watchdog, for the CFO tracker */
 		a64_cfo_next = jiffies + msecs_to_jiffies(2000);
+#ifdef PHE_RTW88_VENDOR_DIFF
 		a64_cfo_track();
+#endif
 	}
 #ifdef PHE_MACCNT
 	if (a64_powered() && a64_chanctx && !a64_scanning && a64_maccnt_n < 30 && (long)(jiffies - a64_cfo_next) >= -1000 && (long)(jiffies - a64_cfo_next) < -980) {
@@ -567,7 +569,9 @@ void a64wlan_scan_notify(int start)
 		 * cap 0x00 -- and none in any later scan, cap 0x00 again included: the crystal is not the variable; the
 		 * break follows the first Join) */
 		rtw_ops.sw_scan_start(hw, a64_vif, a64_vif->addr);
-		a64_vendor_coex_hw();
+	#ifdef PHE_RTW88_VENDOR_DIFF
+	a64_vendor_coex_hw();
+#endif
 		/* boot 289 test: IGI held at DIG's non-linked ceiling (DIG_CVRG_MAX 0x2a) instead of the scan's max coverage
 		 * 0x1c -- boot 288: OFDM false alarms ~2000/s, CCA busy, and DIG never adapts (the UMAC scans back to back,
 		 * the watchdog lands in scans). Linux's rare scans let DIG raise it before the authentication. */
@@ -642,7 +646,9 @@ int a64wlan_join(int channel, const unsigned char *bssid, unsigned beacon_int)
 	 * BTG select, max TX power, 6 Mbps management -- see the journal 2026-10-10--22-20. None changed the outcome: the
 	 * cause was our sequence numbers, a64wlan_tx.) */
 	rtw_ops.mgd_prepare_tx(hw, a64_vif, &info);
+#ifdef PHE_RTW88_VENDOR_DIFF
 	a64_vendor_coex_hw();
+#endif
 #ifdef PHE_MACCNT
 	a64_maccnt("join");
 #endif

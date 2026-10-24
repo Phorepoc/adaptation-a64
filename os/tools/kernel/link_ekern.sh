@@ -259,7 +259,7 @@ if [ "$BOARD" = a64 ]; then
            $WL/shim/shim_mac80211.c $WL/shim/rtw88_stubs.c $WL/a64wlan_glue.c)
     # (boot 954: joins, DHCP, NTP -- after the __LITTLE_ENDIAN fix in rtw88_config.h; the test variants of boots 894-952
     #  are gone. Opt-in diagnostics via A64DEFS: -DPHE_MACCNT, -DPHE_RXREGS, -DPHE_RFWIDE)
-    WLCF=(-I"$WL/shim/include" -I"$WL" -include "$WL/shim/include/rtw88_config.h" -DPHE_RTW88_VENDOR_DIFF)
+    WLCF=(-I"$WL/shim/include" -I"$WL" -include "$WL/shim/include/rtw88_config.h" ${WIFI_VENDOR_DIFF:+-DPHE_RTW88_VENDOR_DIFF})
     WLCXX=(-DA64_WLAN_RTW88)
   elif [ "$WIFI_DRV" = 8723cs ]; then
     WLSRC=($WL/rtl8703b/r8703b_{io,mac,phy,efuse,trx,dm,iqk,api,cam,tables}.c)
