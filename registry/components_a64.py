@@ -63,4 +63,7 @@ COMPONENTS = {
 EXTEND = {
     # phgl's GPU channel: the Mali-400 (src/symgl/symmali.cpp over RMaliChannel) instead of core's null one
     "phgl": dict(drop=["symgpu_null.cpp"], extra=["src/symgl/symmali.cpp"]),
+    # the software H.264 decoder (pheffmpeg) shares the ROM name phevdec.dll with the Video Engine one: on this board the VE decoder is the one,
+    # and a full component build must not overwrite phevdec.dll with the software variant
+    "phevdec_sw": dict(rom="phevdec_sw.dll"),
 }
