@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright The Phorepoc Authors
+# SPDX-License-Identifier: Apache-2.0
 """wlanldd_jobs.py -- OURS (2026-10-10): the wlanldd compile jobs for toolchain/cc_batch.py.
 
     py tools/kernel/wlanldd_jobs.py <group dir> <flags file> <jobs file> <out dir>
