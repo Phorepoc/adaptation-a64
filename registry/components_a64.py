@@ -65,5 +65,6 @@ EXTEND = {
     "phgl": dict(drop=["symgpu_null.cpp"], extra=["src/symgl/symmali.cpp"]),
     # the software H.264 decoder (pheffmpeg) shares the ROM name phevdec.dll with the Video Engine one: on this board the VE decoder is the one,
     # and a full component build must not overwrite phevdec.dll with the software variant
-    "phevdec_sw": dict(rom="phevdec_sw.dll"),
+    # (test=True: not in the ROM -- ECOM matches a plug-in DLL by UID3, so a second phevdec DLL in the ROM can be loaded instead of the VE one)
+    "phevdec_sw": dict(rom="phevdec_sw.dll", test=True),
 }
