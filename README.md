@@ -1,37 +1,43 @@
 # adaptation-a64
 
-The Allwinner A64 platform adaptation of Phorepoc: the SoC's drivers (display engine, Mali-400 GPU, video engine,
-camera, sensors, USB, WLAN), reusable by any A64 board. Device adaptations build on it:
+These are the Symbian drivers for the Allwinner A64, the chip inside the PinePhone. They cover the display, the Mali-400
+GPU, the video decoder, the camera interface, the sensors, USB and Wi-Fi.
+
+Nothing here is specific to one phone, so any A64 board can use it. Right now the one that does is
 [adaptation-pinephone](https://github.com/Phorepoc/adaptation-pinephone).
 
-## Layout
+## What's in here
 
 ```
-os/src/phorepoc-arm/a64/    the SoC drivers
-os/src/phorepoc-arm/mali/   the Mali-400 (Utgard) kernel driver
-os/src/phorepoc-arm/vde/    the video engine driver
-os/src/<component>/         user-side components and tests on these drivers (phevdec, phecam, phfs, ssya64 ...)
-registry/components_a64.py  this adaptation's components (merged into core's registry)
+os/src/phorepoc-arm/a64/    the chip's drivers
+os/src/phorepoc-arm/mali/   the Mali-400 GPU kernel driver
+os/src/phorepoc-arm/vde/    the video decoder driver
+os/src/<component>/         programs and tests that use these drivers (phevdec, phecam, phfs, ssya64 and others)
+registry/components_a64.py  the components this repository adds
 ```
 
-`os/` is laid over [core](https://github.com/Phorepoc/core)'s `os/` at build time, so paths match core's.
+At build time `os/` is laid over [core](https://github.com/Phorepoc/core)'s `os/`, so the paths line up with core's.
 
-**Status:** the components here build one by one with the pdk (`ph component build -b pinephone -arch arm <name>`). The
-PinePhone **image** (the ARM kernel and ROM link, the AArch64 boot shim, the U-Boot packaging) is not in the public
-pdk yet; it is being ported. Until then, the PC board is the one that builds a complete image.
+## Building
 
-## Third-party code
+You don't build this repository by itself. Check it out next to core, the [pdk](https://github.com/Phorepoc/pdk),
+adaptation-pinephone and mesa-symbian, and build the PinePhone image as the pdk README describes. `-b pinephone`
+brings this repository in.
 
-- `os/src/phorepoc-arm/a64/wlan/rtw88/`: Linux's rtw88 driver, dual-licensed GPL-2.0 OR BSD-3-Clause, used here under
-  BSD-3-Clause.
-- `os/src/phorepoc-arm/mali/mali_ldd.cpp`: derived from Linux's lima scheduler, dual-licensed GPL-2.0 OR MIT, used here
-  under MIT.
+## Code from Linux
 
-Not included (GPL-only): the display scaler coefficient table (`a64_vi_coeff.h`) has to be replaced with our own before
-the display driver builds.
+Two drivers started from Linux code that's offered under a choice of licenses, and we use the permissive one:
 
-## Licence
+- The Wi-Fi driver in `os/src/phorepoc-arm/a64/wlan/rtw88/` is Linux's rtw88, used under BSD-3-Clause.
+- The GPU scheduler in `os/src/phorepoc-arm/mali/mali_ldd.cpp` comes from Linux's lima driver, used under MIT.
 
-Apache-2.0 for our own code (see `LICENSES/Apache-2.0.txt`); the Nokia-derived files are our updated versions under EPL-2.0 with GPL-2.0-or-later as a Secondary License (`LICENSES/EPL-2.0.txt`; relicensed from EPL-1.0 under its section 7); unmodified Symbian sources are fetched from upstream and remain EPL-1.0, copyright The Phorepoc Authors (`AUTHORS`, `NOTICE`), except the third-party files above.
+One thing we can't ship is the table of coefficients the display scaler uses, because the only source we know of is
+GPL-only. Without it, video at its own size looks right, and scaled video is a bit soft.
 
-Contributions are welcome under the same terms: add yourself to `AUTHORS`.
+## License
+
+Code we wrote is Apache-2.0. Symbian files we've changed are EPL-2.0, with GPL-2.0-or-later as a Secondary License, and
+Symbian files we use unchanged stay EPL-1.0. The code from Linux keeps the license named above. The license texts are in
+`LICENSES/`.
+
+Contributions are welcome under the same terms. Add your name to `AUTHORS` in your first pull request.
