@@ -45,7 +45,7 @@ COMPONENTS = {
     #   ARM_VFP=1 ./ph arm phgl libegl phesgtest   (+ the Mali LDD for EMaliCtrlImportAddress); SSM_TEST=phesgtest
     "phesgtest": dict(mmp=os.path.join(OS_ROOT, "src/phesgtest/phesgtest.mmp"), test=True),
     #   NEON: the colour-conversion intrinsics need -march=armv7-a -mfpu=neon-vfpv4 (softfp: links with the rest of the ROM; D16-D31 are saved)
-    "pheencbench": dict(mmp=os.path.join(OS_ROOT, "src/pheencbench/pheencbench.mmp"), test=True, device=True, cdriver=True, allow_wsd=True,
+    "pheencbench": dict(needs="codecpack", mmp=os.path.join(OS_ROOT, "src/pheencbench/pheencbench.mmp"), test=True, device=True, cdriver=True, allow_wsd=True,
                         static_ctors=True, rtti=False, defs=["__SOFTFP="], stack=0x40000,
                         flags=["-march=armv7-a", "-mfpu=neon-vfpv4", "-mfloat-abi=softfp", "-mword-relocations"],
                         arm_archives=[".codecpack/openh264-arm/lib/libopenh264enc.a"]),
