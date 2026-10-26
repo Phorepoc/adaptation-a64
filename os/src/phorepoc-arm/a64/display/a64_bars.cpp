@@ -15,6 +15,7 @@
 #include <kernel/kernel.h>
 #include <kernel/kern_priv.h>
 #include <e32keys.h>
+extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
@@ -404,6 +405,7 @@ static void Key(TUint aScan, TBool aDown)
 	{
 	TRawEvent ev;
 	ev.Set(aDown ? TRawEvent::EKeyDown : TRawEvent::EKeyUp, (TInt)aScan);
+	A64CpuInputBoost();
 	Kern::AddEvent(ev);
 	}
 

@@ -9,6 +9,7 @@
 #include <kernel/kern_priv.h>
 #include <assp.h>
 #include <e32keys.h>
+extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char*);
 extern "C" void ekseam_puthex(unsigned);
@@ -76,12 +77,14 @@ void DA64Keys::DfcFn(TAny* aPtr)
 		{
 		k.iHeld = (TInt)k.iData <= KVolPlusMaxCode ? EStdKeyIncVolume : EStdKeyDecVolume;
 		ev.Set(TRawEvent::EKeyDown, k.iHeld);
+		A64CpuInputBoost();
 		Kern::AddEvent(ev);
 		ekseam_puts("[EKERN][keys] volume key down, adc="); ekseam_puthex(k.iData);
 		}
 	if ((ints & KIntKeyUp) && k.iHeld)
 		{
 		ev.Set(TRawEvent::EKeyUp, k.iHeld);
+		A64CpuInputBoost();
 		Kern::AddEvent(ev);
 		k.iHeld = 0;
 		}

@@ -21,6 +21,7 @@
 #include <e32keys.h>
 #include "syborg_priv.h"
 #include "phlz4.h"
+extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_board_log(unsigned c);
 extern "C" const char* ekseam_board_log_buf(unsigned* aLen);
@@ -667,6 +668,7 @@ void DPhLink::Command(TUint32 aA, TUint32 aB)
 		{
 		TRawEvent ev;
 		ev.Set(aB ? TRawEvent::EKeyUp : TRawEvent::EKeyDown, (TInt)aA);
+		A64CpuInputBoost();
 		Kern::AddEvent(ev);
 		PTr("phlink: K "); PTrHex(aA); PTr(aB ? " up\n" : " down\n");
 		break;
@@ -690,6 +692,7 @@ void DPhLink::Command(TUint32 aA, TUint32 aB)
 					{
 					TRawEvent ev;
 					ev.Set(act == 0 ? TRawEvent::EKeyDown : TRawEvent::EKeyUp, held);
+					A64CpuInputBoost();
 					Kern::AddEvent(ev);
 					}
 				if (act == 2) held = 0;
@@ -710,6 +713,7 @@ void DPhLink::Command(TUint32 aA, TUint32 aB)
 		const TRawEvent::TType t = aB == 0 ? TRawEvent::EButton1Down : (aB == 1 ? TRawEvent::EPointerMove : TRawEvent::EButton1Up);
 		TRawEvent ev;
 		ev.Set(t, (TInt)(aA & 0xFFFF), (TInt)(aA >> 16), 0);	// Z = 0: see a64touch.cpp
+		A64CpuInputBoost();
 		Kern::AddEvent(ev);
 		if (aB != 1)
 			{ PTr("phlink: T "); PTrHex(aA); PTr(aB ? " up\n" : " down\n"); }

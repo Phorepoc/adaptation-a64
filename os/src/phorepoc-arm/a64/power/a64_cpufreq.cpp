@@ -239,6 +239,32 @@ static TUint32 GovTimeIn[KOppCount];	// ticks per OPP since the last summary
 
 static void GovTimerFn(TAny*) { GovDfc->Add(); }
 
+// Input boost (2026-10-27): UI work comes in bursts (a 10-30 ms frame per 100 ms window never reaches the 70 % step-up
+// load), so swipes ran at 648 MHz. Any input event (touch, keys, PhoneLab's injected input) holds the highest allowed OPP
+// for KBoostTicks governor periods after the last event; the jump itself runs at once on the governor's DFC queue.
+const TInt KBoostTicks = 10;		// 1 s
+static volatile TInt GovBoostTicks;
+static TDfc* GovBoostDfc;
+static TInt GovBoosts;
+static void GovBoostRun(TAny*)
+	{
+	if (!A64UploadActive() && TheOpp != GovCap && A64CpuSetOpp(GovCap) == KErrNone)
+		{
+		++GovSwitches;
+		++GovBoosts;
+		}
+	}
+extern "C" void A64CpuInputBoost()
+	{
+	GovBoostTicks = KBoostTicks;
+	if (!GovBoostDfc || TheOpp == GovCap)
+		return;
+	if (NKern::CurrentContext() == NKern::EInterrupt)
+		GovBoostDfc->Add();
+	else
+		GovBoostDfc->Enque();
+	}
+
 // Power plan P5: core control. Screen off (the lights-off state of the screensaver / SysAp) and a low load for 2 s ->
 // ONE active core (NKern::SetNumberOfActiveCpus(1): the kernel migrates the threads to CPU 0 and retires the others
 // through the idle handler, power/a64_idle.cpp -> PSCI CPU_OFF). Screen on, an upload, or CPU 0 >= 60 % busy -> all
@@ -321,7 +347,9 @@ static void GovRun(TAny*)
 		return;
 		}
 	TInt want = cur;
-	if (maxB >= 70)
+	if (GovBoostTicks > 0)
+		--GovBoostTicks, want = GovCap, GovLowTicks = 0;
+	else if (maxB >= 70)
 		want = GovCap, GovLowTicks = 0;
 	else if (maxB < 25)
 		{
@@ -349,6 +377,8 @@ static void GovRun(TAny*)
 			ekseam_puts(" "); ekseam_puthex(GovTimeIn[i]);
 			GovTimeIn[i] = 0;
 			}
+		ekseam_puts(" boosts="); ekseam_puthex(GovBoosts);
+		GovBoosts = 0;
 		ekseam_puts(" cap="); ekseam_puthex(GovCap); ekseam_puts(" cpu mC="); ekseam_puthex((unsigned)mC);
 		ekseam_puts("\n");
 #ifdef __SMP__
@@ -372,7 +402,8 @@ extern "C" TInt A64CpuGovernorStart()
 		return r;
 	GovDfc = new TDfc(GovRun, NULL, GovQ, 1);
 	GovTimer = new NTimer(GovTimerFn, NULL);
-	if (!GovDfc || !GovTimer)
+	GovBoostDfc = new TDfc(GovBoostRun, NULL, GovQ, 2);
+	if (!GovDfc || !GovTimer || !GovBoostDfc)
 		return KErrNoMemory;
 	TheQuiet = ETrue;
 	TUint b[4];

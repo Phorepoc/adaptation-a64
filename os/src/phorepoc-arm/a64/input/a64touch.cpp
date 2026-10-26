@@ -16,6 +16,7 @@
 #include <e32keys.h>
 #include <assp.h>
 #include <syborg_priv.h>
+extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char*);
 extern "C" void ekseam_puthex(unsigned);
@@ -234,6 +235,7 @@ void DA64Touch::Poll()
 					iKey = px < KPanelW / 3 ? EStdKeyYes : (px < 2 * KPanelW / 3 ? EStdKeyApplication0 : EStdKeyNo);
 					TRawEvent ev;
 					ev.Set(TRawEvent::EKeyDown, iKey);
+					A64CpuInputBoost();
 					Kern::AddEvent(ev);
 					ekseam_puts("[EKERN][touch] soft key down "); ekseam_puthex((unsigned)iKey);
 					}
@@ -264,6 +266,7 @@ void DA64Touch::Poll()
 		{
 		TRawEvent ev;
 		ev.Set(TRawEvent::EKeyUp, iKey);
+		A64CpuInputBoost();
 		Kern::AddEvent(ev);
 		ekseam_puts("[EKERN][touch] soft key up "); ekseam_puthex((unsigned)iKey);
 		iKey = 0;
@@ -284,6 +287,7 @@ void DA64Touch::Event(TRawEvent::TType aType)
 	// pressure, but only with HAL 3D-pointer thresholds, which this board does not set). NOT the cause of "lists ignore
 	// PhoneLab taps" (that was S60 highlight mode: after a key press the first tap only leaves it) -- kept: deterministic.
 	ev.Set(aType, iX, iY, 0);
+	A64CpuInputBoost();
 	Kern::AddEvent(ev);
 	if (aType != TRawEvent::EPointerMove)
 		{

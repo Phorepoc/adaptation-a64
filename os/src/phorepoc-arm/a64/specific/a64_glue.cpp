@@ -22,6 +22,7 @@
 #include "syborg_priv.h"
 #include <kernel/kpower.h>
 #include <e32keys.h>
+extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
@@ -1807,6 +1808,7 @@ static void PowerKeyEvent(TBool aDown)
 	down = aDown;
 	TRawEvent ev;
 	ev.Set(aDown ? TRawEvent::EKeyDown : TRawEvent::EKeyUp, EStdKeyDevice2, 0);
+	A64CpuInputBoost();
 	Kern::AddEvent(ev);
 	ekseam_puts(aDown ? "[EKERN][key] power down\n" : "[EKERN][key] power up\n");
 	}
