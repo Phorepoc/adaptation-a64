@@ -1376,6 +1376,20 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 		ekseam_puts("[EKERN][exc] contextidr="); ekseam_puthex(cid);
 		ekseam_puts("[EKERN][exc] PAR(ATS1CUW far)="); ekseam_puthex(par);
 	}
+	if ((e[23] & 0x1F) == 0x10)
+		{	// a user fault: the ROM code addresses among the top 64 stack words = the likely callers (no frame pointers
+			// to walk); symbolize them with the image's .map. At most 12 lines.
+		unsigned sp = e[19], shown = 0;
+		for (unsigned i = 0; i < 64 && shown < 12; ++i, sp += 4)
+			{
+			if ((sp & 0xFFF) == 0 || i == 0)
+				if (!UserCanAccess(sp, false))
+					break;
+			const unsigned w = *(volatile unsigned*)sp;
+			if (w >= 0x80000000u && w < 0x90000000u)
+				{ ekseam_puts("[EKERN][exc] stack ret?="); ekseam_puthex(w); ++shown; }
+			}
+		}
 #endif
 	__real__ZN3Exc8DispatchEPvP7NThread(aInfo, aNThread);
 	}
