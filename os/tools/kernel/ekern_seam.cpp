@@ -1202,6 +1202,120 @@ static bool EmulateSwp(volatile unsigned* e)
 		{ ekseam_puts("[EKERN][swp] emulated SWP at pc="); ekseam_puthex(pc); ekseam_puts("[EKERN][swp]   count="); ekseam_puthex(SwpEmulated); }
 	return true;
 	}
+
+// Misaligned LDRD/STRD/LDM/STM emulation (PinePhone, 2026-10-26). SCTLR.A is off (a64/config.inc), so LDR/STR/LDRH/STRH
+// work on any address, but the doubleword and multiple forms still need word alignment. The 2010 userland was built by
+// RVCT, which reads a 64-bit member as two LDRs; g++ uses LDRD/LDM, and some code reads records that sit only 2-aligned
+// in a buffer (MdS: mdcserializationbuffer pads to even sizes; the harvester and the MPX collection server died in
+// CMdEProperty::NewLC, fsr 1). Linux answers the same way (arch/arm/mm/alignment.c): on a user alignment fault whose
+// instruction is one of these, do the access bytewise and step the PC. Each touched page is checked with ATS1CUR/W
+// first, so a bad address still ends in the normal KERN-EXEC 3.
+static unsigned AlignEmulated;
+static bool UserCanAccess(unsigned aAddr, bool aWrite)
+	{
+	unsigned par;
+	if (aWrite)
+		__asm__ volatile("mcr p15, 0, %1, c7, c8, 3\n isb\n mrc p15, 0, %0, c7, c4, 0" : "=r"(par) : "r"(aAddr) : "memory");
+	else
+		__asm__ volatile("mcr p15, 0, %1, c7, c8, 2\n isb\n mrc p15, 0, %0, c7, c4, 0" : "=r"(par) : "r"(aAddr) : "memory");
+	return !(par & 1);
+	}
+static bool UserRangeOk(unsigned aAddr, unsigned aLen, bool aWrite)
+	{
+	return UserCanAccess(aAddr, aWrite) && UserCanAccess(aAddr + aLen - 1, aWrite);
+	}
+static unsigned LoadWord(unsigned aAddr)
+	{
+	const volatile unsigned char* p = (const volatile unsigned char*)aAddr;
+	return p[0] | (p[1] << 8) | (p[2] << 16) | ((unsigned)p[3] << 24);
+	}
+static void StoreWord(unsigned aAddr, unsigned aValue)
+	{
+	volatile unsigned char* p = (volatile unsigned char*)aAddr;
+	p[0] = aValue; p[1] = aValue >> 8; p[2] = aValue >> 16; p[3] = aValue >> 24;
+	}
+static unsigned GetReg(volatile unsigned* e, unsigned r, unsigned aPc)
+	{
+	return r < 13 ? e[6 + r] : r == 13 ? e[19] : r == 14 ? e[20] : aPc + 8;
+	}
+static void SetReg(volatile unsigned* e, unsigned r, unsigned v)
+	{
+	if (r < 13) e[6 + r] = v; else if (r == 13) e[19] = v; else if (r == 14) e[20] = v; else e[22] = v;
+	}
+static bool EmulateAlign(volatile unsigned* e)
+	{
+	// a data abort, alignment fault (short-descriptor FS = 0b00001), from user mode in ARM state
+	if (e[21] != 1 || (e[1] & 0x40F) != 1 || (e[23] & 0x1F) != 0x10 || (e[23] & (1u << 5)))
+		return false;
+	const unsigned pc = e[22];
+	if (!UserCanAccess(pc, false))
+		return false;
+	const unsigned instr = *(volatile unsigned*)pc;
+	if ((instr >> 28) == 0xF)
+		return false;
+	const unsigned rn = (instr >> 16) & 0xF;
+	const bool p = instr & (1u << 24), u = instr & (1u << 23), w = instr & (1u << 21);
+	unsigned base = GetReg(e, rn, pc);
+	bool pcLoaded = false;
+	if ((instr & 0x0E1000D0u) == 0x000000D0u)	// LDRD (bits 6:5 = 10) / STRD (11), immediate or register offset
+		{
+		const bool store = instr & (1u << 5);
+		const unsigned rt = (instr >> 12) & 0xF;
+		if ((rt & 1) || rt == 14 || rn == 15)
+			return false;
+		const unsigned off = (instr & (1u << 22)) ? (((instr >> 4) & 0xF0) | (instr & 0xF)) : GetReg(e, instr & 0xF, pc);
+		const unsigned moved = u ? base + off : base - off;
+		const unsigned addr = p ? moved : base;
+		if (!UserRangeOk(addr, 8, store))
+			return false;
+		if (store)
+			{ StoreWord(addr, GetReg(e, rt, pc)); StoreWord(addr + 4, GetReg(e, rt + 1, pc)); }
+		else
+			{ const unsigned lo = LoadWord(addr), hi = LoadWord(addr + 4); SetReg(e, rt, lo); SetReg(e, rt + 1, hi); }
+		if (!p || w)
+			SetReg(e, rn, moved);
+		}
+	else if ((instr & 0x0E000000u) == 0x08000000u)	// LDM / STM (not the user-bank S forms)
+		{
+		if (instr & (1u << 22))
+			return false;
+		const bool load = instr & (1u << 20);
+		const unsigned list = instr & 0xFFFF;
+		unsigned n = 0;
+		for (unsigned b = list; b; b &= b - 1) ++n;
+		if (!n || rn == 15)
+			return false;
+		unsigned addr = u ? (p ? base + 4 : base) : (p ? base - 4 * n : base - 4 * n + 4);
+		const unsigned end = u ? base + 4 * n : base - 4 * n;
+		if (!UserRangeOk(addr, 4 * n, !load))
+			return false;
+		if (w)
+			SetReg(e, rn, end);			// (a loaded base below then wins, as on the CPU)
+		for (unsigned r = 0; r < 16; ++r)
+			{
+			if (!(list & (1u << r)))
+				continue;
+			if (load)
+				{
+				const unsigned v = LoadWord(addr);
+				if (r == 15)
+					{ e[22] = v & ~1u; if (v & 1) e[23] |= 1u << 5; pcLoaded = true; }
+				else
+					SetReg(e, r, v);
+				}
+			else
+				StoreWord(addr, GetReg(e, r, pc));
+			addr += 4;
+			}
+		}
+	else
+		return false;
+	if (!pcLoaded)
+		e[22] = pc + 4;
+	if (++AlignEmulated <= 4 || (AlignEmulated & 0xFFF) == 0)
+		{ ekseam_puts("[EKERN][align] emulated misaligned access at pc="); ekseam_puthex(pc); ekseam_puts("[EKERN][align]   count="); ekseam_puthex(AlignEmulated); }
+	return true;
+	}
 #endif
 
 extern "C" void __real__ZN3Exc8DispatchEPvP7NThread(void*, void*);
@@ -1209,7 +1323,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 	{
 	volatile unsigned* e = (volatile unsigned*)aInfo;
 #ifdef __SMP__
-	if (EmulateSwp(e))
+	if (EmulateSwp(e) || EmulateAlign(e))
 		return;
 #ifdef __CPU_HAS_VFP
 	if (e[21] == 2 && !(e[23] & (1u << 5)))	// a user VFP/NEON UNDEF = the kernel's lazy per-thread VFP enable
