@@ -1515,6 +1515,62 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 			pc += 4;
 			continue;
 			}
+		if ((op & 0x0C000000u) == 0 && ((op & (1u << 25)) || !(op & 0x10u)) && !(op & (1u << 20)))
+			{																// integer data processing, no flags
+			const unsigned opc = (op >> 21) & 0xF, rd = (op >> 12) & 0xF, rn = (op >> 16) & 0xF;
+			unsigned b;
+			if (op & (1u << 25))
+				{
+				const unsigned rot = ((op >> 8) & 0xF) * 2, i8 = op & 0xFF;
+				b = rot ? (i8 >> rot) | (i8 << (32 - rot)) : i8;
+				}
+			else
+				{
+				const unsigned m = GetReg(e, op & 0xF, pc), sh = (op >> 7) & 0x1F, ty = (op >> 5) & 3;
+				if (ty == 0) b = m << sh;
+				else if (ty == 1) b = sh ? m >> sh : 0;
+				else if (ty == 2) b = (unsigned)((int)m >> (sh ? sh : 31));
+				else if (sh) b = (m >> sh) | (m << (32 - sh));
+				else { why = "rrx"; break; }
+				}
+			const unsigned a = GetReg(e, rn, pc);
+			unsigned r;
+			switch (opc)
+				{
+				case 0: r = a & b; break;
+				case 1: r = a ^ b; break;
+				case 2: r = a - b; break;
+				case 3: r = b - a; break;
+				case 4: r = a + b; break;
+				case 12: r = a | b; break;
+				case 13: r = b; break;
+				case 14: r = a & ~b; break;
+				case 15: r = ~b; break;
+				default: r = 0; why = "alu op"; break;
+				}
+			if (why)
+				break;
+			if (rd == 15)
+				{ why = "alu pc"; break; }
+			SetReg(e, rd, r);
+			pc += 4;
+			continue;
+			}
+		if ((op & 0x0F400000u) == 0x05000000u && !(op & (1u << 21)))		// ldr/str word, [Rn, #+-imm12]
+			{
+			const unsigned rn = (op >> 16) & 0xF, rd = (op >> 12) & 0xF, imm = op & 0xFFF;
+			const unsigned base = rn == 15 ? (pc + 8) : GetReg(e, rn, pc);
+			const unsigned addr = (op & (1u << 23)) ? base + imm : base - imm;
+			const bool load = op & (1u << 20);
+			if (rd == 15 || !UserRangeOk(addr, 4, !load))
+				{ why = "ldr"; break; }
+			if (load)
+				SetReg(e, rd, LoadWord(addr));
+			else
+				StoreWord(addr, GetReg(e, rd, pc));
+			pc += 4;
+			continue;
+			}
 		why = "instruction";
 		break;
 		}
