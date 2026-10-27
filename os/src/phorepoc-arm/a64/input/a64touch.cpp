@@ -36,6 +36,7 @@ const TUint KBusGate3 = 0x6C, KBusRst4 = 0x2D8, KPhCfg0 = 0x800 + 7 * 0x24;	// C
 const TUint KTwiData = 0x08, KTwiCntr = 0x0C, KTwiStat = 0x10, KTwiCcr = 0x14, KTwiSrst = 0x18, KTwiEfr = 0x1C;
 const TUint32 KBusEn = 0x40, KMSta = 0x20, KMStp = 0x10, KIntFlag = 0x08, KAAck = 0x04;
 const TUint8 KAddr = 0x5D;
+extern "C" volatile TInt A64TouchSupplyState;		// a64_display.cpp: 1 = our supply is off, 2 = back on (reset us)
 
 class DA64Touch
 	{
@@ -214,6 +215,15 @@ void DA64Touch::PollDfc(TAny* aPtr)
 
 void DA64Touch::Poll()
 	{
+	if (A64TouchSupplyState == 1)
+		return;										// the display init has our supply off: stay off the bus
+	if (A64TouchSupplyState == 2)
+		{
+		A64TouchSupplyState = 0;
+		NKern::Sleep(NKern::TimerTicks(20));
+		GtReset();
+		return;
+		}
 	TUint8 s = 0;
 	if (Read(0x814E, &s, 1) != KErrNone)
 		{

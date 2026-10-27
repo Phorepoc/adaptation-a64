@@ -306,6 +306,10 @@ extern "C" TInt A64PmicReadBatt(TInt* aOut)
 	return (aOut[0] < 0 || aOut[1] < 0 || mv < 0) ? KErrGeneral : KErrNone;
 	}
 
+// 0 = the touch supply is up, 1 = the display init has it off (no I2C to an unpowered GT9xx: it back-powers through
+// its pins and misses its power-on reset), 2 = back on, the touch driver resets the chip and sets 0 (a64touch.cpp)
+extern "C" { volatile TInt A64TouchSupplyState = 0; }
+
 // A read-modify-write of one AXP803 register for the other drivers (the Bluetooth/WiFi IO rail DLDO4, ...).
 extern "C" TInt A64PmicUpdateReg(TUint8 aReg, TUint8 aClr, TUint8 aSet)
 	{
@@ -1323,6 +1327,7 @@ static TBool DisplayUpBody()
 	// IOVCC 1.8 V); 0x90 = 7 = GPIO0-LDO (panel VCC 3.3 V) off. pinephone_pmic_init re-enables all three.
 	if (!Resuming)		// (a resume comes from a screen-off that already had DLDO1/2 off and the panel in reset)
 	{
+	A64TouchSupplyState = 1;			// GPIO0-LDO is also the touch chip's supply: the touch poll stays off its bus
 	const TInt v = a64_rsb_read(0x2d, 0x12);
 	if (v >= 0)
 		a64_rsb_write(0x2d, 0x12, (TUint8)(v & ~0x18));
@@ -1335,6 +1340,8 @@ static TBool DisplayUpBody()
 	}
 	const TBool railsOk = Step("pmic (AXP803 rails)", pinephone_pmic_init());
 	RsbUnlock();
+	if (A64TouchSupplyState == 1)
+		A64TouchSupplyState = 2;		// back on: the touch driver runs the GT9xx reset
 	if (!railsOk) return EFalse;
 	ph_mdelay(15);
 	if (!Step("mipi dsi enable", a64_mipi_dsi_enable())) return EFalse;
