@@ -1222,6 +1222,13 @@ static TBool UiGuardTripped()
 		{
 		said = ETrue;
 		ekseam_puts(why);
+		// how long it waited and the limit: a slow (trace-heavy) image whose HWRM server -- the ping source -- starts after
+		// the boot window looks like a random reset otherwise (a ping within the watchdog's ~16 s still rescues the boot)
+		ekseam_puts("[EKERN][guard] waited s=");
+		ekseam_puthex((unsigned)((now - start) * NKern::TickPeriod() / 1000000));
+		ekseam_puts(" boot limit s=");
+		ekseam_puthex((unsigned)UiBootGuardS);
+		ekseam_puts("\n");
 		A64SdFlush(0x0ff);
 		}
 	return ETrue;
