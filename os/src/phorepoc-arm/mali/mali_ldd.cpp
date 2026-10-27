@@ -115,6 +115,8 @@ struct TMaliImportRec
 	TInt iPages;
 	TLinAddr iKernLin;		// the kernel's mapping (cache maintenance)
 	TUint32 iMapAttr;
+	TPhysicalPinObject* iPin;	// the pages stay put while the GPU maps them (a shared chunk's pages are movable:
+							// RAM defrag moved them under long-lived imports -- the GPU read stale and foreign pages)
 	};
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -510,9 +512,6 @@ TInt DMaliDevice::StartPp(DMaliChannel* aCh, TMaliPpFrame& aFrame, TPhysAddr aPd
 			MmuSwitch(MaliOffPpMmu(i), aPd);
 		p.iVm = aPd;
 		}
-	else
-		for (TInt i = 0; i < iBoard.iNumPp; ++i)		// TEST: stale translations of a reused import range?
-			W(MaliOffPpMmu(i) + KMmuCommand, KMmuCmdZapCache);
 	p.iOwner = aCh;
 	p.iError = EFalse;
 	p.iResult = KErrNone;
@@ -874,15 +873,32 @@ TInt DMaliChannel::Import(TMaliImport& aImp, TBool aByAddress)
 		r = KErrNoMemory;
 	TLinAddr lin = 0;
 	TUint32 attr = 0;
+	TPhysicalPinObject* pin = NULL;
 	if (r == KErrNone)
 		{
 		TPhysAddr phys;
 		r = Kern::ChunkPhysicalAddress(chunk, chunkOffset, aImp.iSize, lin, attr, phys, list);
-		if (r == 0)
-			for (TInt i = 0; i < pages; ++i)
-				list[i] = phys + (i << 12);
 		if (r > 0)
 			r = KErrNone;
+		}
+	if (r == KErrNone)
+		r = Kern::CreatePhysicalPinObject(pin);
+	if (r == KErrNone)
+		{
+		const TLinAddr user = aByAddress ? (TLinAddr)aImp.iOffset : (TLinAddr)Kern::ChunkUserBase(chunk, iClient) + chunkOffset;
+		TPhysAddr phys;
+		TUint32 pinAttr = 0;
+		TUint colour = 0;
+		r = Kern::PinPhysicalMemory(pin, user, aImp.iSize, ETrue, phys, list, pinAttr, colour, iClient);
+		if (r == KErrNone && phys != KPhysAddrInvalid)
+			for (TInt i = 0; i < pages; ++i)
+				list[i] = phys + (i << 12);
+		if (r != KErrNone)
+			{
+			LogHex("[EKERN][mali] import pin failed r=", (TUint32)r);
+			Kern::DestroyPhysicalPinObject(pin);
+			pin = NULL;
+			}
 		}
 	TInt first = -1;
 	if (r == KErrNone)
@@ -903,12 +919,16 @@ TInt DMaliChannel::Import(TMaliImport& aImp, TBool aByAddress)
 			rec.iPages = pages;
 			rec.iKernLin = lin;
 			rec.iMapAttr = attr;
+			rec.iPin = pin;
+			pin = NULL;
 			aImp.iVa = va;
-			static TInt said;
-			if (said++ < 24)		// the cache maintenance an import gets follows this attribute
-				{ LogHex("[EKERN][mali] import pages=", pages); LogHex("[EKERN][mali] import lin=", lin); LogHex("[EKERN][mali] import attr=", attr); }
 			}
 		Kern::MutexSignal(*iDev->iLock);
+		}
+	if (pin)
+		{
+		Kern::UnpinPhysicalMemory(pin);
+		Kern::DestroyPhysicalPinObject(pin);
 		}
 	if (r != KErrNone && chunk)
 		Kern::ChunkClose(chunk);
@@ -938,6 +958,11 @@ TInt DMaliChannel::Unimport(TUint32 aVa, TBool aLocked)
 		Kern::MutexSignal(*iDev->iLock);
 	DChunk* chunk = rec.iChunk;
 	rec.iChunk = NULL;
+	if (rec.iPin)
+		{
+		Kern::UnpinPhysicalMemory(rec.iPin);
+		Kern::DestroyPhysicalPinObject(rec.iPin);
+		}
 	Kern::ChunkClose(chunk);
 	NKern::ThreadLeaveCS();
 	return KErrNone;
