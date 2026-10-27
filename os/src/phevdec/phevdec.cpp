@@ -895,6 +895,8 @@ TBool CPheVideoDecoder::StepSw()
 		gTSend += Tk() - t0;
 		if (r < 0)
 			{
+			if (iErrors < 4)
+				RDebug::Printf("PH: dvp.sw send error %d (%d bytes at %d)", r, end - iCursor, iCursor);
 			if (iErrors++ == 0)
 				iFirstError = r;
 			++iBitCounters.iLostPackets;
@@ -924,6 +926,8 @@ void CPheVideoDecoder::ReceiveSw()
 		gTPeek += Tk() - t0;
 		if (r < 0)
 			{
+			if (iErrors < 4)
+				RDebug::Printf("PH: dvp.sw receive error %d", r);
 			if (iErrors++ == 0)
 				iFirstError = r;
 			++iBitCounters.iLostPackets;
