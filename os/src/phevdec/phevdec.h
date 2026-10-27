@@ -154,7 +154,13 @@ public:
 
 private:
 	enum TCodec { ENoCodec, EH264, EMpeg2, EMpeg4 };
+#ifdef PHE_SW
+	// software: the coded backlog lives in the CLIENT's heap (iStream doubles as it grows): a 60 s clip fed at once into
+	// a game's heap failed to grow 8 -> 16 MB (KErrNoMemory, Let's Golf 2 intro, 2026-10-27) -- keep it small
+	enum { KMaxInput = 12, KMaxOut = 40, KPreDecoderMax = 1 << 20, KSliceBuf = 1 << 20, KArenaMb = 64 };
+#else
 	enum { KMaxInput = 12, KMaxOut = 40, KPreDecoderMax = 8 << 20, KSliceBuf = 1 << 20, KArenaMb = 64 };
+#endif
 	struct TInBuf
 		{
 		TVideoInputBuffer iBuf;
