@@ -903,7 +903,7 @@ TInt DMaliChannel::Import(TMaliImport& aImp, TBool aByAddress)
 			aImp.iVa = va;
 			static TInt said;
 			if (said++ < 24)		// the cache maintenance an import gets follows this attribute
-				Kern::Printf("[mali] import %d pages lin %08x attr %08x", pages, lin, attr);
+				{ LogHex("[EKERN][mali] import pages=", pages); LogHex("[EKERN][mali] import lin=", lin); LogHex("[EKERN][mali] import attr=", attr); }
 			}
 		Kern::MutexSignal(*iDev->iLock);
 		}
