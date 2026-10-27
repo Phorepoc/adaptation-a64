@@ -531,6 +531,7 @@ TVideoInputBuffer* CPheVideoDecoder::GetBufferL(TUint aBufferSize)
 		}
 	if (!b->iData || (TUint)b->iData->Des().MaxLength() < aBufferSize)
 		{
+		RDebug::Printf("PH: dvp input buffer %d: %u B (asked %u, max input %d, backlog %u)", (TInt)(b - iIn), (aBufferSize > (TUint)iMaxInputSize ? aBufferSize : (TUint)iMaxInputSize), aBufferSize, iMaxInputSize, PreDecoderBufferBytes());
 		HBufC8* d = HBufC8::NewL((aBufferSize > (TUint)iMaxInputSize ? aBufferSize : (TUint)iMaxInputSize));
 		delete b->iData;
 		b->iData = d;
