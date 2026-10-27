@@ -39,7 +39,11 @@
 #include "ve_mpeg2.h"
 #endif
 
+#ifdef PHE_MP4V
+const TInt KPheVdecImplUid = 0xE70157FD;		// phevdecsw.dll (UID3 0xE70157FC): MPEG-4 Part 2 only, next to the VE decoder
+#else
 const TInt KPheVdecImplUid = 0xE70157C3;		// the decoder implementation (dll UID3 0xE70157C2)
+#endif
 
 #ifndef PHE_SW
 // the VE arena: bump allocation with recycling of same-sized blocks that nobody holds
@@ -149,7 +153,7 @@ public:
 	void Step();
 
 private:
-	enum TCodec { ENoCodec, EH264, EMpeg2 };
+	enum TCodec { ENoCodec, EH264, EMpeg2, EMpeg4 };
 	enum { KMaxInput = 12, KMaxOut = 40, KPreDecoderMax = 8 << 20, KSliceBuf = 1 << 20, KArenaMb = 64 };
 	struct TInBuf
 		{

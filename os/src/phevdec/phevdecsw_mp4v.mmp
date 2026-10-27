@@ -1,0 +1,26 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: Apache-2.0
+
+// phevdecsw_mp4v.mmp -- OURS (2026-10-27): phevdec.cpp built PHE_SW + PHE_MP4V as its OWN DevVideo decoder (phevdecsw.dll,
+// UIDs E70157FC / E70157FD) next to the A64 Video Engine one: MPEG-4 Part 2 only (video/mp4v-es -- the VE path has no
+// MPEG-4 decoder; game intro clips use it), decoded through the separately installed LGPL pheffmpeg.dll (codec 2).
+// Installed with pheffmpeg (sys/bin + resource/plugins), not part of the OS image.
+
+TARGET			phevdecsw.dll
+TARGETTYPE		PLUGIN
+UID				0x10009D8D 0xE70157FC
+CAPABILITY		All -TCB
+VENDORID		0
+
+MACRO			PHE_SW PHE_MP4V
+OS_LAYER_SYSTEMINCLUDE_SYMBIAN
+OS_LAYER_LIBC_SYSTEMINCLUDE
+USERINCLUDE		.
+SOURCEPATH		.
+SOURCE			phevdec.cpp h264_parser.cpp
+
+START RESOURCE	E70157FC.rss
+TARGET			phevdecsw.rsc
+END
+
+LIBRARY			euser.lib devvideo.lib hal.lib

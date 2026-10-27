@@ -26,6 +26,8 @@ COMPONENTS = {
                                  [f"resource\\phevde\\{s}.{x}=src/phevdetest/data/{s}.{x}"
                                   for s in ("hbase", "hmain", "hh8x8", "hcqm", "hhigh", "hmbaffm", "hmbaffh", "hpaff1", "hpaff2", "hpaff3", "hpaff4", "hpaffl") for x in ("h264", "fnv")]),
     "phevdec_sw": dict(mmp=os.path.join(OS_ROOT, "src/phevdec/phevdec_sw.mmp"), rom="phevdec.dll", allow_wsd=True),   # (stage-timing statics)
+    # OURS (2026-10-27): the MPEG-4 Part 2 software decoder beside the VE one (own UIDs; installed with pheffmpeg, not in the ROM)
+    "phevdecsw_mp4v": dict(mmp=os.path.join(OS_ROOT, "src/phevdec/phevdecsw_mp4v.mmp"), allow_wsd=True),
     # decoded back with the phevdec cores; "PH: venc" lines. SSM_TEST=phevenctest (no ROM data, no extra ROM_TAIL)
     "phevenctest": dict(mmp=os.path.join(OS_ROOT, "src/phevenctest/phevenctest.mmp"), test=True),
     # OURS (VE encoder rung 2, ve-encoder-plan.md section 11): 640x480 + 1280x720, IDR + 15 P, fixed QP 28 and rate control, decoded back

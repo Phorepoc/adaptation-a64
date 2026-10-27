@@ -19,7 +19,9 @@ static inline TUint32 Tk() { return User::FastCounter(); }
 #endif
 
 _LIT(KPheManufacturer, "Phorepoc");
-#ifdef PHE_SW
+#if defined(PHE_MP4V)
+_LIT(KPheIdentifier, "Software decoder (FFmpeg: MPEG-4 Part 2)");
+#elif defined(PHE_SW)
 _LIT(KPheIdentifier, "Software decoder (FFmpeg: H.264 / MPEG-2)");
 #else
 _LIT(KPheIdentifier, "A64 Video Engine decoder (H.264 / MPEG-2)");
@@ -28,6 +30,7 @@ _LIT8(KMimeH264, "video/H264");
 _LIT8(KMimeMpeg, "video/mpeg");
 _LIT8(KMimeMpeg2, "video/mpeg2");
 _LIT8(KMimeMp2v, "video/mp2v");
+_LIT8(KMimeMp4v, "video/mp4v-es");
 
 // ---------------------------------------------------------------------------------------------------------------
 // CPheVePool
@@ -184,8 +187,12 @@ CVideoDecoderInfo* CPheVideoDecoder::VideoDecoderInfoLC()
 	{
 	RPointerArray<CCompressedVideoFormat> formats;
 	CleanupResetAndDestroyPushL(formats);
+#ifdef PHE_MP4V
+	const TDesC8* mimes[] = { &KMimeMp4v };
+#else
 	const TDesC8* mimes[] = { &KMimeH264, &KMimeMpeg, &KMimeMpeg2, &KMimeMp2v };
-	for (TInt i = 0; i < 4; ++i)
+#endif
+	for (TUint i = 0; i < sizeof(mimes) / sizeof(mimes[0]); ++i)
 		{
 		CCompressedVideoFormat* f = CCompressedVideoFormat::NewL(*mimes[i]);
 		CleanupStack::PushL(f);
@@ -220,6 +227,8 @@ TVideoPictureHeader* CPheVideoDecoder::GetHeaderInformationL(TVideoDataUnitType 
 	Mem::FillZ(&iHeader, sizeof(iHeader));
 	iHeader.iProfile = iHeader.iLevel = iHeader.iVersion = -1;
 	iHeader.iIsRandomAccessible = ETrue;
+	if (iCodec == EMpeg4)
+		return NULL;						// (not parsed: the VOL header goes to libavcodec in band)
 	if (iCodec != EMpeg2)
 		{
 		size_t pos = 0, s = 0, e = 0;
@@ -293,6 +302,14 @@ void CPheVideoDecoder::SetInputFormatL(const CCompressedVideoFormat& aFormat, TV
 		codec = EH264;
 	else if (mime.CompareF(KMimeMpeg) == 0 || mime.CompareF(KMimeMpeg2) == 0 || mime.CompareF(KMimeMp2v) == 0)
 		codec = EMpeg2;
+#ifdef PHE_SW
+	else if (mime.CompareF(KMimeMp4v) == 0)
+		codec = EMpeg4;						// software only (pheffmpeg)
+#endif
+#ifdef PHE_MP4V
+	if (codec != EMpeg4)
+		codec = ENoCodec;
+#endif
 	if (codec == ENoCodec || aEncapsulation != EDuElementaryStream || !aDataInOrder
 		|| (aDataUnitType != EDuArbitraryStreamSection && aDataUnitType != EDuCodedPicture))
 		User::Leave(KErrNotSupported);
@@ -427,7 +444,7 @@ void CPheVideoDecoder::ConstructStateL()
 	if (!iFfOpen || !iFfSend || !iFfRecv || !iFfClose)
 		User::Leave(KErrNotSupported);
 	const TInt cpus = 1;								// decoder threads: frame threading (2) was slower on the 2-CPU VM (measured, host busy) and adds latency; the flag stays in pheffmpeg
-	iVid = iFfOpen(iCodec == EMpeg2 ? 1 : 0, (iComplete ? 0 : 1) | (cpus << 8));
+	iVid = iFfOpen(iCodec == EMpeg2 ? 1 : (iCodec == EMpeg4 ? 2 : 0), (iComplete ? 0 : 1) | (cpus << 8));
 	if (!iVid)
 		User::Leave(KErrNoMemory);
 	iMaxHeld = 6;
