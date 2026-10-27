@@ -53,6 +53,7 @@ private:
 	TInt Read(TUint16 aReg, TUint8* aBuf, TInt aLen);
 	TInt Write(TUint16 aReg, TUint8 aVal);
 	void Event(TRawEvent::TType aType);
+	void GtReset();
 private:
 	volatile TUint32* iTwi;
 	DPlatChunkHw* iTwiChunk;
@@ -177,6 +178,28 @@ TInt DA64Touch::Init()
 	return r;
 	}
 
+// The Goodix power-on reset (GT9xx datasheet; Linux goodix_reset): INT (PH4) and RST (PH11) driven low, RST released
+// while INT is still low (= I2C address 0x5D), INT low 50 ms more, then INT back to an input. Runs in the poll DFC.
+void DA64Touch::GtReset()
+	{
+	volatile TUint32* pio = (volatile TUint32*)iCcuChunk->LinearAddress();
+	volatile TUint32& cfg0 = pio[KPhCfg0 / 4];
+	volatile TUint32& cfg1 = pio[(KPhCfg0 + 4) / 4];
+	volatile TUint32& dat = pio[(KPhCfg0 + 0x10) / 4];
+	dat &= ~((1u << 4) | (1u << 11));
+	cfg0 = (cfg0 & ~(0xFu << 16)) | (1u << 16);			// PH4 output (low)
+	cfg1 = (cfg1 & ~(0xFu << 12)) | (1u << 12);			// PH11 output (low)
+	NKern::Sleep(NKern::TimerTicks(20));
+	dat |= 1u << 11;									// RST high, INT still low
+	NKern::Sleep(NKern::TimerTicks(50));
+	cfg0 &= ~(0xFu << 16);								// PH4 back to an input (the chip drives it)
+	NKern::Sleep(NKern::TimerTicks(100));
+	TUint8 id[4] = { 0, 0, 0, 0 };
+	const TInt r = Read(0x8140, id, 4);
+	ekseam_puts("[EKERN][touch] GT9xx reset, product id read r="); ekseam_puthex((unsigned)r);
+	ekseam_puts("[EKERN][touch]   id="); ekseam_puthex(id[0] | id[1] << 8 | id[2] << 16 | (TUint)id[3] << 24);
+	}
+
 void DA64Touch::TimerFn(TAny* aPtr)
 	{
 	((DA64Touch*)aPtr)->iDfc.Add();
@@ -205,7 +228,14 @@ void DA64Touch::Poll()
 		}
 	static TInt recoveredAt;
 	if (iErrors && recoveredAt != iErrors)
-		{ recoveredAt = iErrors; ekseam_puts("[EKERN][touch] reads recovered after errors="); ekseam_puthex((unsigned)iErrors); }
+		{
+		// the errors were the display init power-cycling GPIO0-LDO (the panel VCC, also the touch chip's supply):
+		// the GT9xx came back without the reset sequence that starts its scanning -- run it (address 0x5D)
+		recoveredAt = iErrors;
+		ekseam_puts("[EKERN][touch] reads recovered after errors="); ekseam_puthex((unsigned)iErrors);
+		GtReset();
+		return;
+		}
 	if (!(s & 0x80))
 		return;										// no new data
 	if (s & 0x0F)
