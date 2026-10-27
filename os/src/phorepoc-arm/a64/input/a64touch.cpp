@@ -196,10 +196,16 @@ void DA64Touch::Poll()
 		{
 		if (++iErrors <= 4 || (iErrors & 0x3FF) == 0)
 			{ ekseam_puts("[EKERN][touch] status read failed, errors="); ekseam_puthex((unsigned)iErrors); }
-		iTwi[KTwiSrst / 4] = 1;							// recover a stuck controller
+		iTwi[KTwiSrst / 4] = 1;							// recover a stuck controller: the soft reset clears the
+		for (TInt i = 0; i < 100000 && (iTwi[KTwiSrst / 4] & 1); ++i) {}	// clock setup too, so redo Init's
+		iTwi[KTwiCcr / 4] = (5 << 3) | 1;
+		iTwi[KTwiEfr / 4] = 0;
 		iTwi[KTwiCntr / 4] = KBusEn;
 		return;
 		}
+	static TInt recoveredAt;
+	if (iErrors && recoveredAt != iErrors)
+		{ recoveredAt = iErrors; ekseam_puts("[EKERN][touch] reads recovered after errors="); ekseam_puthex((unsigned)iErrors); }
 	if (!(s & 0x80))
 		return;										// no new data
 	if (s & 0x0F)
