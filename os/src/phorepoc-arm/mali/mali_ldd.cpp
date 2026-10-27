@@ -510,6 +510,9 @@ TInt DMaliDevice::StartPp(DMaliChannel* aCh, TMaliPpFrame& aFrame, TPhysAddr aPd
 			MmuSwitch(MaliOffPpMmu(i), aPd);
 		p.iVm = aPd;
 		}
+	else
+		for (TInt i = 0; i < iBoard.iNumPp; ++i)		// TEST: stale translations of a reused import range?
+			W(MaliOffPpMmu(i) + KMmuCommand, KMmuCmdZapCache);
 	p.iOwner = aCh;
 	p.iError = EFalse;
 	p.iResult = KErrNone;
