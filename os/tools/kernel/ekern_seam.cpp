@@ -1318,6 +1318,220 @@ static bool EmulateAlign(volatile unsigned* e)
 	}
 #endif
 
+#if defined(__SMP__) && defined(__CPU_HAS_VFP)
+// VFP short vectors (Let's Golf 2's black screen, 2026-10-27). ARM11's VFPv2 runs a data-processing instruction over a
+// vector of FPSCR.LEN+1 registers (bank-wise, FPSCR.STRIDE apart); RVCT game code uses it for matrix maths (bic/orr
+// FPSCR.LEN, vmsr, vmul/vmla.f32 on 4 lanes, vmsr back). ARMv8's AArch32 has no short vectors: the Cortex-A53 drops the
+// LEN/STRIDE write and runs every instruction on lane 0 only (the game's MVP came out with one value per column). The
+// loader (efile's sf_lepoc patch, ph_vfpvec.cpp) turns each LEN-setting `vmsr fpscr, Rt` of a RAM-loaded ARM image into
+// UDF #0x560<Rt>; here that trap interprets the instructions with vector semantics until the guest writes LEN back to
+// 0 -- what the Cortex-A8-era VFP support code did in software. Single precision only; anything it does not know ends
+// the interpretation at that instruction (lane-0 behaviour again, logged).
+TInt HandleVFPOperation(TAny* aPtr);
+static unsigned VfpVecTraps, VfpVecBails;
+static inline unsigned VfpFpexc() { unsigned v; __asm__ volatile(".fpu vfp\n vmrs %0, fpexc" : "=r"(v)); return v; }
+static inline unsigned VfpGetFpscr() { unsigned v; __asm__ volatile(".fpu vfp\n vmrs %0, fpscr" : "=r"(v)); return v; }
+static inline void VfpSetFpscr(unsigned v) { __asm__ volatile(".fpu vfp\n vmsr fpscr, %0" : : "r"(v) : "memory"); }
+static inline void VfpSave(unsigned* s) { __asm__ volatile(".fpu vfp\n vstmia %0, {s0-s31}" : : "r"(s) : "memory"); }
+static inline void VfpLoad(const unsigned* s) { __asm__ volatile(".fpu vfp\n vldmia %0, {s0-s31}" : : "r"(s) : "memory"); }
+
+// one scalar operation on the hardware (the user's FPSCR rounding / flush / cumulative flags apply): s0 = d, s1 = n, s2 = m
+static unsigned VfpScalar(unsigned aKind, unsigned d, unsigned n, unsigned m)
+	{
+	unsigned r = d;
+#define PH_VOP(ins) __asm__ volatile(".fpu vfp\n vmov s0, %1\n vmov s1, %2\n vmov s2, %3\n " ins "\n vmov %0, s0" \
+	                                 : "=r"(r) : "r"(d), "r"(n), "r"(m) : "memory")
+	switch (aKind)
+		{
+		case 0: PH_VOP("vmla.f32 s0, s1, s2"); break;
+		case 1: PH_VOP("vmls.f32 s0, s1, s2"); break;
+		case 2: PH_VOP("vnmls.f32 s0, s1, s2"); break;
+		case 3: PH_VOP("vnmla.f32 s0, s1, s2"); break;
+		case 4: PH_VOP("vmul.f32 s0, s1, s2"); break;
+		case 5: PH_VOP("vnmul.f32 s0, s1, s2"); break;
+		case 6: PH_VOP("vadd.f32 s0, s1, s2"); break;
+		case 7: PH_VOP("vsub.f32 s0, s1, s2"); break;
+		case 8: PH_VOP("vdiv.f32 s0, s1, s2"); break;
+		case 9: r = m; break;
+		case 10: PH_VOP("vabs.f32 s0, s2"); break;
+		case 11: PH_VOP("vneg.f32 s0, s2"); break;
+		case 12: PH_VOP("vsqrt.f32 s0, s2"); break;
+		case 13: PH_VOP("vcmp.f32 s1, s2"); break;		// the flags land in FPSCR; d unchanged
+		case 14: PH_VOP("vcmpe.f32 s1, s2"); break;
+		}
+#undef PH_VOP
+	return r;
+	}
+
+static unsigned VfpVecReg(unsigned aReg, unsigned aIndex, unsigned aStride)
+	{
+	return (aReg & ~7u) | ((aReg + aIndex * aStride) & 7u);
+	}
+
+static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
+	{
+	if (e[21] != 2 || (e[23] & (1u << 5)) || (e[23] & 0x1F) != 0x10)
+		return false;
+	unsigned pc = e[22];
+	if (!UserRangeOk(pc, 4, false) || (LoadWord(pc) & 0xFFFFFFF0u) != 0xE7F560F0u)
+		return false;
+	if (!(VfpFpexc() & (1u << 30)))
+		{
+		HandleVFPOperation(aInfo);			// load this thread's VFP context; the UDF traps again with VFP on
+		return true;
+		}
+	NKern::Lock();
+	if (!(VfpFpexc() & (1u << 30)))
+		{
+		NKern::Unlock();
+		return true;
+		}
+	unsigned s[32];
+	VfpSave(s);
+	unsigned vbits = 0;						// the guest's LEN|STRIDE (the hardware FPSCR never holds them)
+	bool done = false;
+	const char* why = 0;
+	for (int steps = 0; steps < 1024 && !done; ++steps)
+		{
+		if (!UserRangeOk(pc, 4, false))
+			{ why = "pc"; break; }
+		const unsigned op = LoadWord(pc);
+		const bool udf = (op & 0xFFFFFFF0u) == 0xE7F560F0u;
+		if (!udf && (op >> 28) != 0xE)
+			{ why = "cond"; break; }
+		if (udf || (op & 0x0FFF0FFFu) == 0x0EE10A10u)					// vmsr fpscr, Rt
+			{
+			const unsigned v = GetReg(e, udf ? (op & 0xF) : ((op >> 12) & 0xF), pc);
+			vbits = v & 0x00370000u;
+			VfpSetFpscr(v & ~0x00370000u);
+			pc += 4;
+			if (!vbits)
+				done = true;
+			continue;
+			}
+		if ((op & 0x0FFF0FFFu) == 0x0EF10A10u)							// vmrs Rt, fpscr
+			{
+			const unsigned v = VfpGetFpscr() | vbits, rt = (op >> 12) & 0xF;
+			if (rt == 15)
+				e[23] = (e[23] & 0x0FFFFFFFu) | (v & 0xF0000000u);
+			else
+				SetReg(e, rt, v);
+			pc += 4;
+			continue;
+			}
+		if ((op & 0x0F000000u) == 0x0A000000u)							// b
+			{
+			int off = op & 0xFFFFFF;
+			if (off & 0x800000)
+				off -= 0x1000000;
+			pc = pc + 8 + off * 4;
+			continue;
+			}
+		if ((op & 0x0FE00F7Fu) == 0x0E000A10u)							// vmov Sn <-> Rt
+			{
+			const unsigned sn = (((op >> 16) & 0xF) << 1) | ((op >> 7) & 1), rt = (op >> 12) & 0xF;
+			if (rt == 15)
+				{ why = "vmov pc"; break; }
+			if (op & (1u << 20))
+				SetReg(e, rt, s[sn]);
+			else
+				s[sn] = GetReg(e, rt, pc);
+			pc += 4;
+			continue;
+			}
+		if ((op & 0x0E000F00u) == 0x0C000A00u && (op & 0x01A00000u) != 0)		// vldm/vstm/vldr/vstr single
+			{
+			const bool p = op & (1u << 24), u = op & (1u << 23), w = op & (1u << 21), load = op & (1u << 20);
+			const unsigned rn = (op >> 16) & 0xF, sd = (((op >> 12) & 0xF) << 1) | ((op >> 22) & 1), imm = op & 0xFF;
+			unsigned base = rn == 15 ? (pc + 8) & ~3u : GetReg(e, rn, pc), addr, count;
+			if (p && !w)
+				{ addr = u ? base + imm * 4 : base - imm * 4; count = 1; }
+			else if (!p && u)
+				{ addr = base; count = imm; }
+			else if (p && !u && w)
+				{ addr = base - imm * 4; count = imm; }
+			else
+				{ why = "vldm form"; break; }
+			if (!count || sd + count > 32 || !UserRangeOk(addr, count * 4, !load))
+				{ why = "vldm range"; break; }
+			for (unsigned i = 0; i < count; ++i)
+				{
+				if (load)
+					s[sd + i] = LoadWord(addr + i * 4);
+				else
+					StoreWord(addr + i * 4, s[sd + i]);
+				}
+			if (w && !(p && !w))
+				SetReg(e, rn, u ? base + imm * 4 : base - imm * 4);
+			pc += 4;
+			continue;
+			}
+		if ((op & 0x0F000F10u) == 0x0E000A00u)							// data processing, single precision
+			{
+			const unsigned sd = (((op >> 12) & 0xF) << 1) | ((op >> 22) & 1);
+			const unsigned sn = (((op >> 16) & 0xF) << 1) | ((op >> 7) & 1);
+			const unsigned sm = ((op & 0xF) << 1) | ((op >> 5) & 1);
+			const unsigned pb = (op >> 23) & 1, qb = (op >> 21) & 1, rb = (op >> 20) & 1, sb = (op >> 6) & 1;
+			int kind = -1;
+			bool imm = false;
+			if (!pb)
+				kind = (int)((((qb << 1) | rb) << 1) | sb);
+			else if (!qb && !rb && !sb)
+				kind = 8;
+			else if (qb && rb)
+				{
+				const unsigned opc2 = (op >> 16) & 0xF, b7 = (op >> 7) & 1;
+				if (!sb)
+					imm = true;
+				else if (opc2 == 0)
+					kind = b7 ? 10 : 9;
+				else if (opc2 == 1)
+					kind = b7 ? 12 : 11;
+				else if (opc2 == 4 || opc2 == 5)
+					{
+					// vcmp is never vectorised: one compare, against Sm or +0.0
+					VfpScalar(b7 ? 14 : 13, 0, s[sd], opc2 == 5 ? 0 : s[sm]);
+					pc += 4;
+					continue;
+					}
+				}
+			if (kind < 0 && !imm)
+				{ why = "vfp op"; break; }
+			const unsigned len = (vbits >> 16) & 7, stride = ((vbits >> 20) & 3) == 3 ? 2 : 1;
+			const unsigned n = (sd >> 3) == 0 ? 1 : len + 1;			// bank 0 destination = scalar
+			const bool mScalar = (sm >> 3) == 0;
+			unsigned immv = 0;
+			if (imm)
+				{
+				const unsigned i8 = (((op >> 16) & 0xF) << 4) | (op & 0xF);
+				immv = ((i8 & 0x80u) << 24) | ((i8 & 0x40u) ? 0x3E000000u : 0x40000000u) | ((i8 & 0x3Fu) << 19);
+				}
+			for (unsigned i = 0; i < n; ++i)
+				{
+				const unsigned di = VfpVecReg(sd, i, stride), ni = VfpVecReg(sn, i, stride);
+				const unsigned mi = mScalar ? sm : VfpVecReg(sm, i, stride);
+				s[di] = imm ? immv : VfpScalar((unsigned)kind, s[di], s[ni], s[mi]);
+				}
+			pc += 4;
+			continue;
+			}
+		why = "instruction";
+		break;
+		}
+	if (!done)
+		VfpSetFpscr(VfpGetFpscr() & ~0x00370000u);
+	VfpLoad(s);
+	e[22] = pc;
+	NKern::Unlock();
+	++VfpVecTraps;
+	if (why && (++VfpVecBails <= 8 || (VfpVecBails & 0xFFF) == 0))
+		{ ekseam_puts("[EKERN][vfpvec] stopped ("); ekseam_puts(why); ekseam_puts(") at pc="); ekseam_puthex(pc); }
+	if (VfpVecTraps <= 2 || (VfpVecTraps & 0xFFFF) == 0)
+		{ ekseam_puts("[EKERN][vfpvec] emulated a short-vector block, traps="); ekseam_puthex(VfpVecTraps); }
+	return true;
+	}
+#endif
+
 extern "C" void __real__ZN3Exc8DispatchEPvP7NThread(void*, void*);
 extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 	{
@@ -1326,6 +1540,8 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 	if (EmulateSwp(e) || EmulateAlign(e))
 		return;
 #ifdef __CPU_HAS_VFP
+	if (EmulateVfpVector(e, aInfo))
+		return;
 	if (e[21] == 2 && !(e[23] & (1u << 5)))	// a user VFP/NEON UNDEF = the kernel's lazy per-thread VFP enable
 		{									// (Exc::Dispatch -> HandleVFPOperation): routine, no dump (2026-10-06)
 		const unsigned op = *(volatile unsigned*)e[22], h2 = (op >> 24) & 0xF, cp = (op >> 8) & 0xF;
