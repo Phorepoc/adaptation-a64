@@ -236,6 +236,11 @@ void DA64Touch::Poll()
 		GtReset();
 		return;
 		}
+	static TUint8 lastS = 0;
+	static TInt sLogs = 0;
+	if (iErrors && s != lastS && sLogs < 24)
+		{ ++sLogs; ekseam_puts("[EKERN][touch] status after recovery="); ekseam_puthex(s); }
+	lastS = s;
 	if (!(s & 0x80))
 		return;										// no new data
 	if (s & 0x0F)
