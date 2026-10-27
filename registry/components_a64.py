@@ -16,7 +16,7 @@ COMPONENTS = {
     # OURS (NGA G1b): the LoadLogicalDevice freeze probe
     "tldd": dict(mmp=os.path.join(OS_ROOT, "src/tldd/tldd.mmp"), test=True),
     # OURS (VDU V4): the DevVideo decoder hw device (ECOM, interface 0x101FB4BE) on the A64 Video Engine: H.264 + MPEG-2;
-    # src/phevdec/phevdec.h. Needs devvideo + puresolverutils + codecapiresolver (+ ecom) in the ROM.
+    # src/phevdec/phevdec.h. (The software decoder, MPEG-4 Part 2 here, is the codec pack's phevdecsw since 2026-10-27.) Needs devvideo + puresolverutils + codecapiresolver (+ ecom) in the ROM.
     "phevdec": dict(mmp=os.path.join(OS_ROOT, "src/phevdec/phevdec.mmp")),
     # OURS (VDU V4): drives the phevdec plug-in through CMMFDevVideoPlay over the phevdetest clips ("PH: dvp");
     # SSM_TEST=phevdectest ROM_TAIL="devvideo,puresolverutils,codecapiresolver,phevdec,phevdectest"
@@ -25,9 +25,6 @@ COMPONENTS = {
                                   "resource\\phevde\\ipb.nv12=src/phevdetest/data/ipb.nv12"] +
                                  [f"resource\\phevde\\{s}.{x}=src/phevdetest/data/{s}.{x}"
                                   for s in ("hbase", "hmain", "hh8x8", "hcqm", "hhigh", "hmbaffm", "hmbaffh", "hpaff1", "hpaff2", "hpaff3", "hpaff4", "hpaffl") for x in ("h264", "fnv")]),
-    "phevdec_sw": dict(mmp=os.path.join(OS_ROOT, "src/phevdec/phevdec_sw.mmp"), rom="phevdec.dll", allow_wsd=True),   # (stage-timing statics)
-    # OURS (2026-10-27): the MPEG-4 Part 2 software decoder beside the VE one (own UIDs; installed with pheffmpeg, not in the ROM)
-    "phevdecsw_mp4v": dict(mmp=os.path.join(OS_ROOT, "src/phevdec/phevdecsw_mp4v.mmp"), allow_wsd=True),
     # decoded back with the phevdec cores; "PH: venc" lines. SSM_TEST=phevenctest (no ROM data, no extra ROM_TAIL)
     "phevenctest": dict(mmp=os.path.join(OS_ROOT, "src/phevenctest/phevenctest.mmp"), test=True),
     # OURS (VE encoder rung 2, ve-encoder-plan.md section 11): 640x480 + 1280x720, IDR + 15 P, fixed QP 28 and rate control, decoded back
@@ -65,8 +62,4 @@ COMPONENTS = {
 EXTEND = {
     # phgl's GPU channel: the Mali-400 (src/symgl/symmali.cpp over RMaliChannel) instead of core's null one
     "phgl": dict(drop=["symgpu_null.cpp"], extra=["src/symgl/symmali.cpp"]),
-    # the software H.264 decoder (pheffmpeg) shares the ROM name phevdec.dll with the Video Engine one: on this board the VE decoder is the one,
-    # and a full component build must not overwrite phevdec.dll with the software variant
-    # (test=True: not in the ROM -- ECOM matches a plug-in DLL by UID3, so a second phevdec DLL in the ROM can be loaded instead of the VE one)
-    "phevdec_sw": dict(rom="phevdec_sw.dll", test=True),
 }

@@ -11,21 +11,9 @@
 
 #define PHTRACE(args) do { if (iTrace < 0) { ++iTrace; RDebug::Printf args; } } while (0)
 
-#ifdef PHE_SW
-// per-stage time (User::FastCounter ticks), printed when the stream ends: libavcodec send/parse/decode, the peek (frame finished), the
-// allocation of a picture buffer, the YUV420P -> NV12 copy-out
-static TUint32 gTSend, gTPeek, gTAlloc, gTCopy, gNPic;
-static inline TUint32 Tk() { return User::FastCounter(); }
-#endif
 
 _LIT(KPheManufacturer, "Phorepoc");
-#if defined(PHE_MP4V)
-_LIT(KPheIdentifier, "Software decoder (FFmpeg: MPEG-4 Part 2)");
-#elif defined(PHE_SW)
-_LIT(KPheIdentifier, "Software decoder (FFmpeg: H.264 / MPEG-2)");
-#else
 _LIT(KPheIdentifier, "A64 Video Engine decoder (H.264 / MPEG-2)");
-#endif
 _LIT8(KMimeH264, "video/H264");
 _LIT8(KMimeMpeg, "video/mpeg");
 _LIT8(KMimeMpeg2, "video/mpeg2");
@@ -35,7 +23,6 @@ _LIT8(KMimeMp4v, "video/mp4v-es");
 // ---------------------------------------------------------------------------------------------------------------
 // CPheVePool
 
-#ifndef PHE_SW
 CPheVePool::CPheVePool(RChunk& aArena, TUint32 aPhys, TInt aSize, TInt aReserve)
 	: iBusy(NULL), iBusyCtx(NULL), iArena(aArena), iPhys(aPhys), iSize(aSize), iNext(aReserve), iCount(0)
 	{
@@ -72,7 +59,6 @@ void CPheVePool::Hold(uint32_t aBus, TBool aHeld)
 			iEntries[i].iHeld = aHeld;
 	}
 
-#endif
 
 // ---------------------------------------------------------------------------------------------------------------
 // construction
@@ -95,13 +81,6 @@ CPheVideoDecoder::CPheVideoDecoder() : iMaxHeld(8), iDepth(1)
 CPheVideoDecoder::~CPheVideoDecoder()
 	{
 	delete iStep;
-#ifdef PHE_SW
-	if (iVid && iFfClose)
-		iFfClose(iVid);
-	iFf.Close();
-	for (TInt i = 0; i < KMaxOut; ++i)
-		User::Free(iOut[i].iMem);
-#else
 	if (iVe.Handle())
 		{
 		iVe.CancelAll();
@@ -116,7 +95,6 @@ CPheVideoDecoder::~CPheVideoDecoder()
 	delete iJob;
 	iArena.Close();
 	iVe.Close();
-#endif
 	iStream.Close();
 	iChunks.Close();
 	for (TInt i = 0; i < KMaxInput; ++i)
@@ -187,11 +165,7 @@ CVideoDecoderInfo* CPheVideoDecoder::VideoDecoderInfoLC()
 	{
 	RPointerArray<CCompressedVideoFormat> formats;
 	CleanupResetAndDestroyPushL(formats);
-#ifdef PHE_MP4V
-	const TDesC8* mimes[] = { &KMimeMp4v };
-#else
 	const TDesC8* mimes[] = { &KMimeH264, &KMimeMpeg, &KMimeMpeg2, &KMimeMp2v };
-#endif
 	for (TUint i = 0; i < sizeof(mimes) / sizeof(mimes[0]); ++i)
 		{
 		CCompressedVideoFormat* f = CCompressedVideoFormat::NewL(*mimes[i]);
@@ -302,14 +276,6 @@ void CPheVideoDecoder::SetInputFormatL(const CCompressedVideoFormat& aFormat, TV
 		codec = EH264;
 	else if (mime.CompareF(KMimeMpeg) == 0 || mime.CompareF(KMimeMpeg2) == 0 || mime.CompareF(KMimeMp2v) == 0)
 		codec = EMpeg2;
-#ifdef PHE_SW
-	else if (mime.CompareF(KMimeMp4v) == 0)
-		codec = EMpeg4;						// software only (pheffmpeg)
-#endif
-#ifdef PHE_MP4V
-	if (codec != EMpeg4)
-		codec = ENoCodec;
-#endif
 	if (codec == ENoCodec || aEncapsulation != EDuElementaryStream || !aDataInOrder
 		|| (aDataUnitType != EDuArbitraryStreamSection && aDataUnitType != EDuCodedPicture))
 		User::Leave(KErrNotSupported);
@@ -435,22 +401,6 @@ void CPheVideoDecoder::ConstructStateL()
 	{
 	if (iCodec == ENoCodec)
 		User::Leave(KErrNotReady);
-#ifdef PHE_SW
-	User::LeaveIfError(iFf.Load(_L("pheffmpeg.dll")));
-	iFfOpen = (void* (*)(int, int))iFf.Lookup(6);
-	iFfSend = (int (*)(void*, const unsigned char*, int, long long))iFf.Lookup(7);
-	iFfRecv = (int (*)(void*, unsigned char*, int, int, int*, int*, long long*))iFf.Lookup(8);
-	iFfClose = (void (*)(void*))iFf.Lookup(9);
-	if (!iFfOpen || !iFfSend || !iFfRecv || !iFfClose)
-		User::Leave(KErrNotSupported);
-	const TInt cpus = 1;								// decoder threads: frame threading (2) was slower on the 2-CPU VM (measured, host busy) and adds latency; the flag stays in pheffmpeg
-	iVid = iFfOpen(iCodec == EMpeg2 ? 1 : (iCodec == EMpeg4 ? 2 : 0), (iComplete ? 0 : 1) | (cpus << 8));
-	if (!iVid)
-		User::Leave(KErrNoMemory);
-	iMaxHeld = 6;
-	iStream.CreateL(64 * 1024);
-	return;
-#else
 	User::LeaveIfError(iVe.Open());
 	TPheVdeInfo info;
 	User::LeaveIfError(iVe.GetInfo(info));
@@ -488,7 +438,6 @@ void CPheVideoDecoder::ConstructStateL()
 		iMaxHeld = 6;							// 8 frame buffers: 2 references + the client's pictures + 1 to decode into
 		}
 	iStream.CreateL(64 * 1024);
-#endif
 	}
 
 void CPheVideoDecoder::Initialize()
@@ -635,7 +584,6 @@ TInt CPheVideoDecoder::HeldCount() const
 	return n;
 	}
 
-#ifndef PHE_SW
 bool CPheVideoDecoder::BusyThunk(void* aCtx, uint32_t aBus)
 	{
 	CPheVideoDecoder* d = (CPheVideoDecoder*)aCtx;
@@ -651,7 +599,6 @@ bool CPheVideoDecoder::FrameHeldThunk(void* aCtx, int aIndex)
 	return false;
 	}
 
-#endif
 
 void CPheVideoDecoder::Deliver(TOutPic* aOut)
 	{
@@ -683,10 +630,8 @@ void CPheVideoDecoder::ReturnPicture(TVideoPicture* aPicture)
 	PHTRACE(("PH: dvp.pl return %x", (TUint)o));
 	if (!o || o < &iOut[0] || o >= &iOut[KMaxOut] || o->iState != 2)
 		return;
-#ifndef PHE_SW
 	if (o->iBus && iPool)
 		iPool->Hold(o->iBus, EFalse);
-#endif
 	o->iState = 0;
 	o->iFrame = -1;
 	if (iBlocked)
@@ -696,7 +641,6 @@ void CPheVideoDecoder::ReturnPicture(TVideoPicture* aPicture)
 		}
 	}
 
-#ifndef PHE_SW
 void CPheVideoDecoder::OnH264PictureThunk(void* aCtx, const h264::TPicture& aPic)
 	{
 	((CPheVideoDecoder*)aCtx)->OnH264Picture(aPic);
@@ -753,7 +697,6 @@ void CPheVideoDecoder::DrainH264(TBool aAll)
 		}
 	}
 
-#endif
 
 void CPheVideoDecoder::Fatal(TInt aError)
 	{
@@ -791,11 +734,7 @@ void CPheVideoDecoder::Step()
 		iBlocked = ETrue;				// the client holds the pictures: ReturnPicture() resumes
 		return;
 		}
-#ifdef PHE_SW
-	const TBool more = StepSw();
-#else
 	const TBool more = iCodec == EH264 ? StepH264() : StepMpeg2();
-#endif
 	Compact();
 	if (iFailed)
 		return;
@@ -807,26 +746,6 @@ void CPheVideoDecoder::Step()
 
 void CPheVideoDecoder::FinishStream()
 	{
-#ifdef PHE_SW
-	if (!iDrainSent)
-		{
-		iDrainSent = ETrue;
-		iFfSend(iVid, NULL, 0, -1);
-		}
-	ReceiveSw();
-	if (iBlocked || iFailed)
-		return;						// the client still holds pictures: ReturnPicture() brings us back
-	iEndSent = ETrue;
-	{
-	TInt f = 0;
-	HAL::Get(HAL::EFastCounterFrequency, f);
-	RDebug::Printf("PH: dvp.sw stages (FastCounter ticks at %d Hz; %d pictures): libavcodec send+decode %u, frame wait %u, picture alloc %u, YUV420P->NV12 copy-out %u",
-		f, gNPic, gTSend, gTPeek, gTAlloc, gTCopy);
-	gTSend = gTPeek = gTAlloc = gTCopy = gNPic = 0;
-	}
-	iProxy->MdvppStreamEnd();
-	return;
-#else
 	iEndSent = ETrue;
 	if (iCodec == EH264)
 		{
@@ -840,150 +759,8 @@ void CPheVideoDecoder::FinishStream()
 		Deliver(p);
 		}
 	iProxy->MdvppStreamEnd();
-#endif
 	}
 
-#ifdef PHE_SW
-// ---------------------------------------------------------------------------------------------------------------
-// software decoding (pheffmpeg.dll)
-
-
-// Feed the stream up to the end of the chunk at the cursor (one client buffer = one pts), then take every picture that is ready.
-TBool CPheVideoDecoder::StepSw()
-	{
-	const TInt len = iStream.Length();
-	if (!iPreallocDone && len > 0)
-		{
-		// pre-allocate (and touch) the picture buffers the first frames will use, BEFORE the first picture exists (the controller starts its clock at the first
-		// picture): growing the heap during playback cost 100-800 ms per picture for the first ~7 (VirtualBox stage timing: "picture alloc"). The size is read
-		// from the SPS in the first buffer.
-		iPreallocDone = ETrue;
-		TVideoInputBuffer tmp;
-		tmp.iData.Set(TPtr8((TUint8*)iStream.Ptr(), len, len));
-		TVideoPictureHeader* hdr = NULL;
-		TRAPD(he, hdr = GetHeaderInformationL(EDuCodedPicture, EDuElementaryStream, &tmp));
-		if (he == KErrNone && hdr && iHeader.iSizeInMemory.iWidth > 0 && iHeader.iSizeInMemory.iHeight > 0)
-			{
-			const TInt pitch = (iHeader.iSizeInMemory.iWidth + 15) & ~15, rows = (iHeader.iSizeInMemory.iHeight + 15) & ~15, size = pitch * rows * 3 / 2;
-			TInt n = 0;
-			for (TInt i = 0; i < iMaxHeld + 2 && i < KMaxOut; ++i)
-				{
-				iOut[i].iMem = (TUint8*)User::Alloc(size);
-				if (!iOut[i].iMem)
-					break;
-				iOut[i].iMemSize = size;
-				Mem::FillZ(iOut[i].iMem, size);
-				++n;
-				}
-			RDebug::Printf("PH: dvp.sw preallocated %d picture buffers of %d KB (%dx%d)", n, size >> 10, iHeader.iSizeInMemory.iWidth, iHeader.iSizeInMemory.iHeight);
-			}
-		else
-			RDebug::Printf("PH: dvp.sw no SPS in the first buffer (%d): buffers allocated on first use", he);
-		}
-	TBool fed = EFalse;
-	if (iCursor < len)
-		{
-		const TInt64 abs = iStreamAbs + iCursor;
-		TInt end = len;
-		for (TInt i = 0; i < iChunks.Count(); ++i)
-			if (iChunks[i].iAbs > abs)
-				{
-				end = (TInt)(iChunks[i].iAbs - iStreamAbs);
-				break;
-				}
-		const TUint32 t0 = Tk();
-		TInt r = iFfSend(iVid, iStream.Ptr() + iCursor, end - iCursor, PtsAt(abs));
-		gTSend += Tk() - t0;
-		if (r < 0)
-			{
-			if (iErrors < 4)
-				RDebug::Printf("PH: dvp.sw send error %d (%d bytes at %d)", r, end - iCursor, iCursor);
-			if (iErrors++ == 0)
-				iFirstError = r;
-			++iBitCounters.iLostPackets;
-			}
-		iCursor = end;
-		fed = ETrue;
-		}
-	ReceiveSw();
-	return fed && !iBlocked && !iFailed;
-	}
-
-// Deliver every decoded picture (display order, as libavcodec reorders) until none is left or the client holds too many.
-void CPheVideoDecoder::ReceiveSw()
-	{
-	for (;;)
-		{
-		if (HeldCount() >= iMaxHeld)
-			{
-			iBlocked = ETrue;
-			return;
-			}
-		int w = 0, h = 0;
-		long long pts = -1;
-		// peek: the frame size first (NULL destination keeps the frame inside the decoder)
-		const TUint32 t0 = Tk();
-		TInt r = iFfRecv(iVid, NULL, 0, 0, &w, &h, &pts);
-		gTPeek += Tk() - t0;
-		if (r < 0)
-			{
-			if (iErrors < 4)
-				RDebug::Printf("PH: dvp.sw receive error %d", r);
-			if (iErrors++ == 0)
-				iFirstError = r;
-			++iBitCounters.iLostPackets;
-			return;
-			}
-		if (r == 0)
-			return;
-		const TInt pitch = (w + 15) & ~15, rows = (h + 15) & ~15, size = pitch * rows * 3 / 2;
-		TOutPic* o = NewOut();
-		if (!o)
-			{
-			Fatal(KErrOverflow);
-			return;
-			}
-		const TUint32 t1 = Tk();
-		if (o->iMemSize != size)
-			{
-			User::Free(o->iMem);
-			o->iMem = (TUint8*)User::Alloc(size);
-			o->iMemSize = o->iMem ? size : 0;
-			}
-		if (!o->iMem)
-			{
-			o->iState = 0;
-			Fatal(KErrNoMemory);
-			return;
-			}
-		const TUint32 t2 = Tk();
-		gTAlloc += t2 - t1;
-		r = iFfRecv(iVid, o->iMem, pitch, rows, &w, &h, &pts);
-		gTCopy += Tk() - t2;
-		++gNPic;
-		if (r != 1)
-			{
-			o->iState = 0;
-			if (iErrors++ == 0)
-				iFirstError = r;
-			++iBitCounters.iLostPackets;
-			return;
-			}
-		o->iPts = pts;
-		o->iPtr.Set(o->iMem, size, size);
-		TVideoPicture& vp = o->iPic;
-		vp.iData.iDataFormat = EYuvRawData;
-		vp.iData.iDataSize = TSize(pitch, rows);
-		vp.iData.iRawData = &o->iPtr;
-		vp.iOptions = TVideoPicture::ECropRect;
-		vp.iCropRect = TRect(0, 0, w, h);
-		vp.iUser = o;
-		Deliver(o);
-		if (iFailed)
-			return;
-		}
-	}
-#else
 // One NAL of the byte stream. Returns ETrue when it consumed something (call again).
 TBool CPheVideoDecoder::StepH264()
 	{
@@ -1162,7 +939,6 @@ TBool CPheVideoDecoder::StepMpeg2()
 	return ETrue;
 	}
 
-#endif
 
 // ---------------------------------------------------------------------------------------------------------------
 // ECOM

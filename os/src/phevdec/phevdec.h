@@ -29,23 +29,12 @@
 
 #include <e32base.h>
 #include <mmf/devvideo/videoplayhwdevice.h>
-#ifdef PHE_SW
-// PHE_SW (Path C x86, 2026-10-16): no Video Engine -- the same DevVideo decoder device, decoding in software through the
-// separate LGPL pheffmpeg.dll (PheVid* ordinals). Everything VE-specific (rphevde / ve_h264 / ve_mpeg2 / the arena pool) is out.
-#include "h264_parser.h"
-#else
 #include "rphevde.h"
 #include "ve_rphevde.h"
 #include "ve_mpeg2.h"
-#endif
 
-#ifdef PHE_MP4V
-const TInt KPheVdecImplUid = 0xE70157FD;		// phevdecsw.dll (UID3 0xE70157FC): MPEG-4 Part 2 only, next to the VE decoder
-#else
 const TInt KPheVdecImplUid = 0xE70157C3;		// the decoder implementation (dll UID3 0xE70157C2)
-#endif
 
-#ifndef PHE_SW
 // the VE arena: bump allocation with recycling of same-sized blocks that nobody holds
 class CPheVePool : public h264::MVeMemory
 	{
@@ -69,7 +58,6 @@ private:
 	TInt iSize, iNext, iCount;
 	TEntry iEntries[KMaxEntries];
 	};
-#endif
 
 class CPheStep;
 
@@ -154,13 +142,7 @@ public:
 
 private:
 	enum TCodec { ENoCodec, EH264, EMpeg2, EMpeg4 };
-#ifdef PHE_SW
-	// software: the coded backlog lives in the CLIENT's heap (iStream doubles as it grows): a 60 s clip fed at once into
-	// a game's heap failed to grow 8 -> 16 MB (KErrNoMemory, Let's Golf 2 intro, 2026-10-27) -- keep it small
-	enum { KMaxInput = 12, KMaxOut = 40, KPreDecoderMax = 1 << 20, KSliceBuf = 1 << 20, KArenaMb = 64 };
-#else
 	enum { KMaxInput = 12, KMaxOut = 40, KPreDecoderMax = 8 << 20, KSliceBuf = 1 << 20, KArenaMb = 64 };
-#endif
 	struct TInBuf
 		{
 		TVideoInputBuffer iBuf;
@@ -177,26 +159,19 @@ private:
 		TVideoPicture iPic;
 		TPtr8 iPtr;
 		TInt iState;			// 0 free, 1 queued for reordering, 2 delivered to the client
-		TUint8* iMem;			// PHE_SW: the NV12 picture (heap, owned)
-		TInt iMemSize;
 		TUint32 iBus;			// H.264: the luma bus address (the pool key)
 		TInt iFrame;			// MPEG-2: the frame buffer index
 		TUint32 iPeriod;
 		TInt32 iPoc;
 		TInt64 iPts;
-		TOutPic() : iPtr(NULL, 0, 0), iMem(NULL), iMemSize(0) {}
+		TOutPic() : iPtr(NULL, 0, 0) {}
 		};
 
 	CPheVideoDecoder();
 	void ConstructStateL();
 	void Schedule();
-#ifdef PHE_SW
-	TBool StepSw();
-	void ReceiveSw();
-#else
 	TBool StepH264();
 	TBool StepMpeg2();
-#endif
 	void FinishStream();
 	TInt64 PtsAt(TInt64 aAbs) const;
 	void PruneChunks();
@@ -204,13 +179,11 @@ private:
 	TOutPic* NewOut();
 	TInt HeldCount() const;
 	void Deliver(TOutPic* aOut);
-#ifndef PHE_SW
 	void DrainH264(TBool aAll);
 	void OnH264Picture(const h264::TPicture& aPic);
 	static void OnH264PictureThunk(void* aCtx, const h264::TPicture& aPic);
 	static bool BusyThunk(void* aCtx, uint32_t aBus);
 	static bool FrameHeldThunk(void* aCtx, int aIndex);
-#endif
 	void Fatal(TInt aError);
 	void SetupFormat(TUncompressedVideoFormat& aFormat) const;
 
@@ -219,17 +192,6 @@ private:
 	TCodec iCodec;
 	TBool iComplete;				// EDuCodedPicture: each buffer holds complete units
 	TBool iInitialised, iFailed, iFinal, iEndSent, iPaused, iPlaying, iBlocked, iWantBuffers;
-#ifdef PHE_SW
-	// the software decoder (pheffmpeg.dll, loaded on Initialize)
-	RLibrary iFf;
-	void* iVid;
-	TBool iDrainSent;
-	TBool iPreallocDone;
-	void* (*iFfOpen)(int, int);
-	int (*iFfSend)(void*, const unsigned char*, int, long long);
-	int (*iFfRecv)(void*, unsigned char*, int, int, int*, int*, long long*);
-	void (*iFfClose)(void*);
-#else
 	// the VE
 	RPheVde iVe;
 	RChunk iArena;
@@ -242,7 +204,6 @@ private:
 	h264::TSliceHeader* iSh;			// scratch (several KB: not on the client thread's small stack)
 	mpeg2::TParser* iM2Parser;
 	mpeg2::TVeMpeg2* iM2;
-#endif
 	// input
 	TInBuf iIn[KMaxInput];
 	TInt iNumIn;
