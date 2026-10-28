@@ -212,6 +212,17 @@ public:
 	DMaliDevice* iDev;
 	DThread* iClient;
 	TClientRequest* iReq[EMaliReqCount];
+	DThread* iReqThread[EMaliReqCount];		// the thread that submitted each pending job (any thread of the process may)
+	// the job timelines: jobs started / finished per pipe, and the waiters (EMaliReqWait: any thread of the process waits
+	// for a job number, completed to THAT thread). Under iDev->iLock.
+	TUint32 iSeq[2];
+	TUint32 iDone[2];
+	TInt iLastResult[2];
+	struct TWaiter { TClientRequest* iReq; DThread* iThread; TInt iPipe; TUint32 iSeq; };
+	enum { KWaiters = 8 };
+	TWaiter iWait[KWaiters];
+	TInt Submit(TInt aPipe, const TAny* aFrame);
+	TInt WaitFor(TRequestStatus* aStatus, TInt aPipe, TUint32 aSeq);
 	TMaliVm iVm;
 	DChunk* iArena;
 	TLinAddr iArenaLin;
@@ -738,6 +749,12 @@ TInt DMaliChannel::DoCreate(TInt /*aUnit*/, const TDesC8* /*aInfo*/, const TVers
 		if (r != KErrNone)
 			return r;
 		}
+	for (TInt i = 0; i < KWaiters; ++i)
+		{
+		TInt r = Kern::CreateClientRequest(iWait[i].iReq);
+		if (r != KErrNone)
+			return r;
+		}
 	TInt r = iVm.Create();
 	if (r != KErrNone)
 		return r;
@@ -768,14 +785,40 @@ DMaliChannel::~DMaliChannel()
 		Kern::ChunkClose(iArena);
 	for (TInt i = 0; i < EMaliReqCount; ++i)
 		Kern::DestroyClientRequest(iReq[i]);
+	for (TInt i = 0; i < EMaliReqCount; ++i)
+		if (iReqThread[i])
+			Kern::SafeClose((DObject*&)iReqThread[i], NULL);
+	for (TInt i = 0; i < KWaiters; ++i)
+		{
+		if (iWait[i].iThread)
+			Kern::SafeClose((DObject*&)iWait[i].iThread, NULL);
+		Kern::DestroyClientRequest(iWait[i].iReq);
+		}
 	if (iClient)
 		Kern::SafeClose((DObject*&)iClient, NULL);
 	}
 
 void DMaliChannel::Complete(TInt aReq, TInt aResult)
 	{
+	// to the thread that submitted the job (not the channel's opener: a second GL thread waited forever for its jobs)
+	DThread* t = iReqThread[aReq] ? iReqThread[aReq] : iClient;
 	if (iReq[aReq]->IsReady())
-		Kern::QueueRequestComplete(iClient, iReq[aReq], aResult);
+		Kern::QueueRequestComplete(t, iReq[aReq], aResult);
+	// the timeline (called with iDev->iLock held): the pipe's job is done; wake its waiters
+	const TInt pipe = aReq == EMaliReqSubmitPp ? 1 : 0;
+	iDone[pipe] = iSeq[pipe];
+	iLastResult[pipe] = aResult;
+	for (TInt i = 0; i < KWaiters; ++i)
+		{
+		TWaiter& w = iWait[i];
+		if (w.iThread && w.iPipe == pipe && (TInt32)(iDone[pipe] - w.iSeq) >= 0)
+			{
+			if (w.iReq->IsReady())
+				Kern::QueueRequestComplete(w.iThread, w.iReq, aResult);
+			w.iThread->AsyncClose();
+			w.iThread = NULL;
+			}
+		}
 	}
 
 // Commit arena pages and enter them in the GPU page tables.
@@ -865,8 +908,8 @@ TInt DMaliChannel::Import(TMaliImport& aImp, TBool aByAddress)
 	const TInt pages = aImp.iSize >> 12;
 	NKern::ThreadEnterCS();
 	TInt chunkOffset = aImp.iOffset;
-	DChunk* chunk = aByAddress ? Kern::OpenSharedChunk(iClient, (const TAny*)aImp.iOffset, ETrue, chunkOffset)
-		: Kern::OpenSharedChunk(iClient, aImp.iChunkHandle, ETrue);
+	DChunk* chunk = aByAddress ? Kern::OpenSharedChunk(&Kern::CurrentThread(), (const TAny*)aImp.iOffset, ETrue, chunkOffset)
+		: Kern::OpenSharedChunk(&Kern::CurrentThread(), aImp.iChunkHandle, ETrue);
 	TInt r = chunk ? KErrNone : KErrBadHandle;
 	TPhysAddr* list = r == KErrNone ? (TPhysAddr*)Kern::Alloc(pages * sizeof(TPhysAddr)) : NULL;
 	if (r == KErrNone && !list)
@@ -885,11 +928,11 @@ TInt DMaliChannel::Import(TMaliImport& aImp, TBool aByAddress)
 		r = Kern::CreatePhysicalPinObject(pin);
 	if (r == KErrNone)
 		{
-		const TLinAddr user = aByAddress ? (TLinAddr)aImp.iOffset : (TLinAddr)Kern::ChunkUserBase(chunk, iClient) + chunkOffset;
+		const TLinAddr user = aByAddress ? (TLinAddr)aImp.iOffset : (TLinAddr)Kern::ChunkUserBase(chunk, &Kern::CurrentThread()) + chunkOffset;
 		TPhysAddr phys;
 		TUint32 pinAttr = 0;
 		TUint colour = 0;
-		r = Kern::PinPhysicalMemory(pin, user, aImp.iSize, ETrue, phys, list, pinAttr, colour, iClient);
+		r = Kern::PinPhysicalMemory(pin, user, aImp.iSize, ETrue, phys, list, pinAttr, colour, &Kern::CurrentThread());
 		if (r == KErrNone && phys != KPhysAddrInvalid)
 			for (TInt i = 0; i < pages; ++i)
 				list[i] = phys + (i << 12);
@@ -997,6 +1040,65 @@ TInt DMaliChannel::CacheSync(const TMaliCacheSync& aSync)
 	return KErrNotFound;
 	}
 
+// start a job on aPipe (EMaliCtrlSubmit): returns its job number, for EMaliReqWait / EMaliCtrlCompleted
+TInt DMaliChannel::Submit(TInt aPipe, const TAny* aFrame)
+	{
+	if (aPipe < 0 || aPipe > 1)
+		return KErrArgument;
+	NKern::ThreadEnterCS();
+	Kern::MutexWait(*iDev->iLock);
+	TInt r;
+	if (aPipe == 0)
+		{
+		TMaliGpFrame f;
+		kumemget32(&f, aFrame, sizeof(f));
+		r = iDev->StartGp(this, f, iVm.PdPhys());
+		}
+	else
+		{
+		TMaliPpFrame f;
+		kumemget32(&f, aFrame, sizeof(f));
+		r = iDev->StartPp(this, f, iVm.PdPhys());
+		}
+	if (r == KErrNone)
+		r = (TInt)++iSeq[aPipe];		// (2^31 jobs: years at 60 frames a second)
+	Kern::MutexSignal(*iDev->iLock);
+	NKern::ThreadLeaveCS();
+	return r;
+	}
+
+// complete aStatus (the CALLING thread's) once job aSeq of aPipe has finished, with that job's result
+TInt DMaliChannel::WaitFor(TRequestStatus* aStatus, TInt aPipe, TUint32 aSeq)
+	{
+	if (aPipe < 0 || aPipe > 1)
+		return KErrArgument;
+	NKern::ThreadEnterCS();
+	Kern::MutexWait(*iDev->iLock);
+	TInt r = KErrNone;
+	if ((TInt32)(iDone[aPipe] - aSeq) >= 0 || (TInt32)(aSeq - iSeq[aPipe]) > 0)
+		Kern::RequestComplete(aStatus, iLastResult[aPipe]);		// done already (or never started: nothing to wait for)
+	else
+		{
+		TInt slot = -1;
+		for (TInt i = 0; i < KWaiters && slot < 0; ++i)
+			if (!iWait[i].iThread)
+				slot = i;
+		if (slot < 0)
+			r = KErrOverflow;
+		else if ((r = iWait[slot].iReq->SetStatus(aStatus)) == KErrNone)
+			{
+			TWaiter& w = iWait[slot];
+			w.iPipe = aPipe;
+			w.iSeq = aSeq;
+			w.iThread = &Kern::CurrentThread();
+			w.iThread->Open();
+			}
+		}
+	Kern::MutexSignal(*iDev->iLock);
+	NKern::ThreadLeaveCS();
+	return r;
+	}
+
 TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 	{
 	if (aReqNo == KMaxTInt)				// cancel: jobs run to completion (or the timeout); nothing to do
@@ -1005,6 +1107,13 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 		{
 		switch (aReqNo)
 			{
+			case EMaliCtrlSubmit:
+				return Submit((TInt)a1, a2);
+			case EMaliCtrlCompleted:
+				{
+				const TInt pipe = (TInt)a1;
+				return pipe < 0 || pipe > 1 ? KErrArgument : (TInt)iDone[pipe];
+				}
 			case EMaliCtrlGetInfo:
 				{
 				TMaliInfo info;
@@ -1014,7 +1123,7 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 				info.iArenaVa = KMaliArenaVa;
 				info.iArenaMaxSize = KMaliArenaMax;
 				TPckgC<TMaliInfo> p(info);
-				return Kern::ThreadDesWrite(iClient, a1, p, 0, KChunkShiftBy0, NULL);
+				return Kern::ThreadDesWrite(&Kern::CurrentThread(), a1, p, 0, KChunkShiftBy0, NULL);
 				}
 			case EMaliCtrlOpenArena:
 				{
@@ -1030,13 +1139,13 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 				{
 				TMaliImport imp;
 				TPckg<TMaliImport> p(imp);
-				TInt r = Kern::ThreadDesRead(iClient, a1, p, 0, KChunkShiftBy0);
+				TInt r = Kern::ThreadDesRead(&Kern::CurrentThread(), a1, p, 0, KChunkShiftBy0);
 				if (r != KErrNone)
 					return r;
 				r = Import(imp, aReqNo == EMaliCtrlImportAddress);
 				if (r != KErrNone)
 					return r;
-				return Kern::ThreadDesWrite(iClient, a1, p, 0, KChunkShiftBy0, NULL);
+				return Kern::ThreadDesWrite(&Kern::CurrentThread(), a1, p, 0, KChunkShiftBy0, NULL);
 				}
 			case EMaliCtrlUnimport:
 				return Unimport((TUint32)a1, ETrue);
@@ -1044,7 +1153,7 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 				{
 				TMaliCacheSync s;
 				TPckg<TMaliCacheSync> p(s);
-				TInt r = Kern::ThreadDesRead(iClient, a1, p, 0, KChunkShiftBy0);
+				TInt r = Kern::ThreadDesRead(&Kern::CurrentThread(), a1, p, 0, KChunkShiftBy0);
 				return r == KErrNone ? CacheSync(s) : r;
 				}
 			default:
@@ -1057,10 +1166,17 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 		return KErrNotSupported;
 	TAny* args[2];
 	kumemget32(args, a2, sizeof(args));
+	if (req == EMaliReqWait)
+		return WaitFor((TRequestStatus*)a1, (TInt)args[0], (TUint32)args[1]);
 	TInt r = iReq[req]->SetStatus((TRequestStatus*)a1);
 	if (r != KErrNone)
 		return r;
 	NKern::ThreadEnterCS();
+	DThread* caller = &Kern::CurrentThread();
+	caller->Open();
+	DThread* prev = (DThread*)__e32_atomic_swp_ord_ptr(&iReqThread[req], caller);
+	if (prev)
+		prev->Close(NULL);
 	Kern::MutexWait(*iDev->iLock);
 	if (req == EMaliReqSubmitGp)
 		{
@@ -1074,10 +1190,12 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 		kumemget32(&f, args[0], sizeof(f));
 		r = iDev->StartPp(this, f, iVm.PdPhys());
 		}
+	if (r == KErrNone)
+		++iSeq[req == EMaliReqSubmitPp ? 1 : 0];		// (the timeline counts these jobs too)
 	Kern::MutexSignal(*iDev->iLock);
 	NKern::ThreadLeaveCS();
 	if (r != KErrNone)
-		Kern::QueueRequestComplete(iClient, iReq[req], r);
+		Kern::QueueRequestComplete(caller, iReq[req], r);		// (not started: only the submitter's request)
 	return KErrNone;
 	}
 

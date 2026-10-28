@@ -74,8 +74,10 @@ struct TMaliCacheSync
 // request numbers (shared with the kernel side)
 enum TMaliControl { EMaliCtrlGetInfo, EMaliCtrlOpenArena, EMaliCtrlCommit, EMaliCtrlImport, EMaliCtrlUnimport,
 	EMaliCtrlCacheSync,
-	EMaliCtrlImportAddress };		// (G6b, appended: an old LDD answers KErrNotSupported)
-enum TMaliRequest { EMaliReqSubmitGp, EMaliReqSubmitPp, EMaliReqCount };
+	EMaliCtrlImportAddress,			// (G6b, appended: an old LDD answers KErrNotSupported)
+	EMaliCtrlSubmit,				// start a job, returns its job number (any thread; wait with EMaliReqWait)
+	EMaliCtrlCompleted };			// the last finished job number of a pipe
+enum TMaliRequest { EMaliReqSubmitGp, EMaliReqSubmitPp, EMaliReqWait, EMaliReqCount };
 const TInt KMaliMajorVersion = 1;
 
 #ifndef __KERNEL_MODE__
@@ -122,6 +124,11 @@ public:
 		return r;
 		}
 	inline TInt Unimport(TUint32 aVa) { return DoControl(EMaliCtrlUnimport, (TAny*)aVa); }
+	// the job timeline, usable from ANY thread of the process (SubmitGp/SubmitPp complete to the submitting thread
+	// only): Submit = the job number (> 0) or an error; Wait completes aStatus -- the caller's -- with that job's result
+	inline TInt Submit(TInt aPipe, const TAny* aFrame) { return DoControl(EMaliCtrlSubmit, (TAny*)aPipe, (TAny*)aFrame); }
+	inline TInt Completed(TInt aPipe) { return DoControl(EMaliCtrlCompleted, (TAny*)aPipe); }
+	inline void Wait(TInt aPipe, TInt aJob, TRequestStatus& aStatus) { DoRequest(EMaliReqWait, aStatus, (TAny*)aPipe, (TAny*)aJob); }
 	inline TInt CacheSync(TUint32 aVa, TInt aSize, TInt aOp)
 		{
 		TMaliCacheSync s;

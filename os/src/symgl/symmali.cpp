@@ -14,7 +14,7 @@ struct symgpu
 	RMaliChannel iChannel;
 	RChunk iArena;
 	TMaliInfo iInfo;
-	TRequestStatus iStatus[2];
+	TInt iJob[2];					// the pipe's last submitted job number (Submit / Wait: any thread of the process)
 	TBool iInFlight[2];
 	};
 
@@ -46,7 +46,7 @@ extern "C" void symgpu_close(symgpu_t* m)
 		return;
 	for (TInt p = 0; p < 2; ++p)
 		if (m->iInFlight[p])
-			User::WaitForRequest(m->iStatus[p]);
+			symgpu_wait(m, p, 0);
 	m->iArena.Close();
 	m->iChannel.Close();
 	delete m;
@@ -103,14 +103,13 @@ extern "C" int symgpu_submit(symgpu_t* m, int pipe, const uint32_t* frame, unsig
 		{
 		if (words != sizeof(TMaliGpFrame) / 4)
 			return KErrArgument;
-		m->iChannel.SubmitGp(*reinterpret_cast<const TMaliGpFrame*>(frame), m->iStatus[0]);
 		}
-	else
-		{
-		if (words != sizeof(TMaliPpFrame) / 4)
-			return KErrArgument;
-		m->iChannel.SubmitPp(*reinterpret_cast<const TMaliPpFrame*>(frame), m->iStatus[1]);
-		}
+	else if (words != sizeof(TMaliPpFrame) / 4)
+		return KErrArgument;
+	const TInt job = m->iChannel.Submit(pipe, frame);
+	if (job < 0)
+		return job;
+	m->iJob[pipe] = job;
 	m->iInFlight[pipe] = ETrue;
 	return KErrNone;
 	}
@@ -121,11 +120,14 @@ extern "C" int symgpu_wait(symgpu_t* m, int pipe, int poll)
 		return KErrArgument;
 	if (!m->iInFlight[pipe])
 		return KErrNone;
-	if (poll && m->iStatus[pipe].Int() == KRequestPending)
+	if (poll && m->iChannel.Completed(pipe) - m->iJob[pipe] < 0)
 		return 1;
-	User::WaitForRequest(m->iStatus[pipe]);
+	// (a request of the CALLING thread: it need not be the one that submitted)
+	TRequestStatus st;
+	m->iChannel.Wait(pipe, m->iJob[pipe], st);
+	User::WaitForRequest(st);
 	m->iInFlight[pipe] = EFalse;
-	return m->iStatus[pipe].Int();
+	return st.Int();
 	}
 
 extern "C" unsigned symgpu_fast_counter()
