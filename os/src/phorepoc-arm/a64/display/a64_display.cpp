@@ -918,7 +918,7 @@ static void SetCaptureLin(TUint32 aPhys, TLinAddr aLin)
 struct TFrameRec { TUint32 iMs, iPhys, iSum; TUint8 iWhite, iBlack, iOff, iPad; };
 const TInt KFrameRing = 512, KFrameMs = 16;
 static TFrameRec FrameRing[KFrameRing];
-static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum;
+static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum, FrameLastLin;
 static TUint8 FramePrevWhite = 255;
 static TBool FrameAfterWake;
 const TUint8 KFrameUnknown = 255;
@@ -985,7 +985,8 @@ static void FrameSample()
 			s = (s << 5 | s >> 27) ^ p;
 			}
 		}
-	if (!n || (s == FrameLastSum && !FrameAfterWake))
+	FrameLastLin = (TUint32)lin;
+	if (!n || (FrameNo && s == FrameLastSum && !FrameAfterWake))
 		return;												// unchanged: not a new frame
 	FrameLastSum = s;
 	TFrameRec r;
@@ -1024,6 +1025,8 @@ static void FrameDfcFn(TAny*)
 		ekseam_puts(" h="); ekseam_puthex(SrcH);
 		ekseam_puts(" ch1="); ekseam_puthex(DisplayReady ? Mixer()[(0x3000 + 0x10) / 4] : 0);
 		ekseam_puts(" frames="); ekseam_puthex(FrameNo);
+		ekseam_puts(" lin="); ekseam_puthex(FrameLastLin);
+		ekseam_puts(" sum="); ekseam_puthex(FrameLastSum);
 		ekseam_puts("\n");
 		}
 	if (DisplayReady)
