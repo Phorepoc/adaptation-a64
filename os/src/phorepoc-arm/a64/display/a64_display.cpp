@@ -956,8 +956,18 @@ static void FrameSample()
 		lin = LegacyLin;
 	else if (phys == FbPhys && Fb)
 		lin = (TLinAddr)Fb;
-	else if (phys)
+	else if (phys && !(lin = CapFind(phys, (TInt)(pitch * h))))
+		{
+		// a buffer not mapped yet: map it, but never churn (more than 4 rotating buffers would remap every frame)
+		static TInt newMaps;
+		if (++newMaps > 16)
+			{
+			if (newMaps == 17)
+				ekseam_puts("[EKERN][frame] more than 16 scan-out buffer mappings: the frame log stops sampling new ones\n");
+			return;
+			}
 		lin = CapMap(phys, (TInt)(pitch * h));
+		}
 	if (!lin)
 		return;
 	TUint n = 0, wh = 0, k = 0, s = 0;
