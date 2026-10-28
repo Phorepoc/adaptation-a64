@@ -1019,7 +1019,7 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 			case EMaliCtrlOpenArena:
 				{
 				NKern::ThreadEnterCS();
-				TInt h = Kern::MakeHandleAndOpen(NULL, iArena);
+				TInt h = Kern::MakeHandleAndOpen(NULL, iArena, EOwnerProcess);	// (for every thread of the client process)
 				NKern::ThreadLeaveCS();
 				return h;
 				}

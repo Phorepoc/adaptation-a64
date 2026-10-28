@@ -83,7 +83,9 @@ class RMaliChannel : public RBusLogicalChannel
 	{
 public:
 	inline static TVersion VersionRequired() { return TVersion(KMaliMajorVersion, 0, 0); }
-	inline TInt Open() { return DoCreate(KMaliLddName, VersionRequired(), KNullUnit, NULL, NULL, EOwnerThread); }
+	// process-owned: every thread of the process drives the GPU through it (Alfred GPU mode has a second GL thread; a
+	// thread-owned handle was KERN-EXEC 0 in drmIoctl there)
+	inline TInt Open() { return DoCreate(KMaliLddName, VersionRequired(), KNullUnit, NULL, NULL, EOwnerProcess); }
 	inline TInt GetInfo(TMaliInfo& aInfo)
 		{ TPckg<TMaliInfo> p(aInfo); return DoControl(EMaliCtrlGetInfo, &p); }
 	// a handle to the arena chunk (Base() = offset 0)
