@@ -17,6 +17,7 @@
 #include <kernel/cache.h>
 #include <stdarg.h>
 #include "../power/a64_pwrres.h"
+#include "a64_board.h"			// the panel, its backlight and rails: the board's (board/kernel/)
 
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
@@ -24,15 +25,9 @@ extern "C" void ekseam_board_panic();
 
 extern "C" {
 TUint32 ph_a64_de, ph_a64_io, ph_a64_dsi, ph_a64_r;
-int pinephone_lcd_backlight_enable(TUint32 percent);
-int pinephone_lcd_backlight_ticks(TUint32 ticks);
-int pinephone_lcd_backlight_disable(void);
 int a64_tcon0_init(TUint16 panel_width, TUint16 panel_height);
-int pinephone_lcd_panel_reset(bool val);
-int pinephone_pmic_init(void);
 int a64_mipi_dsi_enable(void);
 int a64_mipi_dphy_enable(void);
-int pinephone_lcd_panel_init(void);
 int a64_mipi_dsi_start(void);
 int a64_de_init(void);
 int a64_de_blender_init(void);
@@ -59,7 +54,7 @@ void ph_log(const char* fmt, ...)
 	}
 }
 
-const TInt KPanelW = 720, KPanelH = 1440;
+const TInt KPanelW = A64_PANEL_W, KPanelH = A64_PANEL_H;
 const TInt KFbBytes = KPanelW * KPanelH * 4;
 
 static DPlatChunkHw* Chunks[8];
@@ -1316,15 +1311,15 @@ static TBool DisplayUpBody()
 	ph_mdelay(2);
 	ekseam_puts("[EKERN][disp] display blocks held in reset (warm-boot safe)\n");
 	}
-	if (!Resuming && !Step("backlight", pinephone_lcd_backlight_enable(90))) return EFalse;	// (a resume lights it last)
+	if (!Resuming && !Step("backlight", a64_board_backlight_enable(90))) return EFalse;	// (a resume lights it last)
 	if (!Step("tcon0",a64_tcon0_init(KPanelW, KPanelH))) return EFalse;
-	if (!Step("panel reset low", pinephone_lcd_panel_reset(false))) return EFalse;
+	if (!Step("panel reset low", a64_board_panel_reset(0))) return EFalse;
 	RsbLock();												// the battery monitor shares the bus (A64PmicReadBatt)
 	if (!Step("rsb init (bus to the AXP803)", RsbInit())) { RsbUnlock(); return EFalse; }
 	// Warm reboot: the panel's rails stayed up across the SoC reset and a PD23 pulse alone does not recover an ST7703
 	// that was mid-video (cold boot = colour bars, warm = black, 2026-10-06). Linux's panel driver power-cycles the
 	// rails on every prepare: do the same, reset held low. AXP803: 0x12 bits 3/4 = DLDO1 (VCC-DSI) / DLDO2 (panel
-	// IOVCC 1.8 V); 0x90 = 7 = GPIO0-LDO (panel VCC 3.3 V) off. pinephone_pmic_init re-enables all three.
+	// IOVCC 1.8 V); 0x90 = 7 = GPIO0-LDO (panel VCC 3.3 V) off. a64_board_pmic_init re-enables all three.
 	if (!Resuming)		// (a resume comes from a screen-off that already had DLDO1/2 off and the panel in reset)
 	{
 	A64TouchSupplyState = 1;			// GPIO0-LDO is also the touch chip's supply: the touch poll stays off its bus
@@ -1338,7 +1333,7 @@ static TBool DisplayUpBody()
 	ph_mdelay(500);
 	ekseam_puts("[EKERN][disp] panel rails power-cycled (warm-boot safe)\n");
 	}
-	const TBool railsOk = Step("pmic (AXP803 rails)", pinephone_pmic_init());
+	const TBool railsOk = Step("pmic (AXP803 rails)", a64_board_pmic_init());
 	RsbUnlock();
 	if (A64TouchSupplyState == 1)
 		A64TouchSupplyState = 2;		// back on
@@ -1346,9 +1341,9 @@ static TBool DisplayUpBody()
 	ph_mdelay(15);
 	if (!Step("mipi dsi enable", a64_mipi_dsi_enable())) return EFalse;
 	if (!Step("mipi d-phy enable", a64_mipi_dphy_enable())) return EFalse;
-	if (!Step("panel reset high", pinephone_lcd_panel_reset(true))) return EFalse;
+	if (!Step("panel reset high", a64_board_panel_reset(1))) return EFalse;
 	ph_mdelay(15);
-	if (!Step("st7703 panel init", pinephone_lcd_panel_init())) return EFalse;
+	if (!Step("st7703 panel init", a64_board_panel_init())) return EFalse;
 	// did the panel take the LONG packets? SETEXTC (0xB9) reads back F1 once unlocked (00 = long writes are lost)
 	Step("panel SETEXTC readback (0xB9; want 0xf1)", PanelRead(0xB9));
 	Step("panel DSI error count (0x05)", PanelRead(0x05));
@@ -1434,7 +1429,7 @@ static TUint32 BlTicks(TInt aLevel)
 static void BlApply()
 	{
 	if (DisplayReady)
-		pinephone_lcd_backlight_ticks(BlOff ? 0 : BlBlanked ? KBlDimTicks : BlTicks(BlLevel));
+		a64_board_backlight_ticks(BlOff ? 0 : BlBlanked ? KBlDimTicks : BlTicks(BlLevel));
 	}
 extern "C" void A64DisplaySetBrightness(TInt aPercent)
 	{
@@ -1478,7 +1473,7 @@ static void ScreenClocksOff()
 static void ScreenOffSeq()
 	{
 	ekseam_puts("[EKERN][power] screen OFF: panel sleep-in, display clocks, rails\n");
-	pinephone_lcd_backlight_disable();
+	a64_board_backlight_disable();
 	TInt irq = __SPIN_LOCK_IRQSAVE(VblankLock);
 	DisplayReady = EFalse;						// from here on no flip or source change writes a DE register
 	const TBool armed = FlipArmed;
@@ -1498,7 +1493,7 @@ static void ScreenOffSeq()
 	volatile TUint32* tcon = (volatile TUint32*)(ph_a64_io + 0xC000);
 	tcon[0x40 / 4] &= ~(1u << 31);				// TCON0_CTL: channel 0 off (sun4i_tcon_channel_disable)
 	tcon[0] &= ~(1u << 31);						// TCON_GCTL: TCON off (sun4i_tcon_disable)
-	pinephone_lcd_panel_reset(false);
+	a64_board_panel_reset(0);
 	ph_mdelay(2);
 	ScreenClocksOff();
 	A64PwrResPut(KA64ResDldo2);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // symmali.cpp -- OURS (GPU rung G4): the Symbian side of Mesa's lima driver -- RMaliChannel (our Mali-400 kernel
-// driver) behind the C seam of tools/mesa/symbian/include/symgpu.h. The DRM shim (drm_symbian.c) does the lima
+// driver) behind the C seam of core's src/symgl/symgpu.h. The DRM shim (drm_symbian.c) does the lima
 // uAPI emulation (BO handles, syncobjs, sync files); this file only talks to the kernel.
 #include <e32std.h>
 #include <e32debug.h>
@@ -20,7 +20,7 @@ struct symgpu
 
 extern "C" symgpu_t* symgpu_open(void)
 	{
-	symmali* m = new symmali;
+	symgpu* m = new symgpu;
 	if (!m)
 		return NULL;
 	m->iInFlight[0] = m->iInFlight[1] = EFalse;

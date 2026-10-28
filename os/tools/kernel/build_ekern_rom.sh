@@ -260,9 +260,10 @@ py tools/rombuild.py .bootstrap-build/boot.bin .bootstrap-build/ekern.rom --prim
 step_time "rombuild"
 echo "[5/5] boot"
 if [ "${BOARD:-syborg}" = a64 ]; then
-  bash tools/phorepoc-arm/make_pinephone_image.sh .bootstrap-build/ekern.rom   # no emulator: package for U-Boot
+  # no emulator: the board packages the ROM for its boot loader (PACKAGE = its script, given the ROM)
+  [ -z "${PACKAGE:-}" ] || bash "$PACKAGE" .bootstrap-build/ekern.rom
 elif [ "${BOARD:-syborg}" = virt ]; then
-  bash tools/phorepoc-arm/run_virt.sh .bootstrap-build/ekern.rom   # QEMU virt (PinePhone track)
+  bash tools/phorepoc-arm/run_virt.sh .bootstrap-build/ekern.rom   # QEMU virt
 else
   QEMU_RUN_SECS="${QEMU_RUN_SECS:-15}" bash tools/qemu-syborg/run_syborg.sh .bootstrap-build/ekern.rom
 fi

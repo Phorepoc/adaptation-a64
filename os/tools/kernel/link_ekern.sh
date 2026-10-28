@@ -161,8 +161,15 @@ if [ "$BOARD" = a64 ]; then
       -I"$DN/compat" -I"$DN" -include nuttx/config.h "$c" -o ".variant-build/nx_$(basename "$c" .c).o"
     VAROBJS+=(".variant-build/nx_$(basename "$c" .c).o")
   done
+  # ... and the board's side of it (a64_board.h: the panel, its backlight, the PMIC rails), C sources in board/kernel/
+  for c in board/kernel/*.c board/kernel/nuttx/*.c; do
+    [ -f "$c" ] || continue
+    ccq --raw "$ARMGCC" -c -O2 -march=armv5te -marm -mthumb-interwork -fno-short-enums -ffreestanding -fno-strict-aliasing \
+      -I"$DN/compat" -I"$DN" -Iboard/kernel -Iboard/kernel/nuttx -include nuttx/config.h "$c" -o ".variant-build/bd_$(basename "$c" .c).o"
+    VAROBJS+=(".variant-build/bd_$(basename "$c" .c).o")
+  done
   ccq -k src/phorepoc-arm/a64/display/a64_display.cpp -O2 -fno-function-sections \
-    -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} -o .variant-build/a64_display.o
+    -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} -Iboard/kernel -o .variant-build/a64_display.o
   VAROBJS+=(.variant-build/a64_display.o)
   # The bars (top bar on every image; the golden menu + keyboard only on the text-shell ROM = not PHOREPOC=1)
   ccq -k src/phorepoc-arm/a64/display/a64_bars.cpp -O2 -fno-function-sections \
