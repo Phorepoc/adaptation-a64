@@ -6,7 +6,7 @@
 // ) over our SMHC1 SDIO host (a64sdio.cpp). This file is the Symbian side:
 //   - the WLAN DFC queue, the one thread the whole driver runs on (shim_rt.cpp);
 //   - the firmware: rtw8703b_fw.bin read straight out of the XIP ROM (Z:\resource\wlan\, staged by tools/zdata_gen.py
-//     from src/phorepoc-arm/board/wlan/fw/) and handed to the driver (a64wlan_set_firmware);
+//     from the board's board/wlan/fw/) and handed to the driver (a64wlan_set_firmware);
 //   - the probe (power-on check, the efuse);
 //   - A64_WLAN_TEST (A64DEFS): the W2 demo -- power on (MAC, 8051 firmware download, MAC/PHY init), the MAC address
 //     from the efuse, channel 1 .. 13 in turn with the receive filter opened to every beacon, the SDIO interrupt polled

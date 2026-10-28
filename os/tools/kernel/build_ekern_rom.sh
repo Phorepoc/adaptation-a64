@@ -188,7 +188,7 @@ if [ "${SECONDARY:-minisec}" = "efile" ]; then
     while IFS= read -r a; do SEC_ARGS+=("$a"); done < <(py tools/kernel/gui_rom_args.py | tr -d '\r')
     # central repository initialisation files (Z:\private\10202be9\<uid>.txt)
     # = everything tools/crml2cenrep.py derives from the tree's crml/confml (+ shipped
-    # cenrep/*.txt), overridden by the explicit list in tools/kernel/cenrep_files.txt
+    # cenrep/*.txt), overridden by the explicit list in config/cenrep_files.txt
     [ -d .cenrep-gen ] || py tools/crml2cenrep.py .cenrep-gen >/dev/null
     declare -A CENREP=()
     for f in .cenrep-gen/*.txt; do
@@ -197,7 +197,7 @@ if [ "${SECONDARY:-minisec}" = "efile" ]; then
     while IFS= read -r f; do
       case "$f" in ''|'#'*) continue ;; esac
       u=$(basename "$f" .txt); CENREP[${u,,}]="baseline/symbian-2010/$f"
-    done < <(tr -d '\r' < tools/kernel/cenrep_files.txt)
+    done < <(tr -d '\r' < config/cenrep_files.txt)
     for u in "${!CENREP[@]}"; do
       SEC_ARGS+=(--data "private${BS}10202be9${BS}$u.txt=${CENREP[$u]}")
     done
