@@ -1,6 +1,6 @@
 # adaptation-a64
 
-These are the Symbian drivers for the Allwinner A64, the chip used in phones. They cover the display, the Mali-400
+These are the Symbian drivers for the Allwinner A64 system-on-chip. They cover the display, the Mali-400
 GPU, the video decoder, the camera interface, the sensors, USB and Wi-Fi.
 
 Nothing here is specific to one device, so any A64 board can use it. A board repository names this one in its
