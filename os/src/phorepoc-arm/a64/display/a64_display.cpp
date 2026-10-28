@@ -902,16 +902,22 @@ static void SetCaptureLin(TUint32 aPhys, TLinAddr aLin)
 	SrcLinPhys = aLin ? aPhys : 0;
 	}
 
-// FRAME LOG: a fingerprint of every posted buffer -- the white and black share of a sample grid (every 8th row, every
-// 16th pixel; rows taken as aW * 4 bytes, so a padded stride drifts the grid a little) and a checksum -- in a ring, a
-// line for a frame that is mostly white right after one that was not (the white-flash regressions), and a line for the
-// frame a screen-on shows. The regression check reads these lines; the [mon] line carries the counters.
+// FRAME LOG: what the panel shows, sampled -- every KFrameMs while the display is up, the scanned-out buffer (SrcLin:
+// a channel post, the legacy video RAM the window server / Alfred draw into in place, whichever the DE reads) gets a
+// fingerprint: the white and black share of a sample grid (every 8th row, every 16th pixel) and a checksum. A changed
+// checksum = a new frame, kept in a ring. Lines: a frame that is mostly white right after one that was not (the
+// white-flash regressions; max 10 a second), and the first frame after every screen-on. The [mon] disp line carries the
+// counters; tools/phone_gate.py reads them. Sampling the scan-out (not the posts) covers every drawing path.
 struct TFrameRec { TUint32 iMs, iPhys, iSum; TUint8 iWhite, iBlack, iOff, iPad; };
-const TInt KFrameRing = 512;
+const TInt KFrameRing = 512, KFrameMs = 16;
 static TFrameRec FrameRing[KFrameRing];
-static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs;
+static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum;
 static TUint8 FramePrevWhite = 255;
+static TBool FrameAfterWake;
 const TUint8 KFrameUnknown = 255;
+static TDfc* FrameDfc;
+static void FrameTimerFn(TAny*) { if (FrameDfc) FrameDfc->Add(); }		// ISR context
+static NTimer FrameTimer(FrameTimerFn, 0);
 
 static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
 	{
@@ -924,59 +930,71 @@ static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
 	ekseam_puts(" white%="); ekseam_puthex(aRec.iWhite);
 	ekseam_puts(" black%="); ekseam_puthex(aRec.iBlack);
 	ekseam_puts(" sum="); ekseam_puthex(aRec.iSum);
-	ekseam_puts(aRec.iOff ? " (screen off)\n" : "\n");
+	ekseam_puts(aRec.iOff ? " (screen off)
+" : "
+");
 	}
 
-static void FrameRecord(TUint32 aPhys, TLinAddr aLin, TInt aW, TInt aH, TBool aOff)
+static void FrameSample()
 	{
-	TFrameRec r;
-	r.iMs = (TUint32)(((TUint64)NKern::TickCount() * NKern::TickPeriod()) / 1000);
-	r.iPhys = aPhys; r.iSum = 0; r.iOff = (TUint8)(aOff ? 1 : 0); r.iPad = 0;
-	r.iWhite = r.iBlack = KFrameUnknown;
-	if (aLin && aW > 0 && aH > 0)
+	const TLinAddr lin = SrcLin;
+	const TInt w = SrcPhys ? SrcW : 0, h = SrcPhys ? SrcH : 0;
+	if (!lin || w <= 0 || h <= 0)
+		return;
+	const TUint pitch = (TUint)((w * 4 + 63) & ~63);		// the buffers' 64-byte row pitch (ProgramSource)
+	TUint n = 0, wh = 0, k = 0, s = 0;
+	for (TInt y = 4; y < h; y += 8)
 		{
-		TUint n = 0, w = 0, k = 0, s = 0;
-		for (TInt y = 4; y < aH; y += 8)
+		const TUint32* row = (const TUint32*)(lin + (TUint)y * pitch);
+		for (TInt x = 8; x < w; x += 16)
 			{
-			const TUint32* row = (const TUint32*)(aLin + (TUint)y * (TUint)aW * 4);
-			for (TInt x = 8; x < aW; x += 16)
-				{
-				const TUint32 p = row[x];
-				++n;
-				if ((p & 0xF0F0F0) == 0xF0F0F0)
-					++w;
-				else if ((p & 0xE0E0E0) == 0)
-					++k;
-				s = (s << 5 | s >> 27) ^ p;
-				}
-			}
-		if (n)
-			{
-			r.iWhite = (TUint8)(w * 100 / n);
-			r.iBlack = (TUint8)(k * 100 / n);
-			r.iSum = s;
+			const TUint32 p = row[x];
+			++n;
+			if ((p & 0xF0F0F0) == 0xF0F0F0)
+				++wh;
+			else if ((p & 0xE0E0E0) == 0)
+				++k;
+			s = (s << 5 | s >> 27) ^ p;
 			}
 		}
+	if (!n || (s == FrameLastSum && !FrameAfterWake))
+		return;												// unchanged: not a new frame
+	FrameLastSum = s;
+	TFrameRec r;
+	r.iMs = (TUint32)(((TUint64)NKern::TickCount() * NKern::TickPeriod()) / 1000);
+	r.iPhys = SrcPhys; r.iSum = s; r.iOff = 0; r.iPad = 0;
+	r.iWhite = (TUint8)(wh * 100 / n);
+	r.iBlack = (TUint8)(k * 100 / n);
 	const TUint32 no = ++FrameNo;
 	FrameRing[no % KFrameRing] = r;
-	if (r.iWhite != KFrameUnknown && r.iWhite >= 85 && FramePrevWhite < 40)
+	if (FrameAfterWake)
+		{
+		FrameAfterWake = EFalse;
+		FramePut("first frame after screen-on", r, no);
+		}
+	if (r.iWhite >= 85 && FramePrevWhite < 40)
 		{
 		++FrameWhiteFlashes;
-		if (r.iMs - FrameLastLineMs >= 100)		// (bounded: at most 10 lines a second)
+		if (r.iMs - FrameLastLineMs >= 100)
 			{
 			FrameLastLineMs = r.iMs;
 			FramePut("WHITE frame after a non-white one", r, no);
 			}
 		}
-	if (r.iWhite != KFrameUnknown)
-		FramePrevWhite = r.iWhite;
+	FramePrevWhite = r.iWhite;
+	}
+
+static void FrameDfcFn(TAny*)
+	{
+	if (DisplayReady)
+		FrameSample();
+	FrameTimer.OneShot(NKern::TimerTicks(KFrameMs));
 	}
 
 // Show aPhys (aLin: SetCaptureLin). ETrue = the post completes at a vblank (the
 // DFC above); EFalse = it took effect now (display not up yet, or the size changed: full reprogram), complete it now.
 extern "C" TBool A64DisplayFlip(TUint32 aPhys, TLinAddr aLin, TInt aW, TInt aH)
 	{
-	FrameRecord(aPhys, aLin ? aLin : ((LegacyLin && aPhys == LegacyLinPhys) ? LegacyLin : 0), aW, aH, !DisplayReady);
 	TInt irq = __SPIN_LOCK_IRQSAVE(VblankLock);
 	if (!DisplayReady || !VblankBound || aW != SrcW || aH != SrcH)
 		{
@@ -1447,8 +1465,8 @@ static TBool DisplayUpBody()
 	__SPIN_UNLOCK_IRQRESTORE(VblankLock, irq);
 	}
 	ekseam_puts("[EKERN][disp] DISPLAY UP\n");
-	if (Resuming && FrameNo)
-		FramePut("screen-on shows", FrameRing[FrameNo % KFrameRing], FrameNo);
+	if (Resuming)
+		FrameAfterWake = ETrue;			// the frame log reports the first frame the woken panel shows
 	return ETrue;
 	}
 
@@ -1697,8 +1715,11 @@ extern "C" void A64DisplayStart()
 		PowerDfc = new TDfc(ScreenPowerFn, 0, DispQ, 1);
 #endif
 		CapDfc = new TDfc(CapMapFn, 0, DispQ, 1);
+		FrameDfc = new TDfc(FrameDfcFn, 0, DispQ, 0);		// (lowest priority on the queue: after power / flips)
 		}
 	NKern::ThreadLeaveCS();
+	if (FrameDfc)
+		FrameTimer.OneShot(NKern::TimerTicks(5000));		// the frame log, from just after the bring-up
 	if (r != KErrNone || !DispDfc)
 		{
 		ekseam_puts("[EKERN][disp] no DFC queue r="); ekseam_puthex((unsigned)r);
