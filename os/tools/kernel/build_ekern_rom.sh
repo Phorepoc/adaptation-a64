@@ -35,7 +35,7 @@ O=.ekern-build; [ "${MMODEL:-multiple}" = flexible ] && O=.ekern-flex-build   # 
 [ "${SMP:-0}" = 1 ] && O=.ekernsmp-flex-build   # SMP=1: the SMP kernel (link_ekern.sh SMP=1; needs MMODEL=flexible)
 MMODEL_XINFO=; [ "${MMODEL:-multiple}" = flexible ] && MMODEL_XINFO=,flexible=1   # rombuild: ROM DLL data under KUserLocalDataEnd
 # BOARD=a64: the user content at a FIXED ROM address (rombuild user_at; ROM_USER_AT=0 = right after the kernel, as before)
-# -- the PinePhone delta upload then re-sends only what changed instead of everything behind a kernel that changed size
+# -- the phone delta upload then re-sends only what changed instead of everything behind a kernel that changed size
 if [ "${BOARD:-syborg}" = a64 ] && [ "${ROM_USER_AT:-0x80400000}" != 0 ]; then
   MMODEL_XINFO="$MMODEL_XINFO,user_at=${ROM_USER_AT:-0x80400000}"
 fi
@@ -137,7 +137,7 @@ if [ "${SECONDARY:-minisec}" = "efile" ]; then
             --xip 'Sys\Bin\elocl_col.001=emitter/elocl_col.001'
             --data "Sys${BS}Data${BS}estart.txt=$ESTART_TXT"
             --xinfo 'databss=0x00400000,cap1=0xFFFFFFFF,cap2=0xFFFFFFFF'"${MMODEL_XINFO:-}")
-  # The PinePhone GOLDEN image (BOARD=a64, no PHOREPOC=1) at par with slot B's PhoneLab file service: phfs.exe (the user half of
+  # The phone GOLDEN image (BOARD=a64, no PHOREPOC=1) at par with slot B's PhoneLab file service: phfs.exe (the user half of
   # phlink's 'F' command, src/phfs) started by Z:\AUTOEXEC.BAT -- ESHELL runs the first AUTOEXEC.BAT it finds (Y:..A:, then Z:,
   # ts_edshl.cpp), 8-bit text; `start` = run without waiting. Slot B starts it from the SSM list instead (r_cmd_phfs).
   if [ "${BOARD:-syborg}" = a64 ] && [ "${PHOREPOC:-0}" != 1 ] && [ -f emitter/phfs.exe ]; then

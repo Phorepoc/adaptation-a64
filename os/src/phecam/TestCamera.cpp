@@ -91,7 +91,7 @@ void CTestCamera::ConstructL()
 
 	User::LeaveIfError(iScreenDev->CreateContext(iScreenGc));
 #ifdef __MARM__
-	User::LeaveIfError(iImageSizes.Append( TSize(480, 640) )); // OURS (phecam): portrait VGA, the PinePhone frame is portrait
+	User::LeaveIfError(iImageSizes.Append( TSize(480, 640) )); // OURS (phecam): portrait VGA, the phone frame is portrait
 #else
 	User::LeaveIfError(iImageSizes.Append( TSize(640, 480) )); // VGA
 #endif

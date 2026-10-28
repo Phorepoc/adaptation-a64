@@ -11,7 +11,7 @@ command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, n
 set -u
 REPO="${KVIEW:-$(cd "$(dirname "$0")/../.." && pwd)}"
 B="$REPO/baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka"
-# SMP=1: the SMP build (nkernsmp headers + __SMP__ + GIC), objects in .ekernsmp-build/ (PinePhone SMP rung 1).
+# SMP=1: the SMP build (nkernsmp headers + __SMP__ + GIC), objects in .ekernsmp-build/ (phone SMP rung 1).
 NK=nkern; SMPD=()
 if [ "${SMP:-0}" = 1 ]; then NK=nkernsmp; SMPD=(-D__SMP__ -D__CPU_HAS_VFP -D__VFP_V3 -U__CPU_CORTEX_A8N__ -D__CPU_CORTEX_A9__ -D__CPU_ARM_HAS_GIC -D__NKERN_TIMESTAMP_USE_INLINE_BSP_CODE__); fi
 # SMP + GT=1 (default): the generic timer (see nkernsmp_compile_check.sh) -- the kernel entry (nk_entry.cia

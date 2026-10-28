@@ -14,7 +14,7 @@
 class CPheCamSource : public CActive
 	{
 public:
-	static CPheCamSource* NewL(TInt aUnit = 0);	// unit = the camera index: 0 rear, 1 front (PinePhone)
+	static CPheCamSource* NewL(TInt aUnit = 0);	// unit = the camera index: 0 rear, 1 front (phone)
 	~CPheCamSource();
 	CFbsBitmap* Frame() const { return iFrames > 0 ? iBitmap : NULL; }	// NULL until the first frame arrived
 	TInt FrameCount() const { return iFrames; }

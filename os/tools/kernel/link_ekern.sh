@@ -43,7 +43,7 @@ else
   MMN=multiple; MMDEF=(-D__MEMMODEL_MULTIPLE__ -DMM_MULTIPLE); KO=.ekern-build; NO=.nkern-build
   MMSRC=(-I"$MM/epoc/multiple")
 fi
-# SMP=1 (PinePhone SMP rung; needs MMODEL=flexible -- the multiple model is UP-only on ARM): objects from
+# SMP=1 (phone SMP rung; needs MMODEL=flexible -- the multiple model is UP-only on ARM): objects from
 # `bash tools/kernel/nkernsmp_compile_check.sh` (.nkernsmp-build/) + `SMP=1 MMODEL=flexible bash
 # tools/kernel/ekern_compile_check.sh` (.ekernsmp-flex-build/); the variant + seam compile against nkernsmp with the
 # same CPU/GIC/generic-timer/timestamp defines, and the generic-timer overlay headers first (SYMCC_PREINC).
@@ -93,7 +93,7 @@ for tu in $VTUS; do
 done
 
 if [ "$BOARD" = a64 ]; then
-  echo "[2/3] a64: ELOCD + the internal RAM drive (C:), USB link, the PinePhone display; touch (GT917S), no keys/storage yet"
+  echo "[2/3] a64: ELOCD + the internal RAM drive (C:), USB link, the phone display; touch (GT917S), no keys/storage yet"
   MED=(-I"$B/drivers/locmedia" -I"$B/drivers/locmedia/traces" -I"$B/include/drivers" -I"$B/include")
   ccq -k "$B/drivers/locmedia/locmedia.cpp" -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -DInitExtension=InitExtension_locmedia \
@@ -234,7 +234,7 @@ if [ "$BOARD" = a64 ]; then
   ccq -k src/phorepoc-arm/a64/input/a64keys.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" -o .variant-build/a64keys.o
   VAROBJS+=(.variant-build/a64keys.o)
-  # Bluetooth rung R1 (pinephone-port.md "Bluetooth: the decision"): the REAL serial LDD (ECOMM, d_comm.cpp, entry
+  # Bluetooth rung R1 (the port notes "Bluetooth: the decision"): the REAL serial LDD (ECOMM, d_comm.cpp, entry
   # renamed) + our UART1 PDD "Comm.A64" (src/phorepoc-arm/a64/bt/a64uart.cpp) = the RTL8723CS's HCI link
   # (one modern-GCC delta: `if (a1<0)` compares a TAny* with 0 -- an error since GCC 11; the overlay casts it)
   sed 's/^\(\s*\)if (a1<0)\(\r\?\)$/\1if ((TInt)a1<0)\2/' "$B/drivers/ecomm/d_comm.cpp" > .variant-build/d_comm_a64.cpp
@@ -246,12 +246,12 @@ if [ "$BOARD" = a64 ]; then
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" $([ "${MODEM:-0}" = 1 ] && echo -DPHE_MODEM) -o .variant-build/a64uart.o
   # (MODEM=1 = modem rung M1, telephony-plan.md: + Comm.A64 unit 3 = UART3 to the EG25-G and its power sequence)
   VAROBJS+=(.variant-build/d_comm.o .variant-build/a64uart.o)
-  # WiFi rung 0 (pinephone-port.md "WiFi: the decision"): the SMHC1 SDIO host for the RTL8723CS's WiFi half
+  # WiFi rung 0 (the port notes "WiFi: the decision"): the SMHC1 SDIO host for the RTL8723CS's WiFi half
   # (src/phorepoc-arm/a64/wlan/a64sdio.cpp; A64DEFS=-DA64_SDIO_TEST = the identification self-test at boot)
   ccq -k src/phorepoc-arm/a64/wlan/a64sdio.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" ${A64DEFS:-} -o .variant-build/a64sdio.o
   VAROBJS+=(.variant-build/a64sdio.o)
-  # WiFi, the chip core (pinephone-port.md "WiFi: the chip core"): the vendored rtw88 (Linux, C, unmodified; the
+  # WiFi, the chip core (the port notes "WiFi: the chip core"): the vendored rtw88 (Linux, C, unmodified; the
   # RTL8703B subset) against our freestanding Linux shim (wlan/shim/include), mac80211-lite + the module stubs, the
   # nkern runtime (shim_rt.cpp) and the Symbian side (a64wlan.cpp + a64wlan_glue.c). A64DEFS=-DA64_WLAN_TEST = the W2
   # demo at boot (power on, firmware, channel hop, the beacons of nearby APs logged).
@@ -300,7 +300,7 @@ if [ "$BOARD" = a64 ]; then
   # tools/kernel/wlanldd_compile_check.sh compiles it into .variant-build/wl_ldd_*.o
   WLDD_FLAGS="${WLDD_FLAGS:--DNDEBUG}" bash tools/kernel/wlanldd_compile_check.sh >/dev/null || { echo "wlanldd compile FAILED (see .wlanldd-check.log)"; exit 1; }
   VAROBJS+=(.variant-build/wl_ldd_*.o)
-  # Sensors rung S1 (pinephone-port.md "Sensors: the decision"): the TWI1 sensor bus helper
+  # Sensors rung S1 (the port notes "Sensors: the decision"): the TWI1 sensor bus helper
   # (src/phorepoc-arm/a64/sensors/a64twi.cpp; A64DEFS=-DA64_SENSOR_TEST = the chip-identity probe at boot)
   ccq -k src/phorepoc-arm/a64/sensors/a64twi.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" ${A64DEFS:-} -o .variant-build/a64twi.o

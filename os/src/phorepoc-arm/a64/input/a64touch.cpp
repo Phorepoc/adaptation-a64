@@ -1,8 +1,8 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone track): the PinePhone's Goodix GT917S touch panel ->
-// Symbian pointer events. Reference: NuttX (Apache-2.0) boards/arm64/a64/pinephone/src/pinephone_touch.c +
+// OURS (track): the phone's Goodix GT917S touch panel ->
+// Symbian pointer events. Reference: NuttX (Apache-2.0) boards/arm64/a64/pinephone/src/pinephone_touch.c + layering: ok
 // drivers/input/gt9xx.c and Linux i2c-mv64xxx.c (the Allwinner TWI is a Marvell mv64xxx core).
 //   - bus: TWI0 at 0x01C2AC00, pins PH0 (SCK) / PH1 (SDA) function 2, I2C address 0x5D; power = the AXP803
 //     GPIO0-LDO the panel bring-up already enables (a64_display.cpp).
@@ -339,7 +339,7 @@ static TInt MouseHal(TAny*, TInt aFunction, TAny* a1, TAny*)
 
 // S60's hardware-switch HAL group (EHalGroupPlatformSpecific1 = 29; SysApAppUi.cpp KHWSwitchGrip = 2): SysAp reads the
 // keyboard slide at startup and publishes KHWRMGripStatus, which turns the FEP's hardware-QWERTY mode on or off. The
-// PinePhone is touch-only, a slide that is always CLOSED (1): an editor tap opens the virtual keyboard. Without this
+// phone is touch-only, a slide that is always CLOSED (1): an editor tap opens the virtual keyboard. Without this
 // group SysAp publishes nothing and editors get neither a cursor nor a keyboard (boot 307). x86: X64SwitchHal, SLIDE=1.
 static const TInt KA64HalSwitchGrip = 2;
 static TInt A64SwitchHal(TAny* /*aPtr*/, TInt aFunction, TAny* a1, TAny* /*a2*/)

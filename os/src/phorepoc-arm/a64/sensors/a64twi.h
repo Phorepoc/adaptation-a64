@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-// a64twi.h -- OURS (PinePhone sensors): the A64 TWI (mv64xxx I2C) bus helper of a64twi.cpp, shared by the sensor LDD
+// a64twi.h -- OURS (phone sensors): the A64 TWI (mv64xxx I2C) bus helper of a64twi.cpp, shared by the sensor LDD
 // (a64sensors.cpp) and the boot probe. One instance per bus, a fast mutex per bus, polled transfers at 100 kHz.
 #ifndef A64TWI_H
 #define A64TWI_H

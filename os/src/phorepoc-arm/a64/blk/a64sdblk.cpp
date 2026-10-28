@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
-// OURS (PinePhone track): a persistent C: on the PinePhone's SD card = Syborg's REAL
+// OURS (track): a persistent C: on the phone's SD card = Syborg's REAL
 // NVMemory media driver (oss.FCL.sf.adapt.Qemu/baseport/syborg/mednvmemory/syborg_mednvmemory.cpp, compiled unmodified
 // below) on partition 3 of the card (tools/phorepoc-arm/sd_layout.py). The same shape as virt/blk/virtblk.cpp: the
 // driver only knows the Syborg NVMemory registers (a shared transfer buffer + offset/size/direction/execute, an

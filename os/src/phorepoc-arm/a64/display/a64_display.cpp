@@ -1,13 +1,13 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone track P4): bring up the PinePhone's 720x1440 panel.
+// OURS (track P4): bring up the phone's 720x1440 panel.
 // The register-level work is NuttX's A64 display drivers (nuttx/*.c, Apache-2.0, vendored unmodified; written up
 // at lupyuen.github.io/articles/dsi2 & co): AXP803 rails over RSB, the R_PWM backlight, TCON0, MIPI DSI + D-PHY,
 // the Sitronix ST7703 panel init sequence (XBD599), and the Display Engine 2 mixer + blender + UI channel 1.
 // They compile against nuttx/compat (putreg32 & co, logging, delays); the A64_*_ADDR bases there are the linear
 // addresses of the DPlatChunkHw windows mapped here. The order of calls = NuttX's up_fbinitialize
-// (boards/arm64/a64/pinephone/src/pinephone_display.c).
+// (boards/arm64/a64/pinephone/src/pinephone_display.c). layering: ok
 //
 // Runs on its own DFC thread, a few seconds after boot (after the USB link is up), so a display hang never takes
 // the kernel or the debug log with it. Step 1 (this file): a test pattern straight into the framebuffer.
@@ -264,7 +264,7 @@ extern "C" TInt A64PmicChargeAssert()
 	if (r33 >= 0 && !(r33 & 0x80))
 		a64_rsb_write(0x2d, 0x33, (TUint8)(r33 | 0x80));
 	// TS pin (2026-10-07): at the PMIC's reset default the battery-temperature input gates charging, and the
-	// PinePhone's pack does not give it an in-range reading -> NO charging (0.2-0.5 A drawn = the phone alone, after
+	// the phone's pack does not give it an in-range reading -> NO charging (0.2-0.5 A drawn = the phone alone, after
 	// the battery was out and the PMIC reset; it charged right after Mobian, which leaves the TS pin as a GPADC).
 	// REG 84H bit 2 = 1: TS = external ADC input, temperature monitoring off; bits 1:0 = 0: no TS current source.
 	// THE input limit (2026-10-07): on the AXP803/813 it is REG 35H bits 7:4 (Linux axp20x_usb_power, AXP813:
@@ -328,7 +328,7 @@ extern "C" TInt A64PmicReadReg(TUint8 aReg)
 	return v;
 	}
 
-// THE POWER KEY (2026-10-08): the PinePhone's power button is the AXP803's PEK input. Its edge IRQs latch in IRQ
+// THE POWER KEY (2026-10-08): the phone's power button is the AXP803's PEK input. Its edge IRQs latch in IRQ
 // status 5 (REG 4CH, write 1 to clear) once enabled in REG 44H -- as Linux axp20x-pek: bit 6 PEK_RIS_EDGE ("DBR") =
 // pressed, bit 5 PEK_FAL_EDGE ("DBF") = released, bit 4 POKSIRQ = a short press ended, bit 3 POKLIRQ = held past
 // the long-press time (REG 36H). On the phone the release edge never came (2026-10-08: "power down" only -> SysAp
@@ -463,7 +463,7 @@ static TBool PanelRecover(const char* aWhen)
 	}
 
 // p-boot's recorded DSI register writes for this panel (xff.cz/git/p-boot src/display.c dsi_init_seq, known to work
-// on the PinePhone): compare with the live registers, print mismatches only. 0x0010/0x0000 change at run time.
+// on the phone): compare with the live registers, print mismatches only. 0x0010/0x0000 change at run time.
 struct TRegVal { TUint16 iOff; TUint32 iVal; };
 static const TRegVal KPbootDsi[] = {
 	{ 0x0000, 0x00000001 },
@@ -588,7 +588,7 @@ static void ProgramSource()
 const TInt KStripH = 80;
 extern "C" void A64BarsStart();
 extern "C" TUint32* A64PanelFb() { return Fb; }
-// SOFT KEY BAR (2026-10-07): the bottom black bar (rows 1360-1439) carries the S^3 hardware keys the PinePhone lacks --
+// SOFT KEY BAR (2026-10-07): the bottom black bar (rows 1360-1439) carries the S^3 hardware keys the phone lacks --
 // green (call) | Menu | red (end); a64touch.cpp turns a touch there into the key. Channel 2 now scans the WHOLE panel
 // buffer: the rows between the bars get alpha 0 (ARGB, pixel alpha) so the OS picture on channel 1 shows through.
 static void Fill(TInt aX, TInt aY, TInt aW, TInt aH, TUint32 aArgb)
@@ -1238,7 +1238,7 @@ static void VblankInit()
 	ekseam_puts("[EKERN][disp] vblank (TCON0 TRI_FINISH) per second: "); ekseam_puthex(VblankCount - c0);
 	}
 
-// Mixer 1 (DE + 0x200000) is never used (the PinePhone routes mixer 0 only) but a warm reset keeps whatever the previous
+// Mixer 1 (DE + 0x200000) is never used (the phone routes mixer 0 only) but a warm reset keeps whatever the previous
 // OS left in it. Its clocks are NOT enabled by a64_de_init (touching an ungated block hangs the bus): open core 1's
 // SCLK/HCLK gates + HCLK reset (DE top: +0x00 / +0x04 / +0x08, bit 1), zero its 0x6000-byte window, put the three bits
 // back. A64_NO_MIXER1_CLEAR=1 compiles it out. The secure video RAM needs no eager clear: MapSourceForCapture blacks any

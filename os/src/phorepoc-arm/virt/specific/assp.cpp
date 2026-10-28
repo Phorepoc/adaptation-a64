@@ -1,4 +1,4 @@
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the QEMU `virt` variant, derived from
+// OURS (track): the QEMU `virt` variant, derived from
 // oss.FCL.sf.adapt.Qemu/baseport/syborg/specific/assp.cpp. Class names stay Syborg/TSyborg for now (the ROM
 // scripts export them by name); deltas are marked VIRT:.
 /*

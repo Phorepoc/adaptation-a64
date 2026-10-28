@@ -1,4 +1,4 @@
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the QEMU `virt` variant, derived from
+// OURS (track): the QEMU `virt` variant, derived from
 // oss.FCL.sf.adapt.Qemu/baseport/syborg/specific/syborg.h. Class names stay Syborg/TSyborg for now (the ROM
 // scripts export them by name); deltas are marked VIRT:.
 /*
@@ -38,10 +38,10 @@
 const TUint KHwBasePeripherals  = KPrimaryIOBase;       
 const TUint KHwLinSeparation	= 0x1000;
 const TInt KMsTickPeriod	= 1000;	// VIRT/A64: the tick is the generic timer at 1 ms (CNTFRQ/1000); Syborg's 10000 = its
-							// 100 Hz timer, kept by mistake = every NTimer 10x early (PinePhone clock ran 6.5x fast, 2026-10-06)
+							// 100 Hz timer, kept by mistake = every NTimer 10x early (phone clock ran 6.5x fast, 2026-10-06)
 
 #ifdef __A64__
-// A64 (BOARD=a64, src/phorepoc-arm/a64): the same variant on the Allwinner A64 / PinePhone. Linear addresses of
+// A64 (BOARD=a64, src/phorepoc-arm/a64): the same variant on the Allwinner A64. Linear addresses of
 // its bootstrap's HW banks (a64/bootstrap/a64.inc GetHwBanks order), KPrimaryIOBase + n * 4K
 const TUint KHwBaseGicDist			= KHwBasePeripherals + 0x00*KHwLinSeparation;	// GIC-400
 const TUint KHwBaseGicCpu			= KHwBasePeripherals + 0x01*KHwLinSeparation;	// 2 pages

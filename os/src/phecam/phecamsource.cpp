@@ -89,7 +89,7 @@ void CPheCamSource::ConstructL(TInt aUnit)
 	iH = KPheCamH;
 	iBitmap = new (ELeave) CFbsBitmap;
 #ifdef __MARM__
-	// the PinePhone's rear OV5640 is mounted landscape (DT rotation = 90): the bitmap is the frame transposed (sensor column -> screen row; checked against a reference photo, boot 940)
+	// the phone's rear OV5640 is mounted landscape (DT rotation = 90): the bitmap is the frame transposed (sensor column -> screen row; checked against a reference photo, boot 940)
 	// clockwise, portrait like the screen (Convert)
 	User::LeaveIfError(iBitmap->Create(TSize(iH, iW), EColor16MU));
 #else
@@ -165,7 +165,7 @@ void CPheCamSource::Convert(const TUint8* aYuv)
 	const TInt wordsPerLine = iBitmap->DataStride() / 4;
 #if defined(PHE_CAM_RAW) && defined(__MARM__)
 	// 2026-10-18: Bayer raw8 (2W x 2H) -> one RGB pixel per 2x2 quad, as Megapixels does it in software (the sensor's own
-	// YUV path swaps R/G on the PinePhone). Phase KBayer: 0 = BGGR (the reference's order), 1 = GBRG, 2 = GRBG, 3 = RGGB.
+	// YUV path swaps R/G on the phone). Phase KBayer: 0 = BGGR (the reference's order), 1 = GBRG, 2 = GRBG, 3 = RGGB.
 	// Grey-world white balance: this frame's channel means set the next frame's R/B gains (1/256 steps); a light gamma.
 	{
 	const TInt rw = iW * 2;
@@ -208,7 +208,7 @@ void CPheCamSource::Convert(const TUint8* aYuv)
 		const TUint8* in = aYuv + y * iW * 2;
 		TUint32* row = out + y * wordsPerLine;
 #ifdef __MARM__
-		// the PinePhone: the real OV5640 behind CameraSc (a64camera.cpp) sends true packed YUYV (Y0 U Y1 V, 0x4300 = 0x30):
+		// the phone: the real OV5640 behind CameraSc (a64camera.cpp) sends true packed YUYV (Y0 U Y1 V, 0x4300 = 0x30):
 		// BT.601 studio range -> RGB
 		for (TInt x = 0; x + 1 < iW; x += 2, in += 4)
 			{

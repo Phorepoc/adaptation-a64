@@ -19,7 +19,7 @@
 // plumbing (client requests, DFCs, a timeout) -- is OURS.
 //
 // Board specifics (register base, interrupt ids, clocks/resets) come from the board file through TMaliBoard
-// (src/phorepoc-arm/a64/gpu/mali_a64.cpp on the PinePhone).
+// (src/phorepoc-arm/a64/gpu/mali_a64.cpp on the phone).
 #include <kernel/kernel.h>
 #include <kernel/kern_priv.h>
 #include <kernel/arm/assp.h>

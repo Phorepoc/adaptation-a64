@@ -73,12 +73,12 @@ c = sub1(c, "void CTestCamera::GetImgProcessedFrame(CFbsBitGc& aGc, TPoint& aPos
          "void CTestCamera::GetImgProcessedFrame(CFbsBitGc& aGc, TPoint& aPos) const\n\t{\n"
          "\tif (iPheSource && iPheSource->Frame())\t// OURS (phecam): a still = the latest driver frame\n"
          "\t\t{\n\t\tGetFrame(aGc, aPos);\n\t\treturn;\n\t\t}\n")
-# two cameras on the PinePhone (rear OV5640 = index 0, front GC2145 = index 1: the camera driver's units)
+# two cameras on the phone (rear OV5640 = index 0, front GC2145 = index 1: the camera driver's units)
 c = sub1(c, "TInt CTestCameraInfo::CamerasAvailable()\n\t{\n\treturn 1;\n",
          "TInt CTestCameraInfo::CamerasAvailable()\n\t{\n#if defined(__MARM__) && defined(PHECAM_FRONT)\n\treturn 2;\t// OURS (phecam): rear + front (the front GC2145 is PARKED: build with PHECAM_FRONT to offer it)\n#endif\n\treturn 1;\n")
 # the still sizes: phecam's frame is portrait on the phone (rotated in phecamsource.cpp), so the first still size is too
 c = sub1(c, "\tUser::LeaveIfError(iImageSizes.Append( TSize(640, 480) )); // VGA\n",
-         "#ifdef __MARM__\n\tUser::LeaveIfError(iImageSizes.Append( TSize(480, 640) )); // OURS (phecam): portrait VGA, the PinePhone frame is portrait\n#else\n\tUser::LeaveIfError(iImageSizes.Append( TSize(640, 480) )); // VGA\n#endif\n")
+         "#ifdef __MARM__\n\tUser::LeaveIfError(iImageSizes.Append( TSize(480, 640) )); // OURS (phecam): portrait VGA, the phone frame is portrait\n#else\n\tUser::LeaveIfError(iImageSizes.Append( TSize(640, 480) )); // VGA\n#endif\n")
 if "#include <e32debug.h>" not in c:
     c = sub1(c, '#include "phecamsource.h"\n', '#include "phecamsource.h"\n#include <e32debug.h>\n')
 old = "void FileDependencyUtil::CheckFileDependencyL()\n\t{\t\n"

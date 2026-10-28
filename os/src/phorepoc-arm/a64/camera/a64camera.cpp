@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64camera.cpp -- OURS (2026-10-17, -phone + C2): the PinePhone camera board glue.
+// a64camera.cpp -- OURS (2026-10-17, -phone + C2): the phone camera board glue.
 // C1 (phone): installs the 2010 shared-chunk camera LDD (DCameraScLdd "CameraSc", third_party/symbian2010-camerasc,
 //   unmodified, entry renamed) + the 2010 template PDD "CameraSc.TE" (the timer-driven fake sensor), exactly the pair
 //   the x86 image runs (tools/phorepoc-x86/ekern/xk_camerasc.cpp). phecam (ECam plug-in over RDevCameraSc) loads them

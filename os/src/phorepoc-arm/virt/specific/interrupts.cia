@@ -1,4 +1,4 @@
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the QEMU `virt` variant, derived from
+// OURS (track): the QEMU `virt` variant, derived from
 // oss.FCL.sf.adapt.Qemu/baseport/syborg/specific/interrupts.cia. Deltas marked VIRT:.
 // (syborg.cia is not carried over: its Syborg counter-timer accessors have no device here, and the interrupt
 // enable/disable moved to interrupts.cpp as GICv2 register writes.)

@@ -4,7 +4,7 @@ command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, n
 # Copyright The Phorepoc Authors
 # SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
-# nkernsmp_compile_check.sh -- PinePhone SMP rung 0: compile the UNMODIFIED 2010 ARM SMP nanokernel
+# nkernsmp_compile_check.sh -- phone SMP rung 0: compile the UNMODIFIED 2010 ARM SMP nanokernel
 # (kernel/eka/nkernsmp + nkernsmp/arm, the source list of nkernsmp/nkern.mmp under MARM) with our modern
 # toolchain, the SMP sibling of nkern_compile_check.sh. Does NOT link or run. Objects -> .nkernsmp-build/.
 # Run from repo root:  bash tools/kernel/nkernsmp_compile_check.sh
@@ -18,7 +18,7 @@ OUT="${OUT:-$REPO/.nkernsmp-build}"; mkdir -p "$OUT"
 
 # The SMP kernel runs the FLEXIBLE memory model (the multiple model's ARM glue is UP-only, rung 1); CPU = the
 # Cortex-A9 SMP config (the only ARMv7 SMP CPU cpudefs.h knows) at -march=armv7-a, as ekern_compile_check SMP=1.
-# GT=1 (default): the GENERIC TIMER instead of the A9 private timer (virt / the PinePhone's A53) -- the overlay
+# GT=1 (default): the GENERIC TIMER instead of the A9 private timer (virt / the phone's A53) -- the overlay
 # src/phorepoc-arm/nkernsmp-gt/arm_tmr.h + the three asm/header deltas of tools/kernel/nkernsmp_gt_patch.py
 # (patched copies in $OUT/gt/). GT=0 = the unmodified A9 build.
 GTD=(); PREINC=""; NCSCHED_CIA="$B/nkernsmp/arm/ncsched.cia"

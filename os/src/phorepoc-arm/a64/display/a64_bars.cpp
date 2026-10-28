@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone, 2026-10-08): what the kernel draws in the panel's own
+// OURS (phone, 2026-10-08): what the kernel draws in the panel's own
 // layer (a64_display.cpp: UI channel 2 over the OS picture, see-through in the middle) --
 //  * the TOP BAR (rows 0-79, every image): CPU % (per-core bars + a sparkline), free RAM (+ sparkline), battery,
 //    and a second line that is a progress bar while something long runs (an image upload over phlink) or the

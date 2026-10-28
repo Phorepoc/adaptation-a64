@@ -162,7 +162,7 @@ SPEC = {
     },
 }
 
-# SMP=1 (the PinePhone SMP rung): bootcpu.s's `IF SMP` part INCLUDEs arm_types.inc + arm_gic.inc -- the AP boot
+# SMP=1 (the phone SMP rung): bootcpu.s's `IF SMP` part INCLUDEs arm_types.inc + arm_gic.inc -- the AP boot
 # code fills an SFullArmRegSet and programs the GIC. Fields = the ones the 2010 bootstrap references.
 if os.environ.get("SMP") == "1":
     SPEC["arm_types"] = {

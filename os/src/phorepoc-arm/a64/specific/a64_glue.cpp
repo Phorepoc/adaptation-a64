@@ -1,11 +1,11 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone track): the seam's kext loaders + boot-stage signal for
+// OURS (track): the seam's kext loaders + boot-stage signal for
 // BOARD=a64 (tools/kernel/ekern_seam.cpp; virt's are src/phorepoc-arm/virt/specific/virt_glue_null.cpp).
 // No A64 display / input / storage drivers yet (P4), so:
 //   display: none;  input: none;  media: the REAL ELOCD + the internal RAM drive as C: (a64/estart.txt).
-// ON HARDWARE (2026-10-05): the boot CPU reaches stage 4 (white) on the phone. Without a serial cable the PinePhone's RGB LED and vibrator are the console: the
+// ON HARDWARE (2026-10-05): the boot CPU reaches stage 4 (white) on the phone. Without a serial cable the phone's RGB LED and vibrator are the console: the
 // bootstrap shows red (stage 1) and yellow (stage 2) (a64/bootstrap/a64.s STAGE_LED); this file shows
 //   3 = green: the kernel is up (kernel server starting)
 //       If the generic timer does not count here, red/green alternate forever (every NanoWait would hang).
@@ -16,7 +16,7 @@
 // No buzz: the vibrator is powered from an AXP803 regulator we do not switch on yet (Tow-Boot does), and the buzz's
 // 300 ms NanoWait was the one thing between green and the next stage.
 // The log: raw SD sectors 4096.. written by the kernel itself (A64SdFlush below).
-// LED / vibrator pins from the Linux DTS (sun50i-a64-pinephone.dtsi): PD18 green, PD19 red, PD20 blue, PD2 vibrator.
+// LED / vibrator pins from the Linux DTS (sun50i-a64-pinephone.dtsi): PD18 green, PD19 red, PD20 blue, PD2 vibrator. layering: ok
 #include <kernel/kernel.h>
 #include <kernel/kern_priv.h>
 #include "syborg_priv.h"
@@ -975,7 +975,7 @@ extern "C" TInt A64SlotUploadEnd(TUint* aSum)
 // 'X' off len + len bytes: write them into slot B at byte offset off (a multiple of 512) -- only the changed runs.
 // 'Z' len hash: re-hash slot B, compare the hash of the block hashes with what PhoneLab expects, then PENDING.
 // Block hash = FNV-1a over the block's little-endian 32-bit words (whole sectors, zero-padded): cheap, and unlike the
-// word sum it sees swapped or misplaced blocks. The same function is in PhoneLab (pinephone.go BlockHashes).
+// word sum it sees swapped or misplaced blocks. The same function is in PhoneLab (PhoneLab's BlockHashes).
 static TUint32 BlockHash(const TUint32* aW, TUint aWords)
 	{
 	TUint32 h = 2166136261u;

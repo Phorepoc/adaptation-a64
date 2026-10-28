@@ -1,5 +1,5 @@
-# Phorepoc (Symbian) on the PinePhone -- the U-Boot boot script (OURS).
-# tools/phorepoc-arm/make_pinephone_image.sh turns this into boot.scr. U-Boot's distro boot finds boot.scr on the
+# Phorepoc (Symbian) on the phone -- the U-Boot boot script (OURS).
+# the board's image script turns this into boot.scr. U-Boot's distro boot finds boot.scr on the
 # boot partition and sets devtype/devnum/distro_bootpart; run by hand they default to the SD card's first partition.
 # symbian.img = the AArch64 shim (padded to 1 MB) + the ROM: loaded at 0x40200000, the ROM lands at 0x40300000 --
 # the addresses the A64 bootstrap expects (src/phorepoc-arm/a64/bootstrap/a64.inc). U-Boot's `go` does not clean
@@ -94,7 +94,7 @@ mmc read 0x7F000000 0x1800 1
 # config sector's word, the slot B read failed and the copy booted the stale golden image left at 0x80000000)
 setexpr.l phsize *0x7F000008
 mw.l 0x7F100000 0x4C534850
-# INSTALLED (GOOD, 3): a release card (make_pinephone_sd.sh RELEASE=1) keeps its image in slot B and boots it every
+# INSTALLED (GOOD, 3): a release card (the board's SD script RELEASE=1) keeps its image in slot B and boots it every
 # time; nothing is written back. A development upload (PENDING) replaces the state, as below.
 mw.l 0x7F100004 3
 if cmp.l 0x7F000000 0x7F100000 2; then
@@ -122,7 +122,7 @@ fi
 # BOOT CONFIG (2026-10-12): SD sector 0x1801 = {'PHCF', RAM MB, ...}, the user's settings (PhoneLab / a Symbian
 # Settings page write it). RAM MB -> {'PHRM', MB} at 0x402FFFF8 just before `go`; the bootstrap (a64.s GetRamMb)
 # accepts multiples of 256 MB from 512 to 2816 and falls back to 1024. No config sector = the image's baked value
-# (make_pinephone_image.sh RAM_MB, written into the same word).
+# (the board's image script RAM_MB, written into the same word).
 setenv phram
 mmc read 0x7F000000 0x1801 1
 mw.l 0x7F100000 0x46434850

@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone SMP, docs/phorepoc/pinephone-port.md "generic-timer stand-in"): <arm_tmr.h> for an ARMv7
+// OURS (phone SMP "generic-timer stand-in"): <arm_tmr.h> for an ARMv7
 // generic-timer CPU (Cortex-A7/A15, and the A53 in AArch32) in place of the ARM11MP/Cortex-A9 private timer.
 // On this include path FIRST, ahead of kernel/eka/include/nkernsmp/arm. The 2010 SMP nanokernel's C++ code uses
 // the per-CPU timer only through ArmLocalTimer members (T.iTimerCount = n, reads of it, iTimerCtrl,

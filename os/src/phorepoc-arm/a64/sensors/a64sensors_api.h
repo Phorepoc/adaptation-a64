@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-// a64sensors_api.h -- OURS (PinePhone sensors S2): the
+// a64sensors_api.h -- OURS (phone sensors S2): the
 // user/kernel contract of the sensor LDD "Sensors.A64" (a64sensors.cpp). One unit per chip; v1 = unit 0, the MPU-6050
 // accelerometer. A client opens a unit, sets the rate, and reads samples: a Read completes as soon as the driver has
 // at least one new sample, with up to the descriptor's capacity of them. The SSY (src/ssya64) is the one client.

@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64sensors.cpp -- OURS (2026-10-10, PinePhone sensors rung S2: "Sensors: the
+// a64sensors.cpp -- OURS (2026-10-10, phone sensors rung S2: "Sensors: the
 // decision"): the sensor LDD "Sensors.A64", one unit per chip on the TWI1 bus (a64twi.cpp). v1 = unit 0, the
 // InvenSense MPU-6050 accelerometer: on the first open the chip is reset and configured (gyro in standby, DLPF 20 Hz,
 // +-2 g, SMPLRT_DIV for the rate), then a timer on the driver's own DFC queue reads ACCEL_XOUT..ZOUT every period,

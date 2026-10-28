@@ -1,7 +1,7 @@
 # Copyright The Phorepoc Authors
 # SPDX-License-Identifier: Apache-2.0
 
-"""nkernsmp_gt_patch.py -- the generic-timer deltas of the 2010 ARM SMP nanokernel (PinePhone SMP).
+"""nkernsmp_gt_patch.py -- the generic-timer deltas of the 2010 ARM SMP nanokernel (phone SMP).
 
 Writes patched copies of the three baseline files that touch the A9/ARM11MP private timer from ASM (the C++
 uses compile unchanged against src/phorepoc-arm/nkernsmp-gt/arm_tmr.h). Each delta is one site, asserted to

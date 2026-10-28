@@ -1,13 +1,13 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* shim_core.h -- OURS (2026-10-10, PinePhone WiFi: the chip core). The freestanding "Linux kernel" the vendored rtw88
+/* shim_core.h -- OURS (2026-10-10, phone WiFi: the chip core). The freestanding "Linux kernel" the vendored rtw88
  * driver (../rtw88, unmodified, GPL-2.0 OR BSD-3-Clause) compiles against inside our EKA2 kernel: types, the kernel.h
  * helpers, bit/byte-order macros, lists, sk_buffs, locks, work, timers, delays and the SDIO function API -- each a
  * freestanding re-implementation of the Linux *interface* (names and semantics as rtw88 uses them), written from the
  * driver's usage, not copied from Linux headers. Every linux/<x>.h and net/<x>.h under include/ includes this file.
  * The runtime behind the inline parts (allocation, locks, work queues, timers, time, the SDIO host, logging) is
- * shim_rt.h, implemented in shim_rt.cpp on nkern / the A64 SDIO host. docs: pinephone-port.md "WiFi: the chip core". */
+ * shim_rt.h, implemented in shim_rt.cpp on nkern / the A64 SDIO host. docs: the port notes "WiFi: the chip core". */
 #ifndef SHIM_CORE_H
 #define SHIM_CORE_H
 

@@ -56,11 +56,11 @@ void operator delete[](TAny* aPtr, TUint /*aSize*/) __NO_THROW { operator delete
 //     a direct write to the syborg UART virtual address the bootstrap mapped) -------------
 // EKSEAM_UART_LSR (BOARD=a64: a 16550): the line status register's offset -- wait for THR empty before each byte
 // (a PL011 under QEMU never fills, so virt/syborg write blind)
-// A board without a console can also keep the trace in RAM (BOARD=a64: a log the PinePhone's U-Boot saves to the SD
+// A board without a console can also keep the trace in RAM (BOARD=a64: a log the phone's U-Boot saves to the SD
 // card after a watchdog reset, a64_glue.cpp). Weak: other boards define none.
 extern "C" void ekseam_board_log(unsigned c) __attribute__((weak));
 extern "C" void ekseam_board_panic() __attribute__((weak));
-// a user-visible notification (level 0 info .. 3 error): the board shows it if it can (PinePhone: the top bar)
+// a user-visible notification (level 0 info .. 3 error): the board shows it if it can (phone: the top bar)
 extern "C" void ekseam_board_notify(int aLevel, const char* aText) __attribute__((weak));
 static char DieName[32];					// the dying thread's process, for the notification
 static inline void ekseam_uart_put(unsigned c)
@@ -138,7 +138,7 @@ extern "C" void __cxa_pure_virtual()
 	Kern::Fault("PURE-VIRTUAL", 0);
 	}
 
-// Boot-stage signal for boards without a console (BOARD=a64: the PinePhone's RGB LED + vibrator,
+// Boot-stage signal for boards without a console (BOARD=a64: the phone's RGB LED + vibrator,
 // src/phorepoc-arm/a64/specific/a64_glue.cpp). Weak: other boards define none. 3 = kernel server up,
 // 4 = first user thread, 5 = media drivers loaded, 6 = first user process about to start, 9 = kernel fault.
 extern "C" void ekseam_board_stage(int aStage) __attribute__((weak));
@@ -159,7 +159,7 @@ extern "C" void ekseam_dump_cs(const char* tag)
 	{
 #ifdef __SMP__
 	// SMP: TheScheduler's layout differs (per-CPU subschedulers) -- +0x130 is not the current thread there, and
-	// dereferencing it took an intermittent data abort (pinephone-port.md P3 rung 2). Ask the nanokernel.
+	// dereferencing it took an intermittent data abort (the port notes P3 rung 2). Ask the nanokernel.
 	unsigned cur = (unsigned)(unsigned long)NKern::CurrentThread();
 #else
 	unsigned sched = (unsigned)(unsigned long)&TheScheduler;
@@ -563,7 +563,7 @@ extern "C" void __wrap__ZN2PP20InitSuperPageFromRomEmm(unsigned long aRomHeader,
 static void ekseam_read_des8(const void* d, char* buf, unsigned bufsz)
 	{
 	// kumemget (LDRT when the caller is user mode), as the kernel's own Kern::KUDesGet: a plain kernel ldr of the
-	// user descriptor faulted under the flexible model (pinephone-port.md, flexible S60).
+	// user descriptor faulted under the flexible model (the port notes, flexible S60).
 	unsigned w0 = 0, type, len, i;
 	kumemget(&w0, d, 4);
 	type = w0 >> 28; len = w0 & 0x0FFFFFFF;
@@ -906,13 +906,13 @@ extern "C" void __wrap__ZN7DThread3DieE9TExitTypeiRK6TDesC8(void* a, int b, int 
 			{
 			// bounded to sp's own page too (2026-10-06): c32exe died with sp 0xa8 below the page end, the 48-word read
 			// crossed into the unmapped page and USafeRead's magic recovery does not hold on this death path -- the
-			// whole kernel faulted (seen only once the PinePhone Phorepoc ROM got c32exe running)
+			// whole kernel faulted (seen only once the phone Phorepoc ROM got c32exe running)
 			const unsigned first = (0x1000u - (sp & 0xFFFu)) / 4;
 			for (unsigned i = 0; i < 48 && i < first; ++i)
 				{
 				unsigned w = 0;
 				if (K::USafeRead((const TAny*)(sp + i * 4), &w, 4)) break;	// unmapped (stack overflow: sp sits in the guard page)
-				if (w >= 0x80000000u && w < 0x88000000u)	// XIP ROM code (the PinePhone S60 ROM reaches ~0x8620_0000 with Qt 4.8 + QtDeclarative)
+				if (w >= 0x80000000u && w < 0x88000000u)	// XIP ROM code (the phone S60 ROM reaches ~0x8620_0000 with Qt 4.8 + QtDeclarative)
 					{
 					ekseam_puts("[EKERN]     ustk[+"); ekseam_puthex(i * 4);
 					ekseam_puts("]="); ekseam_puthex(w);
@@ -964,7 +964,7 @@ extern "C" void __wrap__ZN7DThread3DieE9TExitTypeiRK6TDesC8(void* a, int b, int 
 		buf[i] = 0;
 		ekseam_puts("[EKERN]     category='"); ekseam_puts(buf); ekseam_puts("'\n");
 		if (b == 2 && ekseam_board_notify)
-			{	// "Panic Telephone KERN-EXEC 3" -> the board's status bar (PinePhone: a64_bars.cpp)
+			{	// "Panic Telephone KERN-EXEC 3" -> the board's status bar (phone: a64_bars.cpp)
 			char t[64]; unsigned n = 0;
 			const char* parts[3] = { "Panic ", DieName, " " };
 			for (int q = 0; q < 3; ++q)
@@ -981,7 +981,7 @@ extern "C" void __wrap__ZN7DThread3DieE9TExitTypeiRK6TDesC8(void* a, int b, int 
 			}
 		}
 	// a panic is often the last thing before a reboot (a system-critical process): the board writes its log out NOW
-	// (PinePhone: the SD log, otherwise flushed on a timer that the reset beats; 2026-10-07)
+	// (phone: the SD log, otherwise flushed on a timer that the reset beats; 2026-10-07)
 	if (b == 2 && ekseam_board_panic)
 		ekseam_board_panic();
 	__real__ZN7DThread3DieE9TExitTypeiRK6TDesC8(a,b,c,d);
@@ -1148,7 +1148,7 @@ extern "C" __attribute__((naked, used)) void __wrap__ZN7DThread18EpocThreadFunct
 // iFaultAddress@+48, iFaultStatus@+52, iR15@+88. One bounded print per exception, BEFORE
 // the kernel turns it into a KERN-EXEC 3 panic, so the aborting PC/address are visible.
 #ifdef __SMP__
-// SWP/SWPB emulation (PinePhone, 2026-10-06): ARMv8-A removed SWP from AArch32 -- UNDEFINED on the real Cortex-A53
+// SWP/SWPB emulation (phone, 2026-10-06): ARMv8-A removed SWP from AArch32 -- UNDEFINED on the real Cortex-A53
 // (QEMU's A53 model still executes it, so the S60 ROM ran there). The 2010 userland uses it in its lock primitives
 // (euser: `swp r1, r1, [r0]; subs r1, #1; strlt`, the first user process died on it). Linux has the same problem
 // and the same answer (arch/arm/kernel/swp_emulate.c): on a user UNDEF whose instruction is SWP, do the swap with
@@ -1205,7 +1205,7 @@ static bool EmulateSwp(volatile unsigned* e)
 	return true;
 	}
 
-// Misaligned LDRD/STRD/LDM/STM emulation (PinePhone, 2026-10-26). SCTLR.A is off (a64/config.inc), so LDR/STR/LDRH/STRH
+// Misaligned LDRD/STRD/LDM/STM emulation (phone, 2026-10-26). SCTLR.A is off (a64/config.inc), so LDR/STR/LDRH/STRH
 // work on any address, but the doubleword and multiple forms still need word alignment. The 2010 userland was built by
 // RVCT, which reads a 64-bit member as two LDRs; g++ uses LDRD/LDM, and some code reads records that sit only 2-aligned
 // in a buffer (MdS: mdcserializationbuffer pads to even sizes; the harvester and the MPX collection server died in
@@ -1770,8 +1770,8 @@ namespace Arm { extern TUint32 DefaultDomainAccess; TUint32 DefaultDomainAccess 
 extern "C" { void* __dso_handle = 0; int __aeabi_atexit(void*, void (*)(void*), void*) { return 0; } }
 #endif
 
-// Code-segment lifetime trace (PinePhone flexible S60: libc's seg is destroyed while still a dependency --
-// pinephone-port.md rung 3). Prints the seg address + root name at add-dependency, loaded and destruct.
+// Code-segment lifetime trace (phone flexible S60: libc's seg is destroyed while still a dependency --
+// the port notes rung 3). Prints the seg address + root name at add-dependency, loaded and destruct.
 static void ekseam_seg(const char* tag, DCodeSeg* s)
 	{
 	char nm[40]; unsigned i = 0;
@@ -1853,7 +1853,7 @@ extern "C" void __wrap__ZN22PageDirectoryAllocator4FreeEj(void* aThis, unsigned 
 	}
 #endif
 
-// OUT OF MEMORY (2026-10-07): S60 showed "out of memory" on the PinePhone with 411 MB free -- a process at ITS
+// OUT OF MEMORY (2026-10-07): S60 showed "out of memory" on the phone with 411 MB free -- a process at ITS
 // limit, not the system. Every chunk grow/create refused with KErrNoMemory is logged with the caller and sizes.
 static void ekseam_oom(const char* aWhat, int a1, int a2)
 	{

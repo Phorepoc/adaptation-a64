@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// phlink.cpp -- OURS (PinePhone USB step 2): the Phorepoc debug link -- a
+// phlink.cpp -- OURS (phone USB step 2): the Phorepoc debug link -- a
 // KERNEL-SIDE USB function on top of the real USB client PIL (no LDD, no user side): a CDC ACM serial port, which
 // Windows 10+ binds to its in-box usbser.sys (a COM port, no driver to install), Linux to cdc_acm (/dev/ttyACM0).
 //  * the kernel log (the seam's board log -- the same bytes the SD log holds, from the first line of the boot)

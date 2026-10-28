@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// ssya64.cpp -- OURS (2026-10-10, PinePhone sensors rung S2): the SSY of the "Sensors.A64" LDD (see ssya64.h). The
+// ssya64.cpp -- OURS (2026-10-10, phone sensors rung S2): the SSY of the "Sensors.A64" LDD (see ssya64.h). The
 // sensor server loads every KSsyControlInterfaceUid implementation into an SSY thread of its own, calls NewL with its
 // callback, and expects RegisterChannelsL from the constructor; then OpenChannelL -> ChannelOpened(...providers),
 // StartChannelDataL(buffer, count) -> BufferFilled when the buffer holds count items (the server swaps the buffer).
@@ -12,7 +12,7 @@
 #include <sensrvgeneralproperties.h>
 #include <e32debug.h>
 
-_LIT8(KLocation, "PinePhone");
+_LIT8(KLocation, "PinePhone"); // layering: ok
 _LIT8(KVendor, "Phorepoc");
 static const TInt KDefaultRateHz = 25;
 static const TInt KMaxRateHz = 100;

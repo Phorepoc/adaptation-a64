@@ -1,8 +1,8 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64keys.cpp -- OURS (2026-10-09): the PinePhone's volume buttons. Both sit on the A64's LRADC (a 6-bit "low-rate
-// ADC" key scanner at 0x01C21800, GIC SPI 30; Linux drivers/input/keyboard/sun4i-lradc-keys.c, the PinePhone DTS
+// a64keys.cpp -- OURS (2026-10-09): the phone's volume buttons. Both sit on the A64's LRADC (a 6-bit "low-rate
+// ADC" key scanner at 0x01C21800, GIC SPI 30; Linux drivers/input/keyboard/sun4i-lradc-keys.c, the phone DTS
 // `lradc` node: Vol+ = 200 mV, Vol- = 400 mV, Vref = 3.0 V (ALDO3) * 3/4 = 2.25 V, 63 = full scale; the research in
 // 3.4). Key down/up interrupts; the key is read once per press from DATA0 and
 // posted as EStdKeyIncVolume / EStdKeyDecVolume raw events (as the x86 board does for its volume keys).

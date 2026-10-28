@@ -1,8 +1,8 @@
 ;
-; a64.s -- OURS (PinePhone track): the Allwinner A64 / PinePhone bootstrap PSL,
+; a64.s -- OURS (track): the Allwinner A64 bootstrap PSL,
 ; derived from src/phorepoc-arm/virt/bootstrap/virt.s (itself from baseport/syborg/bootstrap/syborg.s). Deltas from
 ; virt are marked A64:. UNVERIFIED ON HARDWARE -- written from the A64 manual / Linux DTS / NuttX; no serial cable
-; yet, so progress shows on the RGB LED (STAGE_LED below; the stage colours are in pinephone-port.md).
+; yet, so progress shows on the RGB LED (STAGE_LED below; the stage colours are in the port notes).
 ;
 ;/*
 ;* Copyright (c) 2009 Nokia Corporation and/or its subsidiary(-ies).
@@ -34,7 +34,7 @@
 		INCLUDE a64.inc
 ;
 ;*******************************************************************************
-; A64: STAGE_LED $bits -- show a boot stage on the PinePhone's RGB LED (PD18/19/20; a64.inc). Inline, no stack, no
+; A64: STAGE_LED $bits -- show a boot stage on the phone's RGB LED (PD18/19/20; a64.inc). Inline, no stack, no
 ; calls; works with the MMU off (physical PIO) or on (the GetHwBanks mapping). Corrupts r0-r2.
 ;*******************************************************************************
 	MACRO

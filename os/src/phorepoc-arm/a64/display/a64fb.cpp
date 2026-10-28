@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (PinePhone track P4): the PinePhone's framebuffer driver = Syborg's
+// OURS (track P4): the phone's framebuffer driver = Syborg's
 // REAL framebuffer driver (oss.FCL.sf.adapt.Qemu/baseport/syborg/svpframebuffer/svpframebuffer.cpp, compiled
 // unmodified below) on the A64 display pipeline that a64_display.cpp brings up (DE2 -> TCON0 -> MIPI DSI -> ST7703).
 // Same shape as the QEMU `virt` port's virtfb.cpp: the driver only knows the Syborg framebuffer device's registers,

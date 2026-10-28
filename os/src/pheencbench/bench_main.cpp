@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// bench_main.cpp -- OURS (pheencbench): the PinePhone H.264 encode benchmark driver. For each resolution it builds UI-like source frames, times the
+// bench_main.cpp -- OURS (pheencbench): the phone H.264 encode benchmark driver. For each resolution it builds UI-like source frames, times the
 // colour conversion (scalar / NEON, XRGB8888 and RGB565 -> NV12 / I420, plus NEON straight into the VE arena) and then encodes N frames with
 //   hw    the A64 Video Engine H.264 encoder (402 MHz), fixed QP 28 and rate control
 //   sw1   OpenH264 on the A53, 1 thread, fixed QP 28 and rate control

@@ -1,20 +1,20 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64sound.cpp -- OURS (2026-10-09): the PinePhone's audio as a SOUND PDD ("SoundSc.A64") under the REAL shared-chunk
+// a64sound.cpp -- OURS (2026-10-09): the phone's audio as a SOUND PDD ("SoundSc.A64") under the REAL shared-chunk
 // sound LDD (kernel/eka/drivers/soundsc/soundldd.cpp, linked into ekern unmodified with its entry renamed, exactly as
 // the x86 AC'97 PDD tools/phorepoc-x86/ekern/xk_ac97.cpp). The same user chain as Path C (mdasoundadapter -> the A3F
 // DevSound server -> MediaClientAudio) runs on top unchanged.
 //
 // The hardware (Allwinner A64; register documentation = the Linux drivers, read as a datasheet: sound/soc/sunxi/
 // sun4i-i2s.c "allwinner,sun50i-a64-codec-i2s", sun8i-codec.c "allwinner,sun50i-a64-codec", sun50i-codec-analog.c +
-// sun8i-adda-pr-regmap.c, drivers/dma/sun6i-dma.c "allwinner,sun50i-a64-dma"; routing = the PinePhone device tree and
+// sun8i-adda-pr-regmap.c, drivers/dma/sun6i-dma.c "allwinner,sun50i-a64-dma"; routing = the phone device tree and
 // the distros' ALSA UCM):
 //   CPU --DMA (ch 7, DRQ 15)--> DAI 0x01C22C00 (an I2S controller in the sun4i register layout, TX FIFO at +0x20;
 //   master, I2S, 16-bit, BCLK = 32 fs, MCLK = 128 fs from PLL_AUDIO) --> digital codec 0x01C22E00 (AIF1 slot 0 ->
 //   DAC mixer -> DAC) --> analog codec (5-bit registers behind PRCM+0x1C0: DAC -> output mixers -> LINEOUT as a
 //   MONO DIFFERENTIAL pair, the speaker is mono) --> speaker amplifier (enable = PC7) -> the loudspeaker.
-//   Headphones/earpiece/microphones/jack: v2 (the "Sound: the decision" section of pinephone-port.md).
+//   Headphones/earpiece/microphones/jack: v2 (the "Sound: the decision" section of the port notes).
 // Data path: a physically contiguous ring of 16 periods (~10 ms each, sized per rate), played by the DMA in a cyclic
 // linked list (one LLI per period, PKG interrupt per period). TransferData copies the LDD's fragment into the ring
 // at the write counter (KErrNotReady when it does not fit: the LDD retries from the next PlayCallback); the
@@ -187,7 +187,7 @@ TUint8 TA64Sound::AnalogRead(TUint aReg)
 void TA64Sound::Clocks(TBool a44k)
 	{
 	// PLL_AUDIO, the speaker hiss/whine fix (2026-10-15; Samuel Holland's "clk: sunxi-ng: a64: Increase PLL_AUDIO base
-	// frequency", smaeul/linux 7b51d5b09136, the PinePhone kernels; noise found to leak VCC-PLL -> AVCC, megi's log 020):
+	// frequency", smaeul/linux 7b51d5b09136, the phone kernels; noise found to leak VCC-PLL -> AVCC, megi's log 020):
 	// (1) the base at 3x (67.7376 / 73.728 MHz, SDM patterns from that commit) with the 1x post-divider (bits 19:16) at
 	// 2 = /3, so the codec still gets 22.5792 / 24.576 MHz but the PLL's harmonic leaves the audible band;
 	// (2) PLL_AUDIO_BIAS (CCU + 0x224) = 0x10040000, a lower bias current: "drastically decreases ... the white noise".
@@ -220,7 +220,7 @@ void TA64Sound::DaiInit()
 	}
 
 // --- the digital + analog codec: the AIF1-playback supply chain (sun8i-codec.c DAPM) and the speaker route from
-// the PinePhone UCM ("Line Out Source = Mono Differential", "DAC Reversed Playback Switch" on) ------------------
+// the phone UCM ("Line Out Source = Mono Differential", "DAC Reversed Playback Switch" on) ------------------
 void TA64Sound::CodecInit()
 	{
 	// AIF1CLK and AIF2CLK from PLL_AUDIO, SYSCLK from AIF1CLK; AIF1CLK + SYSCLK enabled
@@ -903,7 +903,7 @@ void TA64Sound::SelfTest()
 #ifdef PHE_MODEM
 // ---- Modem rung M5 (telephony-plan.md section 16): the VOICE CALL ROUTE, the EG25-G's PCM on AIF2 -----------------------
 // A codec-internal path, no CPU data (research/sound-linux.md 1.3-1.5 + 3.5 = sun8i-codec.c / sun50i-codec-analog.c / the
-// PinePhone UCM VoiceCall verb): AIF2 = PB4-7 (function 2), the A64 codec is the PCM clock master (the modem is slave:
+// phone UCM VoiceCall verb): AIF2 = PB4-7 (function 2), the A64 codec is the PCM clock master (the modem is slave:
 // AT+QDAI=1,1,... mode 1), DSP_A, BCLK inverted, 16-bit, 1 x 32-bit slot, 8 kHz (BCLK 256 kHz = the QDAI clock 1).
 // Downlink: AIF2 DAC (Mix Mono) -> DAC mixer -> DAC -> left output mixer -> EARPIECE. Uplink: MIC1 (+24 dB boost, MBIAS)
 // -> ADC mixer -> ADC -> AIF2 ADC mixer -> AIF2 ADC (Mix Mono) -> the modem. Switched on the sound DFC thread (serialised

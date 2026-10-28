@@ -1,4 +1,4 @@
-# a64 — the PinePhone board layer (Allwinner A64, 4 × Cortex-A53 in AArch32)
+# a64 — the A64 board layer (Allwinner A64, 4 × Cortex-A53 in AArch32)
 
 OURS.
 **Unverified on the real phone** — written from the A64 manual's memory map, the Linux DTS (as documentation) and
@@ -15,7 +15,7 @@ DRAM addresses (`tools/phorepoc-arm/run_h3.sh`).
 
 The kernel variant itself is `../virt/specific` compiled with `-D__A64__` (the GIC/generic-timer code is shared).
 
-Build: `BOARD=a64 SMP=1 MMODEL=flexible bash tools/kernel/build_ekern_rom.sh` → `.pinephone-build/symbian.img` +
+Build: `BOARD=a64 SMP=1 MMODEL=flexible bash tools/kernel/build_ekern_rom.sh` → the board build dir's `symbian.img` +
 `boot.scr` (copy both to the boot partition U-Boot reads). H3 test build: add `BOOT_DEFS="-D CFG_H3TEST"`, then
 `bash tools/phorepoc-arm/run_h3.sh`.
 

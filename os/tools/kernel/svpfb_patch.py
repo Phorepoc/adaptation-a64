@@ -7,7 +7,7 @@ svpframebuffer.cpp allocates the secure-display buffer with its own Epoc::AllocP
 the result and maps `ivRamPhys + iSize` -- it assumes the two allocations are adjacent. They were, by luck,
 whenever the ROM ran from flash. With the ROM loaded into RAM (CFG_ROMINRAM, the U-Boot boot shape, P3 rung 3)
 the RAM layout differs, the guess maps memory owned by someone else (the page directories), and the first user
-thread faults on its own stack (pinephone-port.md). The fix maps what was allocated. Asserted to match once.
+thread faults on its own stack (the port notes). The fix maps what was allocated. Asserted to match once.
 Usage: py tools/kernel/svpfb_patch.py <svpframebuffer.cpp> <out dir>  -> <out>/svpframebuffer.cpp
 """
 import os
@@ -27,7 +27,7 @@ OLD2 = "\tTUint round = 2*Kern::RoundToPageSize(iSize);\n"
 NEW2 = "\tTUint round = 4*Kern::RoundToPageSize(iSize);\t// OURS: 4 composition buffers (lddinc/drivers/display.h)\n"
 if text.count(OLD2) != 1:
     sys.exit(f"svpfb_patch: expected 1 match of the composition RAM line, found {text.count(OLD2)}")
-# ROW PITCH (2026-10-22): the PinePhone display (BOARD=a64) uses the real phones' framebuffer row pitch, 64-byte aligned
+# ROW PITCH (2026-10-22): the phone display (BOARD=a64) uses the real phones' framebuffer row pitch, 64-byte aligned
 # (360 px -> 368 px = 1472 bytes): the games written for S60 5.2+ hard-code it and write the screen memory directly
 # (SkyForce Reloaded: UserSvr::ScreenInfo). iSize, iOffsetBetweenLines and the specified-mode info all use it. The QEMU virt
 # board (ramfb, stride width*4) keeps width*4.

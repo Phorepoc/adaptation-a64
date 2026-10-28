@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64wlansec.cpp -- OURS (2026-10-11, PinePhone WiFi security; 3.2, 3.3, 3.5, 4):
+// a64wlansec.cpp -- OURS (2026-10-11, phone WiFi security; 3.2, 3.3, 3.5, 4):
 // the host-side half of WLAN encryption under the WHA PDD. The chip (rtl8703b/r8703b_cam.c) holds the keys in its security
 // CAM and does the cipher: WEP (RC4 + CRC-32), TKIP (RC4 with the per-packet key) and CCMP (AES). What the hardware does NOT
 // do, and the 2010 UMAC does not either once the PDD advertises SSettings::KNoSecHdrAndTrailer, is done here:

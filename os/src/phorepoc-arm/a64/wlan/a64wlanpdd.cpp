@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
-// a64wlanpdd.cpp -- OURS (2026-10-10, PinePhone WiFi W3):
+// a64wlanpdd.cpp -- OURS (2026-10-10, phone WiFi W3):
 // "wlan.phys", the WHA physical device under the REAL 2010 wlanldd (the UMAC), over the rtw88 chip core
 // (a64wlan_glue.c / shim_mac80211.c, the vendored Linux driver on the WLAN DFC thread). Nokia's own adaptations
 // (TI's WVSS) have this exact shape: a DPhysicalDevice whose channel object is an
@@ -40,7 +40,7 @@ using namespace WlanHalApi;
 
 class WlanSpia { };		// the SPI bus class the WHA base binds a reference to; this chip sits on SDIO, never used
 
-// the host platform adaptation: power and the out-of-band interrupt line. The PinePhone has neither to do here --
+// the host platform adaptation: power and the out-of-band interrupt line. The phone has neither to do here --
 // the SDIO host (a64sdio.cpp) powers the chip and the interrupt is in-band, polled on the WLAN thread.
 class TA64Hpa : public WlanHpa
 	{

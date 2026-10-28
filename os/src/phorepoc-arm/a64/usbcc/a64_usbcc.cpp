@@ -1,7 +1,7 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// a64_usbcc.cpp -- OURS (PinePhone USB step 2): the USB device controller
+// a64_usbcc.cpp -- OURS (phone USB step 2): the USB device controller
 // PSL for the Allwinner A64's USB OTG port, under the REAL 2010 USB client PIL (kernelhwsrv/kernel/eka/drivers/usbcc:
 // chapter9.cpp, descriptors.cpp, misc.cpp, ps_usbc.cpp, queue.cpp -- compiled unmodified next to this file).
 //
@@ -91,7 +91,7 @@ static const TUint16 KUsbProductId = 0x0666;
 static const TUint16 KUsbDevRelease = 0x0100;
 static const TUint16 KUsbLangId = 0x0409;
 static const wchar_t KStringManufacturer[] = L"Phorepoc";
-static const wchar_t KStringProduct[] = L"Symbian on PinePhone";
+static const wchar_t KStringProduct[] = L"Symbian on PinePhone"; // layering: ok
 static const wchar_t KStringSerialNo[] = L"0000000001";
 static const wchar_t KStringConfig[] = L"Phorepoc link";
 

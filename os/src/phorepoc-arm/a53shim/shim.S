@@ -1,9 +1,9 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-// shim.S -- OURS (PinePhone P3): enter the 32-bit Symbian kernel on a Cortex-A53.
+// shim.S -- OURS (phone P3): enter the 32-bit Symbian kernel on a Cortex-A53.
 //
-// The PinePhone's U-Boot (and QEMU `virt,virtualization=on -cpu cortex-a53`) runs in AArch64 at EL2. Our kernel and
+// The the phone's U-Boot (and QEMU `virt,virtualization=on -cpu cortex-a53`) runs in AArch64 at EL2. Our kernel and
 // bootstrap are AArch32 (ARMv7 code, which an A53 runs at EL1 in AArch32 state). An execution-state change needs an
 // exception return from a higher EL, so this AArch64 stub, entered at EL2, configures EL2 to host an AArch32 EL1 and
 // ERETs into the Symbian bootstrap in SVC mode with the MMU, caches and interrupts off -- exactly the state the
@@ -16,7 +16,7 @@
 #define TARGET 0x04000000		/* QEMU: our ROM in pflash1 */
 #endif
 
-// A64_LEDS (make_pinephone_image.sh only -- QEMU virt has flash at this address): progress on the PinePhone's RGB
+// A64_LEDS (the board's image script only -- QEMU virt has flash at this address): progress on the phone's RGB
 // LED (PIO port D at 0x01C2086C: CFG2 +0x08, DAT +0x10; PD18 green, PD19 red, PD20 blue), as the bootstrap's
 // STAGE_LED does. White = the shim runs; magenta = entered at EL1 or EL3 (parked); cyan = about to ERET.
 #define LED_G	0x040000
@@ -70,7 +70,7 @@ _start:
 	mrs	x9, CurrentEL
 	lsr	x9, x9, #2
 	cmp	x9, #2
-	b.eq	2f			// only EL2 entry is supported (QEMU virtualization=on; PinePhone U-Boot)
+	b.eq	2f			// only EL2 entry is supported (QEMU virtualization=on; phone U-Boot)
 	cmp	x9, #3
 	b.eq	3f
 	LED	(LED_R | LED_B)		// EL1: magenta (parked)
@@ -167,7 +167,7 @@ _start:
 // a32probe: hand-encoded A32 (this file is AArch64 assembly). Entered by the ERET in AArch32 SVC: LED green, hold
 // ~1 s on CNTPCT (24 MHz), then magenta, then BX to the bootstrap at TARGET. Green after cyan = the execution-state
 // switch works (seen on the phone 2026-10-05). Then a word checksum of the whole ROM as it sits in RAM, compared with
-// the file's (make_pinephone_image.sh patches ROMLEN / ROMSUM, placeholders 0xC6C6C6C6 / 0xC5C5C5C5): LED off = the
+// the file's (the board's image script patches ROMLEN / ROMSUM, placeholders 0xC6C6C6C6 / 0xC5C5C5C5): LED off = the
 // ROM in RAM is intact, blue = it is NOT (U-Boot's load / cache flush left it corrupt). Then BX to TARGET.
 	.balign	4
 a32probe:

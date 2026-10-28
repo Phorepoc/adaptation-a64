@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // a64uart.cpp -- OURS (2026-10-09, Bluetooth rung R1):
-// the PinePhone's UART1 (the RTL8723CS Bluetooth link) as a serial PDD "Comm.A64", unit 1, under the REAL serial LDD
+// the phone's UART1 (the RTL8723CS Bluetooth link) as a serial PDD "Comm.A64", unit 1, under the REAL serial LDD
 // (kernel/eka/drivers/ecomm/d_comm.cpp, ECOMM.LDD "Comm", linked into ekern with its entry renamed). The 2010 BT HCI
 // transport plug-ins open this port directly through RBusDevComm (research/bluetooth-2010.md a.1).
 //
@@ -497,7 +497,7 @@ void DA64Uart::Isr(TAny* aPtr)
 
 #ifdef PHE_MODEM
 // ---- Modem rung M1: the EG25-G power pins + UART3 -----------------------------------------------------------------
-// Pins (verified 2026-10-17 against eg25-manager data/pine64,pinephone-1.2.toml -- dtr 34, pwrkey 35, reset 68,
+// Pins (verified 2026-10-17 against eg25-manager data/pine64,pinephone-1.2.toml -- dtr 34, pwrkey 35, reset 68, layering: ok
 // apready 231, disable 232, status 233 on 1c20800.pinctrl -- and megi's modem-power DT node: power-supply reg_vbat_bb
 // = PL7, enable PH8 GPIO_ACTIVE_LOW, reset PC4, pwrkey PB3, status PH9, host-ready PH7, dtr PB2, RI PL6; all through
 // transistors, so the levels below are the GPIO levels Linux writes). Sequence = eg25-manager gpio.c

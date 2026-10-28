@@ -72,7 +72,7 @@ int a64wlan_probe(void)
 		return r;
 	hw = sdio_get_drvdata(&a64_func);
 	a64_rtwdev = hw->priv;
-	/* the PinePhone's efuse holds no MAC (normal: Linux takes local-mac-address, which U-Boot derives from the SoC
+	/* the phone's efuse holds no MAC (normal: Linux takes local-mac-address, which U-Boot derives from the SoC
 	 * SID); rtw88 made a random locally-administered one, some APs refuse those (W4 boot 240): Realtek's OUI + the
 	 * random tail (a stable SID-derived tail is a later rung). mac80211 copies perm_addr to the interface. */
 	a64_rtwdev->efuse.addr[0] = 0x00; a64_rtwdev->efuse.addr[1] = 0xe0; a64_rtwdev->efuse.addr[2] = 0x4c;

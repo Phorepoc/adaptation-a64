@@ -1,10 +1,10 @@
 # adaptation-a64
 
-These are the Symbian drivers for the Allwinner A64, the chip inside the PinePhone. They cover the display, the Mali-400
+These are the Symbian drivers for the Allwinner A64, the chip used in phones. They cover the display, the Mali-400
 GPU, the video decoder, the camera interface, the sensors, USB and Wi-Fi.
 
-Nothing here is specific to one phone, so any A64 board can use it. Right now the one that does is
-[adaptation-pinephone](https://github.com/Phorepoc/adaptation-pinephone).
+Nothing here is specific to one device, so any A64 board can use it. A board repository names this one in its
+`board.conf`.
 
 ## What's in here
 
@@ -21,8 +21,8 @@ At build time `os/` is laid over [core](https://github.com/Phorepoc/core)'s `os/
 ## Building
 
 You don't build this repository by itself. Check it out next to core, the [pdk](https://github.com/Phorepoc/pdk),
-adaptation-pinephone and mesa-symbian, and build the PinePhone image as the pdk README describes. `-b pinephone`
-brings this repository in.
+a board repository that names it and mesa-symbian, and build the image as the pdk README describes. The board's
+`board.conf` brings this repository in.
 
 ## Code from Linux
 

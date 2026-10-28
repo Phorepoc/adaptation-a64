@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-// ssya64.h -- OURS (PinePhone sensors rung S2): the SSY of
+// ssya64.h -- OURS (phone sensors rung S2): the SSY of
 // the "Sensors.A64" LDD. One class plays the three SSY roles the sensor server expects (CSsyControl = open/close a
 // channel, MSsyChannelDataProvider = fill the server's buffer, MSsyPropertyProvider = the channel's properties) for the
 // one channel of v1: the accelerometer XYZ (TSensrvAccelerometerAxisData, device frame, LSB of +-2 g). The samples come

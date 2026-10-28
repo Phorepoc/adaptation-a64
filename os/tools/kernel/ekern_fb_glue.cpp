@@ -154,7 +154,7 @@ extern "C" void ekseam_load_fb_driver()
 	// Create() above bound its power DFCs + message queue to iDfcQ while it was still NULL (in the real
 	// InitExtension the queue exists first): the first power transition -- SSM's shutdown -> DPowerManager::
 	// PowerDown -> DLcdPowerHandler::PowerDown -> iPowerDownDfc.Enque() -- faulted the kernel in TDfc::DoEnque
-	// (PinePhone, 2026-10-07). Rebind them to the queue now that it exists.
+	// (phone, 2026-10-07). Rebind them to the queue now that it exists.
 	h->iPowerUpDfc.SetDfcQ(h->iDfcQ);
 	h->iPowerDownDfc.SetDfcQ(h->iDfcQ);
 	h->iMsgQ.SetDfcQ(h->iDfcQ);

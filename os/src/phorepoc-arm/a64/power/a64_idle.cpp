@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // a64_idle.cpp -- OURS (power plan P5): idle tick suppression + core retirement for the
-// A64 / PinePhone, on the 2010 SMP idle framework (drivers/power/smppower: DSMPIdleHandler + TIdleSupport, the model
+// A64, on the 2010 SMP idle framework (drivers/power/smppower: DSMPIdleHandler + TIdleSupport, the model
 // NaviEngine's ne1_tb/specific/power.cpp uses).
 //
 //  1. IDLE TICK SUPPRESSION (ITS). Once every engaged core is idle, the last one asks NTimerQ::IdleTime() how many

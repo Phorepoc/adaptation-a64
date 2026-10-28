@@ -1,4 +1,4 @@
-; config.inc -- OURS: bootstrap config for the Allwinner A64 / PinePhone (4 x Cortex-A53 in AArch32), from
+; config.inc -- OURS: bootstrap config for the Allwinner A64 (4 x Cortex-A53 in AArch32), from
 ; src/phorepoc-arm/virt/config.inc. CPU config stays the generic ARMv7 one (A8N), as on virt's A53 rung; the
 ; ARMv8 deltas (no ThumbEE) come from -D CFG_A53, which BOARD=a64 always passes (tools/armasm2gas/build_bootstrap.sh).
 	GBLL    CFG_CPU_CORTEX_A8N

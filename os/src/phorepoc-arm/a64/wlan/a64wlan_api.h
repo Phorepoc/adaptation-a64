@@ -1,7 +1,7 @@
 /* Copyright The Phorepoc Authors
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* a64wlan_api.h -- OURS (2026-10-10, PinePhone WiFi): the C
+/* a64wlan_api.h -- OURS (2026-10-10, phone WiFi): the C
  * face of the chip core (rtl8703b/, the fresh RTL8703B driver) for the
  * Symbian side (a64wlan.cpp: the thread + the firmware; a64wlanpdd.cpp: the WHA PDD "wlan.phys" under the real
  * wlanldd). Plain C types only: both languages include it. */

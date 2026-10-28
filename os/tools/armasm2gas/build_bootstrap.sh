@@ -30,12 +30,12 @@ AS="$BIN/arm-none-eabi-as"; LD="$BIN/arm-none-eabi-ld"; NM="$BIN/arm-none-eabi-n
 
 KH=baseline/symbian-2010/oss.FCL.sf.os.kernelhwsrv/kernel/eka
 QB=baseline/symbian-2010/oss.FCL.sf.adapt.Qemu/baseport/syborg
-# BOARD: syborg (default, the 2010 PSL), virt (OURS, QEMU virt) or a64 (OURS, the PinePhone) -- docs/phorepoc/pinephone-port.md.
+# BOARD: syborg (default, the 2010 PSL), virt (OURS, QEMU virt) or a64 (OURS, the phone) -- the port notes.
 BOARD="${BOARD:-syborg}"
 case "$BOARD" in
   syborg) PSLD="$QB"; PSL_SRC="$QB/bootstrap/syborg.s" ;;
   virt)   PSLD=src/phorepoc-arm/virt; PSL_SRC="$PSLD/bootstrap/virt.s" ;;
-  a64)    PSLD=src/phorepoc-arm/a64; PSL_SRC="$PSLD/bootstrap/a64.s"   # OURS, the PinePhone (always an A53)
+  a64)    PSLD=src/phorepoc-arm/a64; PSL_SRC="$PSLD/bootstrap/a64.s"   # OURS, the phone (always an A53)
           case " ${EXTRA_DEFS:-} " in *" -D CFG_A53 "*) ;; *) EXTRA_DEFS="${EXTRA_DEFS:-} -D CFG_A53" ;; esac ;;
   *) echo "FAIL: BOARD must be syborg|virt|a64"; exit 1 ;;
 esac

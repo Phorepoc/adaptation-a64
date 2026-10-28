@@ -1,4 +1,4 @@
-// OURS (PinePhone track, docs/phorepoc/pinephone-port.md): the QEMU `virt` variant, derived from
+// OURS (track): the QEMU `virt` variant, derived from
 // oss.FCL.sf.adapt.Qemu/baseport/syborg/specific/interrupts.cpp. Class names stay Syborg/TSyborg for now (the ROM
 // scripts export them by name); deltas are marked VIRT:.
 /*
@@ -21,7 +21,7 @@
 #include <syborg_priv.h>
 
 #ifdef __SMP__
-// VIRT SMP (the PinePhone SMP rung, docs/phorepoc/pinephone-port.md; NaviEngine naviengine_assp/interrupts.cpp
+// VIRT SMP (the phone SMP rung; NaviEngine naviengine_assp/interrupts.cpp
 // pattern): the SMP nanokernel owns the GIC (acknowledge, EOI, routing, per-CPU state). The variant's IRQ handler
 // gets the vector: SPIs go to NKern::Interrupt(vector-32) (the nanokernel's interrupt numbers = SPI index), the
 // 1 ms tick (the physical timer PPI 30 -- CNTV is the timeslice) is serviced here and completed here.
