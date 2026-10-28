@@ -1014,6 +1014,18 @@ static void FrameSample()
 
 static void FrameDfcFn(TAny*)
 	{
+	static TUint32 runs;
+	if (++runs == 1 || runs == 600)			// (what the sampler sees, twice a boot)
+		{
+		ekseam_puts("[EKERN][frame] sampler run "); ekseam_puthex(runs);
+		ekseam_puts(" ready="); ekseam_puthex(DisplayReady);
+		ekseam_puts(" src="); ekseam_puthex(SrcPhys);
+		ekseam_puts(" w="); ekseam_puthex(SrcW);
+		ekseam_puts(" h="); ekseam_puthex(SrcH);
+		ekseam_puts(" ch1="); ekseam_puthex(DisplayReady ? Mixer()[(0x3000 + 0x10) / 4] : 0);
+		ekseam_puts(" frames="); ekseam_puthex(FrameNo);
+		ekseam_puts("\n");
+		}
 	if (DisplayReady)
 		FrameSample();
 	FrameTimer.OneShot(NKern::TimerTicks(KFrameMs));
