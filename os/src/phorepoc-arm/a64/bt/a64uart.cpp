@@ -20,12 +20,15 @@
 // Modem rung M1 (2026-10-17, -DPHE_MODEM = the MODEM=1 kernel build only): unit 3 =
 // UART3 at 0x01C28C00 (GIC SPI 3, CCU bit 19, PD0 TX / PD1 RX function 3, no hardware flow control -- the DTS says
 // RTS/CTS are not usable) = the Quectel EG25-G's main UART. Opening unit 3 powers the modem (A64ModemPowerUp, a
-// bounded sequence on its own DFC thread, PWRKEY always released); the modem's STATUS (PH9, low = on) reads as
+// bounded sequence on its own DFC thread, PWRKEY always released); the modem's STATUS (low = on) reads as
 // KSignalDSR. Closing the port cuts VBAT only once STATUS says the modem is off (the client sends AT+QPOWD first).
 #include <kernel/kern_priv.h>
 #include <drivers/comm.h>
 #include <assp.h>
 #include "syborg.h"
+#ifdef PHE_MODEM
+#include "a64_board_config.h"	// the board's modem pins
+#endif
 
 extern "C" void ekseam_puts(const char*);
 extern "C" void ekseam_puthex(unsigned);
@@ -285,10 +288,10 @@ TUint DA64Uart::Signals() const
 	const TUint msr = (R(KMsr) >> 4) & 0xF;						// CTS DSR RI DCD
 	TUint sig = msr & 3;										// KSignalCTS = 1, KSignalDSR = 2
 #ifdef PHE_MODEM
-	if (iUnit == KModemUnit)									// no modem-control lines on UART3: DSR = STATUS (PH9) low
+	if (iUnit == KModemUnit)									// no modem-control lines on UART3: DSR = STATUS low
 		{
 		sig = KSignalCTS;
-		if (ModemDsr())											// the modem block below: sequence done + PH9 low
+		if (ModemDsr())											// the modem block below: sequence done + STATUS low
 			sig |= KSignalDSR;
 		return sig;
 		}
@@ -497,41 +500,42 @@ void DA64Uart::Isr(TAny* aPtr)
 
 #ifdef PHE_MODEM
 // ---- Modem rung M1: the EG25-G power pins + UART3 -----------------------------------------------------------------
-// Pins (verified 2026-10-17 against eg25-manager data/pine64,pinephone-1.2.toml -- dtr 34, pwrkey 35, reset 68, layering: ok
-// apready 231, disable 232, status 233 on 1c20800.pinctrl -- and megi's modem-power DT node: power-supply reg_vbat_bb
-// = PL7, enable PH8 GPIO_ACTIVE_LOW, reset PC4, pwrkey PB3, status PH9, host-ready PH7, dtr PB2, RI PL6; all through
-// transistors, so the levels below are the GPIO levels Linux writes). Sequence = eg25-manager gpio.c
-// gpio_sequence_poweron: RESET + PWRKEY high, 200 ms, RESET low, 1 s, PWRKEY low. Every path releases PWRKEY.
-static const TUint KPortB = 1, KPortC = 2, KPortD = 3, KPortH = 7;
+// The control pins are the board's (a64_board_config.h A64_MODEM_*): DTR, PWRKEY, RESET, AP_READY, W_DISABLE# and
+// STATUS in the PIO, the VBAT regulator enable in R_PIO; all through transistors, so the levels below are the GPIO
+// levels. Sequence = the modem manager's gpio_sequence_poweron: RESET + PWRKEY high, 200 ms, RESET low, 1 s, PWRKEY
+// low. Every path releases PWRKEY.
+#ifndef A64_MODEM_PWRKEY_PIN
+#error "the board must define the modem pins in a64_board_config.h (A64_MODEM_*)"
+#endif
 static TDynamicDfcQue* ModemQ;
 static TDfc* ModemUpDfc;
 static TDfc* ModemDownDfc;
 static volatile TInt ModemState;		// 0 off, 1 powering, 2 sequence done (STATUS says the rest), 3 powering down
 
-static TBool ModemStatusOn()			{ return !(R32(KHwBaseCcuPio, KPio + KPortH * 0x24 + 0x10) & (1u << 9)); }
+static TBool ModemStatusOn()			{ return !(R32(KHwBaseCcuPio, KPio + A64_MODEM_STATUS_PORT * 0x24 + 0x10) & (1u << A64_MODEM_STATUS_PIN)); }
 static void ModemPin(TUint aPort, TUint aPin, TBool aHigh)	{ PinWrite(KHwBaseCcuPio + KPio, aPort, aPin, aHigh); }
-static void ModemVbat(TBool aOn)		{ PinWrite(KHwBaseRPio + KRPio, 0, 7, aOn); }
+static void ModemVbat(TBool aOn)		{ PinWrite(KHwBaseRPio + KRPio, 0, A64_MODEM_VBAT_PIN, aOn); }
 static TBool ModemDsr()					{ return ModemState == 2 && ModemStatusOn(); }
 static void ModemSleepMs(TInt aMs)		{ NKern::Sleep(NKern::TimerTicks(aMs)); }
 
-// raw levels for the log: PH9 (STATUS), PL7 (VBAT), with the nanokernel tick (1 ms) as the timestamp
-static TUint ModemPh9()					{ return (R32(KHwBaseCcuPio, KPio + KPortH * 0x24 + 0x10) >> 9) & 1; }
-static TUint ModemPl7()					{ return (R32(KHwBaseRPio, KRPio + 0x10) >> 7) & 1; }
+// raw levels for the log: STATUS, VBAT, with the nanokernel tick (1 ms) as the timestamp
+static TUint ModemStatusLevel()					{ return (R32(KHwBaseCcuPio, KPio + A64_MODEM_STATUS_PORT * 0x24 + 0x10) >> A64_MODEM_STATUS_PIN) & 1; }
+static TUint ModemVbatLevel()					{ return (R32(KHwBaseRPio, KRPio + 0x10) >> A64_MODEM_VBAT_PIN) & 1; }
 static void ModemLog(const char* aStep)
 	{
 	ekseam_puts("[EKERN][modem] t="); ekseam_puthex(NKern::TickCount());
 	ekseam_puts(" "); ekseam_puts(aStep);
-	ekseam_puts(" PH9(status)="); ekseam_puthex(ModemPh9());
-	ekseam_puts(" PL7(vbat)="); ekseam_puthex(ModemPl7()); ekseam_puts("\n");
+	ekseam_puts(" status="); ekseam_puthex(ModemStatusLevel());
+	ekseam_puts(" vbat="); ekseam_puthex(ModemVbatLevel()); ekseam_puts("\n");
 	}
 
 static void ModemUpFn(TAny*)
 	{
-	// Boot 895 lesson: with VBAT off, PH9 reads LOW (nothing drives the STATUS transistor), which looks like "on" --
+	// Boot 895 lesson: with VBAT off, STATUS reads LOW (nothing drives the STATUS transistor), which looks like "on" --
 	// so STATUS is only trusted once VBAT has been on. The pulse is skipped only if VBAT was ALREADY on before we
 	// came and STATUS reads low (on); a modem whose VBAT we switch on is off by definition and always gets the pulse.
 	ModemLog("power-up start");
-	if (ModemPl7() && ModemStatusOn())
+	if (ModemVbatLevel() && ModemStatusOn())
 		{
 		ModemLog("VBAT already on and STATUS low (on): no PWRKEY pulse");
 		ModemState = 2;
@@ -541,22 +545,22 @@ static void ModemUpFn(TAny*)
 	ModemLog("VBAT on");
 	ModemSleepMs(100);										// VBAT_BB settle (eg25-manager uses >= 60 ms)
 	ModemLog("VBAT settled");
-	ModemPin(KPortC, 4, ETrue);								// RESET asserted
-	ModemPin(KPortB, 3, ETrue);								// PWRKEY asserted
+	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, ETrue);								// RESET asserted
+	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, ETrue);								// PWRKEY asserted
 	ModemLog("RESET+PWRKEY high");
 	ModemSleepMs(200);
-	ModemPin(KPortC, 4, EFalse);
+	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse);
 	ModemLog("RESET low");
 	ModemSleepMs(1000);
-	ModemPin(KPortB, 3, EFalse);							// PWRKEY released: never held longer than 1.2 s
+	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse);							// PWRKEY released: never held longer than 1.2 s
 	ModemLog("PWRKEY low (sequence done)");
 	ModemState = 2;
-	// watch STATUS for 15 s (bounded; only the changes logged) so the PH9 polarity is recorded from the hardware
-	TUint last = ModemPh9();
+	// watch STATUS for 15 s (bounded; only the changes logged) so the STATUS polarity is recorded from the hardware
+	TUint last = ModemStatusLevel();
 	for (TInt i = 0; i < 150; ++i)
 		{
 		ModemSleepMs(100);
-		const TUint now = ModemPh9();
+		const TUint now = ModemStatusLevel();
 		if (now != last)
 			{
 			ModemLog("STATUS changed");
@@ -575,10 +579,10 @@ static void ModemDownFn(TAny*)
 	ModemLog("power-down start");
 	if (ModemStatusOn())
 		{
-		ModemPin(KPortB, 3, ETrue);
+		ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, ETrue);
 		ModemLog("PWRKEY high (off-pulse)");
 		ModemSleepMs(1000);
-		ModemPin(KPortB, 3, EFalse);						// released: bounded 1 s
+		ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse);						// released: bounded 1 s
 		ModemLog("PWRKEY low");
 		for (TInt i = 0; i < 300 && ModemStatusOn(); ++i)	// 30 s
 			ModemSleepMs(100);
@@ -587,7 +591,7 @@ static void ModemDownFn(TAny*)
 	if (!forced)
 		ModemSleepMs(500);									// STATUS high, then a short margin before VBAT goes
 	ModemVbat(EFalse);
-	ModemPin(KPortC, 4, EFalse);
+	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse);
 	ModemState = 0;
 	ModemLog(forced ? "VBAT off FORCED (STATUS never dropped)" : "VBAT off (STATUS off)");
 	}
@@ -616,17 +620,17 @@ static TInt A64ModemCreate(DA64Uart& aPort)
 			return KErrNoMemory;
 		}
 	// control pins: outputs at their idle levels before anything else (DTR low = awake, AP_READY low = host awake,
-	// W_DISABLE# low = RF enabled, RESET/PWRKEY released); STATUS PH9 input; VBAT PL7 output (level kept)
-	ModemPin(KPortB, 2, EFalse); PinFunction(KPortB, 2, 1);
-	ModemPin(KPortB, 3, EFalse); PinFunction(KPortB, 3, 1);
-	ModemPin(KPortC, 4, EFalse); PinFunction(KPortC, 4, 1);
-	ModemPin(KPortH, 7, EFalse); PinFunction(KPortH, 7, 1);
-	ModemPin(KPortH, 8, EFalse); PinFunction(KPortH, 8, 1);
-	PinFunction(KPortH, 9, 0);
-	volatile TUint32& lcfg = R32(KHwBaseRPio, KRPio + 0x00);
-	lcfg = (lcfg & ~(0xFu << 28)) | (1u << 28);
-	// UART3 pins PD0/PD1 = function 3, bus clock + reset, a quiet state
-	PinFunction(KPortD, 0, 3); PinFunction(KPortD, 1, 3);
+	// W_DISABLE# low = RF enabled, RESET/PWRKEY released); STATUS input; VBAT output (level kept)
+	ModemPin(A64_MODEM_DTR_PORT, A64_MODEM_DTR_PIN, EFalse); PinFunction(A64_MODEM_DTR_PORT, A64_MODEM_DTR_PIN, 1);
+	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse); PinFunction(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, 1);
+	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse); PinFunction(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, 1);
+	ModemPin(A64_MODEM_APREADY_PORT, A64_MODEM_APREADY_PIN, EFalse); PinFunction(A64_MODEM_APREADY_PORT, A64_MODEM_APREADY_PIN, 1);
+	ModemPin(A64_MODEM_DISABLE_PORT, A64_MODEM_DISABLE_PIN, EFalse); PinFunction(A64_MODEM_DISABLE_PORT, A64_MODEM_DISABLE_PIN, 1);
+	PinFunction(A64_MODEM_STATUS_PORT, A64_MODEM_STATUS_PIN, 0);
+	volatile TUint32& lcfg = R32(KHwBaseRPio, KRPio + (A64_MODEM_VBAT_PIN / 8) * 4);
+	lcfg = (lcfg & ~(0xFu << ((A64_MODEM_VBAT_PIN % 8) * 4))) | (1u << ((A64_MODEM_VBAT_PIN % 8) * 4));
+	// the UART pins to their UART function, bus clock + reset, a quiet state
+	PinFunction(A64_MODEM_UART_TX_PORT, A64_MODEM_UART_TX_PIN, A64_MODEM_UART_PIN_FUNC); PinFunction(A64_MODEM_UART_RX_PORT, A64_MODEM_UART_RX_PIN, A64_MODEM_UART_PIN_FUNC);
 	R32(KHwBaseCcuPio, KCcuBusGate3) |= 1u << KUart3Bit;
 	R32(KHwBaseCcuPio, KCcuBusReset4) |= 1u << KUart3Bit;
 	aPort.R(KIer) = 0; aPort.iIer = 0;

@@ -7,7 +7,7 @@
 // the Sitronix ST7703 panel init sequence (XBD599), and the Display Engine 2 mixer + blender + UI channel 1.
 // They compile against nuttx/compat (putreg32 & co, logging, delays); the A64_*_ADDR bases there are the linear
 // addresses of the DPlatChunkHw windows mapped here. The order of calls = NuttX's up_fbinitialize
-// (boards/arm64/a64/pinephone/src/pinephone_display.c). layering: ok
+// for its A64 board.
 //
 // Runs on its own DFC thread, a few seconds after boot (after the USB link is up), so a display hang never takes
 // the kernel or the debug log with it. Step 1 (this file): a test pattern straight into the framebuffer.

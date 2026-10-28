@@ -1,21 +1,25 @@
 // Copyright The Phorepoc Authors
 // SPDX-License-Identifier: Apache-2.0
 
-// OURS (track): the phone's Goodix GT917S touch panel ->
-// Symbian pointer events. Reference: NuttX (Apache-2.0) boards/arm64/a64/pinephone/src/pinephone_touch.c + layering: ok
-// drivers/input/gt9xx.c and Linux i2c-mv64xxx.c (the Allwinner TWI is a Marvell mv64xxx core).
-//   - bus: TWI0 at 0x01C2AC00, pins PH0 (SCK) / PH1 (SDA) function 2, I2C address 0x5D; power = the AXP803
-//     GPIO0-LDO the panel bring-up already enables (a64_display.cpp).
+// OURS (track): the touch panel (a Goodix GT9xx controller) ->
+// Symbian pointer events. Reference: the NuttX (Apache-2.0) gt9xx.c driver and Linux i2c-mv64xxx.c (the Allwinner TWI
+// is a Marvell mv64xxx core).
+//   - bus: the TWI, its pins and the I2C address are the board's (a64_board_config.h A64_TOUCH_*); power = the
+//     supply the panel bring-up already enables (a64_display.cpp).
 //   - protocol: 16-bit big-endian register addresses; 0x8140 = product ID ("917S"), 0x814E = status (bit 7 = new
 //     data, bits 3:0 = touch points), 0x8150 = point 1 (x lo/hi, y lo/hi, in panel pixels 720x1440); writing 0 to
 //     0x814E hands the buffer back to the controller.
-//   - first rung: POLLED (an NTimer every 15 ms -> a DFC on our own queue does the I2C), no PH4 interrupt yet;
+//   - first rung: POLLED (an NTimer every 15 ms -> a DFC on our own queue does the I2C), no interrupt line yet;
 //     the TWI is driven polled too (INT_FLAG busy-waits, ~1 ms per poll at 100 kHz).
 // The UI (360x640) is scaled x2 and centred on the panel (a64_display.cpp ProgramSource): screen = (x/2, (y-80)/2).
 #include <kernel/kern_priv.h>
 #include <e32keys.h>
 #include <assp.h>
 #include <syborg_priv.h>
+#include "a64_board_config.h"	// the board's panel size and touch wiring
+#ifndef A64_TOUCH_I2C_ADDR
+#error "the board must define the touch wiring in a64_board_config.h (A64_TOUCH_*)"
+#endif
 extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char*);
@@ -27,15 +31,22 @@ extern "C" void ekseam_puthex(unsigned);
 #ifndef VIRT_FB_HEIGHT
 #define VIRT_FB_HEIGHT 640
 #endif
-const TInt KPanelW = 720, KPanelH = 1440, KScale = 2;
+const TInt KPanelW = A64_PANEL_W, KPanelH = A64_PANEL_H, KScale = 2;
 const TInt KOffY = (KPanelH - VIRT_FB_HEIGHT * KScale) / 2, KOffX = (KPanelW - VIRT_FB_WIDTH * KScale) / 2;
 
-const TUint32 KCcuPioPhys = 0x01C20000, KTwi0Phys = 0x01C2AC00;
-const TUint KBusGate3 = 0x6C, KBusRst4 = 0x2D8, KPhCfg0 = 0x800 + 7 * 0x24;	// CCU / PIO (port H) offsets
+const TUint32 KCcuPioPhys = 0x01C20000, KTwi0Phys = A64_TOUCH_TWI_PHYS;
+const TUint KBusGate3 = 0x6C, KBusRst4 = 0x2D8;	// CCU offsets
 // TWI registers + CNTR bits (Allwinner: writing 1 to INT_FLAG clears it)
 const TUint KTwiData = 0x08, KTwiCntr = 0x0C, KTwiStat = 0x10, KTwiCcr = 0x14, KTwiSrst = 0x18, KTwiEfr = 0x1C;
 const TUint32 KBusEn = 0x40, KMSta = 0x20, KMStp = 0x10, KIntFlag = 0x08, KAAck = 0x04;
-const TUint8 KAddr = 0x5D;
+const TUint8 KAddr = A64_TOUCH_I2C_ADDR;
+// PIO port n at 0x800 + n*0x24 in the CCU/PIO page; 4 bits per pin, CFG0..3 at +0, +4, +8, +0xC
+static void SetPinFunc(volatile TUint32* aCcuPio, TUint aPort, TUint aPin)
+	{
+	volatile TUint32& cfg = aCcuPio[(0x800 + aPort * 0x24 + (aPin / 8) * 4) / 4];
+	const TUint sh = (aPin % 8) * 4;
+	cfg = (cfg & ~(0xFu << sh)) | ((TUint32)A64_TOUCH_PIN_FUNC << sh);
+	}
 extern "C" volatile TInt A64TouchSupplyState;		// a64_display.cpp: 1 = our supply is off, 2 = back on
 
 class DA64Touch
@@ -162,9 +173,10 @@ TInt DA64Touch::Init()
 		return r;
 	volatile TUint32* ccu = (volatile TUint32*)iCcuChunk->LinearAddress();
 	iTwi = (volatile TUint32*)(iTwiChunk->LinearAddress() + (KTwi0Phys & 0xFFF));
-	ccu[KPhCfg0 / 4] = (ccu[KPhCfg0 / 4] & ~0x77u) | 0x22u;	// PH0 = TWI0_SCK, PH1 = TWI0_SDA
-	ccu[KBusRst4 / 4] |= 1u;								// de-assert TWI0 reset
-	ccu[KBusGate3 / 4] |= 1u;								// TWI0 bus clock on
+	SetPinFunc(ccu, A64_TOUCH_SCK_PORT, A64_TOUCH_SCK_PIN);	// the board's TWI clock + data pins
+	SetPinFunc(ccu, A64_TOUCH_SDA_PORT, A64_TOUCH_SDA_PIN);
+	ccu[KBusRst4 / 4] |= 1u << A64_TOUCH_TWI_BUS_GATE_BIT;	// de-assert the TWI reset
+	ccu[KBusGate3 / 4] |= 1u << A64_TOUCH_TWI_BUS_GATE_BIT;	// the TWI bus clock on
 	iTwi[KTwiSrst / 4] = 1;									// soft reset the controller
 	for (TInt i = 0; i < 100000 && (iTwi[KTwiSrst / 4] & 1); ++i) {}
 	iTwi[KTwiCcr / 4] = (5 << 3) | 1;						// 24 MHz / (10 * 6 * 2^2) = 100 kHz

@@ -12,7 +12,11 @@
 #include <sensrvgeneralproperties.h>
 #include <e32debug.h>
 
-_LIT8(KLocation, "PinePhone"); // layering: ok
+#include "a64_board_config.h"	// the board's sensor location
+#ifndef A64_SENSOR_LOCATION
+#error "the board must define A64_SENSOR_LOCATION in a64_board_config.h"
+#endif
+_LIT8(KLocation, A64_SENSOR_LOCATION);
 _LIT8(KVendor, "Phorepoc");
 static const TInt KDefaultRateHz = 25;
 static const TInt KMaxRateHz = 100;

@@ -1,7 +1,7 @@
 ; a64.inc -- OURS (track): the Allwinner A64 memory map,
 ; the sibling of src/phorepoc-arm/virt/bootstrap/virt.inc. UNVERIFIED ON HARDWARE (no serial cable yet): addresses
-; from the A64 user manual's memory map as the Linux DTS (arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi,
-; sun50i-a64-pinephone.dtsi) and NuttX (arch/arm64/src/a64) use them -- read as hardware documentation only. layering: ok
+; from the A64 user manual's memory map as the Linux device trees (arch/arm64/boot/dts/allwinner/sun50i-a64.dtsi)
+; and NuttX (arch/arm64/src/a64) use them -- read as hardware documentation only.
 
 ; RAM: DRAM at 1 GiB. Every phone has >= 2 GiB; the first rung uses 1 GiB (one power-of-two bank, base a
 ; multiple of its size, as GetRamBanks' contract asks). Raise later.
@@ -26,8 +26,8 @@ KHwBaseGicCpu		EQU	0x01C82000	; GIC-400 CPU interface (8K; the registers we use 
 KHwBaseRPio		EQU	0x01F02000	; R_PIO (port L) at +0xC00 -- the power key's PMIC IRQ and more, later
 
 ; PIO: port n's registers at +0x800 + n*0x24: CFG0..3 (+0x00..+0x0C, 4 bits per pin, 1 = output), DAT (+0x10).
-; phone (sun50i-a64-pinephone.dtsi): RGB LED = PD18 green, PD19 red, PD20 blue; vibrator = PD2 (gpio-vibrator, layering: ok
-; its supply DCDC1 is always on).
+; the LEDs and the vibrator are on pins the board names (board/kernel/a64_board_config.h); the vibrator
+; (a gpio-vibrator) has its supply always on.
 KPioPortD		EQU	0x800 + 3*0x24	; offset of port D in the CCU/PIO page
 KPioCfg0		EQU	0x00
 KPioCfg2		EQU	0x08

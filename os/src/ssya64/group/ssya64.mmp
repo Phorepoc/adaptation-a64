@@ -14,6 +14,7 @@ SOURCE			ssya64.cpp
 RESOURCE		ssya64.rss
 USERINCLUDE		../inc
 USERINCLUDE		../../phorepoc-arm/a64/sensors
+USERINCLUDE		../../../board/kernel
 OS_LAYER_SYSTEMINCLUDE
 
 LIBRARY			euser.lib

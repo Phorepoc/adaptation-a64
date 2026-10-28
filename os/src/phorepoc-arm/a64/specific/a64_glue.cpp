@@ -16,10 +16,11 @@
 // No buzz: the vibrator is powered from an AXP803 regulator we do not switch on yet (Tow-Boot does), and the buzz's
 // 300 ms NanoWait was the one thing between green and the next stage.
 // The log: raw SD sectors 4096.. written by the kernel itself (A64SdFlush below).
-// LED / vibrator pins from the Linux DTS (sun50i-a64-pinephone.dtsi): PD18 green, PD19 red, PD20 blue, PD2 vibrator. layering: ok
+// The LED and vibrator pins are the board's (board/kernel/a64_board_config.h).
 #include <kernel/kernel.h>
 #include <kernel/kern_priv.h>
 #include "syborg_priv.h"
+#include "a64_board_config.h"	// the board's pins and names
 #include <kernel/kpower.h>
 #include <e32keys.h>
 #include "../../../phorepoc/inc/phhal.h"	// the Phorepoc HAL functions this board implements (core)
@@ -59,28 +60,48 @@ extern "C" void A64SensorsInstall();		// sensors/a64twi.cpp: the TWI1 sensor bus
 extern "C" void A64CameraInstall();		// camera/a64camera.cpp: the 2010 camera LDD + template PDD (C1); the C2 sensor chip-ID probe
 extern "C" void ekseam_load_nga_drivers() __attribute__((weak));
 
-// PIO port D (A64 manual: port n at PIO + n*0x24; CFG0..3 = 4 bits per pin, 1 = output; DAT at +0x10)
-const TUint KPioPortD = KHwBaseCcuPio + 0x800 + 3 * 0x24;
-const TUint KPioCfg2 = 0x08, KPioDat = 0x10;
-const TUint32 KLedGreen = 1u << 18, KLedRed = 1u << 19, KLedBlue = 1u << 20;
+// The pins of the LEDs and the vibrator are the board's (a64_board_config.h). PIO port n is at PIO + 0x800 + n*0x24
+// (A64 manual): CFG0..3 = 4 bits per pin (1 = output), DAT at +0x10.
+#ifndef A64_LED_GREEN_PIN
+#error "the board must define the LED pins in a64_board_config.h (A64_LED_{GREEN,RED,BLUE}_{PORT,PIN})"
+#endif
+#ifndef A64_VIBRA_PIN
+#error "the board must define the vibrator pin in a64_board_config.h (A64_VIBRA_{PORT,PIN})"
+#endif
+const TUint KPioDat = 0x10;
+const TUint32 KLedGreen = 1, KLedRed = 2, KLedBlue = 4;		// A64Leds' mask
 
-static inline volatile TUint32& PioD(TUint aOffset) { return *(volatile TUint32*)(KPioPortD + aOffset); }
+static inline volatile TUint32& PioReg(TUint aPort, TUint aOffset)
+	{ return *(volatile TUint32*)(KHwBaseCcuPio + 0x800 + aPort * 0x24 + aOffset); }
+static void PioOutput(TUint aPort, TUint aPin)
+	{
+	volatile TUint32& cfg = PioReg(aPort, (aPin / 8) * 4);
+	const TUint sh = (aPin % 8) * 4;
+	cfg = (cfg & ~(0xFu << sh)) | (1u << sh);
+	}
+static void PioWrite(TUint aPort, TUint aPin, TBool aHigh)
+	{
+	volatile TUint32& dat = PioReg(aPort, KPioDat);
+	dat = aHigh ? (dat | (1u << aPin)) : (dat & ~(1u << aPin));
+	}
 
 static void A64Leds(TUint32 aOn)
 	{
-	PioD(KPioCfg2) = (PioD(KPioCfg2) & ~0x000FFF00u) | 0x00011100u;		// PD18-20 = output
-	PioD(KPioDat) = (PioD(KPioDat) & ~(KLedGreen | KLedRed | KLedBlue)) | aOn;
+	PioOutput(A64_LED_GREEN_PORT, A64_LED_GREEN_PIN);
+	PioOutput(A64_LED_RED_PORT, A64_LED_RED_PIN);
+	PioOutput(A64_LED_BLUE_PORT, A64_LED_BLUE_PIN);
+	PioWrite(A64_LED_GREEN_PORT, A64_LED_GREEN_PIN, (aOn & KLedGreen) != 0);
+	PioWrite(A64_LED_RED_PORT, A64_LED_RED_PIN, (aOn & KLedRed) != 0);
+	PioWrite(A64_LED_BLUE_PORT, A64_LED_BLUE_PIN, (aOn & KLedBlue) != 0);
 	}
 
-// The vibration motor (2026-10-28): PD2 drives its switch, active high (the motor runs from DCDC1, always on). Read at
-// boot: PD2 unconfigured (function 7). The HWRM vibra plug-in (core src/hwrm/VibraPlugin.cpp) times the pulses.
-const TUint KPioCfg0 = 0x00;
-const TUint32 KVibra = 1u << 2;
+// The vibration motor (2026-10-28): its switch pin is active high (the motor's supply is always on). Read at boot: the
+// pin unconfigured (function 7). The HWRM vibra plug-in (core src/hwrm/VibraPlugin.cpp) times the pulses.
 static void A64Vibra(TBool aOn)
 	{
 	const TInt irq = NKern::DisableAllInterrupts();
-	PioD(KPioCfg0) = (PioD(KPioCfg0) & ~0x00000F00u) | 0x00000100u;		// PD2 = output
-	PioD(KPioDat) = aOn ? (PioD(KPioDat) | KVibra) : (PioD(KPioDat) & ~KVibra);
+	PioOutput(A64_VIBRA_PORT, A64_VIBRA_PIN);
+	PioWrite(A64_VIBRA_PORT, A64_VIBRA_PIN, aOn);
 	NKern::RestoreInterrupts(irq);
 	}
 

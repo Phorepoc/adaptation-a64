@@ -120,7 +120,7 @@ if [ "$BOARD" = a64 ]; then
     -DKernelModuleEntry=KernelModuleEntry_medint -DCreatePhysicalDevice=CreatePhysicalDevice_medint \
     -o .variant-build/iram.o
   ccq -k src/phorepoc-arm/a64/specific/a64_glue.cpp -O2 \
-    -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} "${GUARDDEFS[@]}" -o .variant-build/a64_glue.o
+    -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} "${GUARDDEFS[@]}" -Iboard/kernel -o .variant-build/a64_glue.o
   VAROBJS+=(.variant-build/locmedia.o .variant-build/dmasupport.o .variant-build/iram.o .variant-build/a64_glue.o)
   # C: = Syborg's REAL NVMemory media driver on SD partition 3 (src/phorepoc-arm/a64/blk/a64sdblk.cpp)
   ccq -k src/phorepoc-arm/a64/blk/a64sdblk.cpp -O2 -fno-function-sections \
@@ -144,7 +144,7 @@ if [ "$BOARD" = a64 ]; then
   done
   ccq -k src/phorepoc-arm/a64/usbcc/a64_usbcc.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${USB[@]}" -DInitExtension=InitExtension_usbcc \
-    -DKernelModuleEntry=KernelModuleEntry_usbcc -o .variant-build/a64_usbcc.o
+    -DKernelModuleEntry=KernelModuleEntry_usbcc -Iboard/kernel -o .variant-build/a64_usbcc.o
   ccq -k src/phorepoc-arm/a64/usbcc/phlink.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${GOLDEN[@]}" "${USB[@]}" -o .variant-build/phlink.o
   VAROBJS+=(.variant-build/a64_usbcc.o .variant-build/phlink.o)
@@ -181,7 +181,7 @@ if [ "$BOARD" = a64 ]; then
   # Touch: the GT917S over TWI0, polled (src/phorepoc-arm/a64/input/a64touch.cpp)
   ccq -k src/phorepoc-arm/a64/input/a64touch.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${GOLDEN[@]}" ${VIRT_FB:+-DVIRT_FB_WIDTH=${VIRT_FB%x*} -DVIRT_FB_HEIGHT=${VIRT_FB#*x}} \
-    -o .variant-build/a64touch.o
+    -Iboard/kernel -o .variant-build/a64touch.o
   VAROBJS+=(.variant-build/a64touch.o)
   # GPU (NGA plan rung G3): the Mali Utgard driver (src/phorepoc-arm/mali, lima-derived under MIT) + the A64 board half
   ccq -k src/phorepoc-arm/mali/mali_ldd.cpp -O2 -fno-function-sections \
@@ -243,7 +243,7 @@ if [ "$BOARD" = a64 ]; then
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -DCreateLogicalDevice=CreateLogicalDevice_ecomm \
     -DKernelModuleEntry=KernelModuleEntry_ecomm -o .variant-build/d_comm.o
   ccq -k src/phorepoc-arm/a64/bt/a64uart.cpp -O2 -fno-function-sections \
-    -fno-data-sections "${EXTRA[@]}" "${MED[@]}" $([ "${MODEM:-0}" = 1 ] && echo -DPHE_MODEM) -o .variant-build/a64uart.o
+    -fno-data-sections "${EXTRA[@]}" "${MED[@]}" $([ "${MODEM:-0}" = 1 ] && echo -DPHE_MODEM) -Iboard/kernel -o .variant-build/a64uart.o
   # (MODEM=1 = modem rung M1, telephony-plan.md: + Comm.A64 unit 3 = UART3 to the EG25-G and its power sequence)
   VAROBJS+=(.variant-build/d_comm.o .variant-build/a64uart.o)
   # WiFi rung 0 (the port notes "WiFi: the decision"): the SMHC1 SDIO host for the RTL8723CS's WiFi half

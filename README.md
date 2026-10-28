@@ -24,13 +24,14 @@ You don't build this repository by itself. Check it out next to core, the [pdk](
 a board repository that names it and mesa-symbian, and build the image as the pdk README describes. The board's
 `board.conf` brings this repository in.
 
-## Board wiring still in here
+## What the board provides
 
-The panel, its backlight and the PMIC rails are the board's (`a64_board.h`, implemented in the board's
-`board/kernel/`). Some wiring of the first board is still compiled in here and is to move behind the same kind of
-interface: the LED and vibrator pins (`specific/a64_glue.cpp`), the modem's UART control pins (`bt/a64uart.cpp`), the
-touch controller (`input/a64touch.cpp`), the USB product string (`usbcc/a64_usbcc.cpp`) and the sensor location
-(`ssya64`). Those lines carry `layering: ok` until then.
+The wiring of a board is the board's. The panel, its backlight and the PMIC rails are functions the board implements
+(`a64_board.h`, in the board's `board/kernel/`). Pin numbers, the touch controller's bus and address, the USB product
+string and the sensor location are macros in the board's `board/kernel/a64_board_config.h`; the code here stops the
+build with an `#error` if one is missing. `a64_glue.cpp` takes the LED and vibrator pins, `a64uart.cpp` the modem's
+control pins, `a64touch.cpp` the touch wiring, `a64_usbcc.cpp` the product string and `ssya64` the sensor location. The
+Bluetooth UART's pins in `a64uart.cpp` are still fixed numbers here.
 
 ## Code from Linux
 

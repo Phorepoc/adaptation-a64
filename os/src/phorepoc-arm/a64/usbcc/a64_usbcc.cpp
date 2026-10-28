@@ -26,6 +26,10 @@
 #include <drivers/usbc.h>
 #include <kernel/kern_priv.h>
 #include "syborg_priv.h"
+#include "a64_board_config.h"	// the board's names (A64_BOARD_USB_PRODUCT)
+#ifndef A64_BOARD_USB_PRODUCT
+#error "the board must define A64_BOARD_USB_PRODUCT in a64_board_config.h"
+#endif
 
 extern "C" void ekseam_board_log(unsigned c);
 
@@ -91,7 +95,7 @@ static const TUint16 KUsbProductId = 0x0666;
 static const TUint16 KUsbDevRelease = 0x0100;
 static const TUint16 KUsbLangId = 0x0409;
 static const wchar_t KStringManufacturer[] = L"Phorepoc";
-static const wchar_t KStringProduct[] = L"Symbian on PinePhone"; // layering: ok
+static const wchar_t KStringProduct[] = A64_BOARD_USB_PRODUCT;	// the board's product string
 static const wchar_t KStringSerialNo[] = L"0000000001";
 static const wchar_t KStringConfig[] = L"Phorepoc link";
 
