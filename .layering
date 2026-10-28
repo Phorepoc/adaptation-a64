@@ -4,3 +4,5 @@ pine64
 adaptation-pinephone
 belle
 open4all
+!os/src/phorepoc-arm/a64/display/nuttx
+!os/src/phorepoc-arm/a64/wlan/rtw88
