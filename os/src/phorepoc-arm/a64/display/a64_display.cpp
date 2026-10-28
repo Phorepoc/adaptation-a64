@@ -915,16 +915,16 @@ const TUint8 KFrameUnknown = 255;
 
 static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
 	{
-	TBuf8<120> b;
-	b.Format(_L8(" #%u t=%u ms phys=%08x white=%u%% black=%u%% sum=%08x"), aNo, aRec.iMs, aRec.iPhys, aRec.iWhite,
-			 aRec.iBlack, aRec.iSum);
-	if (aRec.iOff)
-		b.Append(_L8(" (screen off)"));
-	b.Append('\n');
-	b.Append('\0');
+	// (hex numbers, like every [EKERN] line: white/black are percentages, 0xff = not sampled)
 	ekseam_puts("[EKERN][frame] ");
 	ekseam_puts(aWhat);
-	ekseam_puts((const char*)b.Ptr());
+	ekseam_puts(" #"); ekseam_puthex(aNo);
+	ekseam_puts(" t_ms="); ekseam_puthex(aRec.iMs);
+	ekseam_puts(" phys="); ekseam_puthex(aRec.iPhys);
+	ekseam_puts(" white%="); ekseam_puthex(aRec.iWhite);
+	ekseam_puts(" black%="); ekseam_puthex(aRec.iBlack);
+	ekseam_puts(" sum="); ekseam_puthex(aRec.iSum);
+	ekseam_puts(aRec.iOff ? " (screen off)\n" : "\n");
 	}
 
 static void FrameRecord(TUint32 aPhys, TLinAddr aLin, TInt aW, TInt aH, TBool aOff)
