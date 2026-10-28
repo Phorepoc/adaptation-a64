@@ -10,7 +10,12 @@
 #include <kernel/kernel.h>
 #include <kernel/kern_priv.h>
 #include <kernel/arm/assp.h>
-#include "rphedeov.h"
+#include "../../../phorepoc/inc/rphedeov.h"	// the video plane interface (core)
+
+// The registers ReadReg may see, as offsets from the mixer-0 base (DE + 0x100000): the mixer proper (0..0x5FFF: global,
+// blender, VI channel at 0x2000, UI channels; the CCSC at 0xAA050 is outside -- see KPheDeOvRegCcsc) and the VI scaler.
+const TUint32 KPheDeOvRegCcsc = 0xAA050;		// ReadReg also allows 0xAA000..0xAA0FF (FCC global alpha 0xAA090, CCSC 0xAA050..0xAA07F)
+const TUint32 KPheDeOvRegVsu = 0x20000;			// VI scaler 0x20000..0x20FFF
 
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);

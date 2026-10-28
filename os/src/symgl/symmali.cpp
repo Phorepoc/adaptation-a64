@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // symmali.cpp -- OURS (GPU rung G4): the Symbian side of Mesa's lima driver -- RMaliChannel (our Mali-400 kernel
-// driver) behind the C seam of tools/mesa/symbian/include/symmali.h. The DRM shim (drm_symbian.c) does the lima
+// driver) behind the C seam of tools/mesa/symbian/include/symgpu.h. The DRM shim (drm_symbian.c) does the lima
 // uAPI emulation (BO handles, syncobjs, sync files); this file only talks to the kernel.
 #include <e32std.h>
 #include <e32debug.h>
 #include "rmalichannel.h"
-#include "symmali.h"
+#include "symgpu.h"
 
-struct symmali
+struct symgpu
 	{
 	RMaliChannel iChannel;
 	RChunk iArena;
@@ -18,7 +18,7 @@ struct symmali
 	TBool iInFlight[2];
 	};
 
-extern "C" symmali_t* symmali_open(void)
+extern "C" symgpu_t* symgpu_open(void)
 	{
 	symmali* m = new symmali;
 	if (!m)
@@ -40,7 +40,7 @@ extern "C" symmali_t* symmali_open(void)
 	return m;
 	}
 
-extern "C" void symmali_close(symmali_t* m)
+extern "C" void symgpu_close(symgpu_t* m)
 	{
 	if (!m)
 		return;
@@ -52,7 +52,7 @@ extern "C" void symmali_close(symmali_t* m)
 	delete m;
 	}
 
-extern "C" void symmali_info(symmali_t* m, symmali_info_t* out)
+extern "C" void symgpu_info(symgpu_t* m, symgpu_info_t* out)
 	{
 	out->gp_version = m->iInfo.iGpVersion;
 	out->pp_version = m->iInfo.iPpVersion;
@@ -62,12 +62,12 @@ extern "C" void symmali_info(symmali_t* m, symmali_info_t* out)
 	out->arena_base = m->iArena.Base();
 	}
 
-extern "C" int symmali_commit(symmali_t* m, uint32_t offset, uint32_t size)
+extern "C" int symgpu_commit(symgpu_t* m, uint32_t offset, uint32_t size)
 	{
 	return m->iChannel.Commit(offset, size);
 	}
 
-extern "C" int symmali_import(symmali_t* m, int chunk_handle, uint32_t offset, uint32_t size, uint32_t* va)
+extern "C" int symgpu_import(symgpu_t* m, int chunk_handle, uint32_t offset, uint32_t size, uint32_t* va)
 	{
 	RChunk c;
 	c.SetHandle(chunk_handle);
@@ -77,7 +77,7 @@ extern "C" int symmali_import(symmali_t* m, int chunk_handle, uint32_t offset, u
 	return r;
 	}
 
-extern "C" int symmali_import_addr(symmali_t* m, const void* addr, uint32_t size, uint32_t* va)
+extern "C" int symgpu_import_addr(symgpu_t* m, const void* addr, uint32_t size, uint32_t* va)
 	{
 	TUint32 gpuVa = 0;
 	const TInt r = m->iChannel.ImportAddress(addr, size, gpuVa);
@@ -85,21 +85,21 @@ extern "C" int symmali_import_addr(symmali_t* m, const void* addr, uint32_t size
 	return r;
 	}
 
-extern "C" int symmali_unimport(symmali_t* m, uint32_t va)
+extern "C" int symgpu_unimport(symgpu_t* m, uint32_t va)
 	{
 	return m->iChannel.Unimport(va);
 	}
 
-extern "C" int symmali_cache_sync(symmali_t* m, uint32_t va, uint32_t size, int op)
+extern "C" int symgpu_cache_sync(symgpu_t* m, uint32_t va, uint32_t size, int op)
 	{
 	return m->iChannel.CacheSync(va, size, op);
 	}
 
-extern "C" int symmali_submit(symmali_t* m, int pipe, const uint32_t* frame, unsigned words)
+extern "C" int symgpu_submit(symgpu_t* m, int pipe, const uint32_t* frame, unsigned words)
 	{
 	if (pipe < 0 || pipe > 1 || m->iInFlight[pipe])
 		return KErrInUse;
-	if (pipe == SYMMALI_PIPE_GP)
+	if (pipe == SYMGPU_PIPE_GP)
 		{
 		if (words != sizeof(TMaliGpFrame) / 4)
 			return KErrArgument;
@@ -115,7 +115,7 @@ extern "C" int symmali_submit(symmali_t* m, int pipe, const uint32_t* frame, uns
 	return KErrNone;
 	}
 
-extern "C" int symmali_wait(symmali_t* m, int pipe, int poll)
+extern "C" int symgpu_wait(symgpu_t* m, int pipe, int poll)
 	{
 	if (pipe < 0 || pipe > 1)
 		return KErrArgument;
@@ -128,12 +128,12 @@ extern "C" int symmali_wait(symmali_t* m, int pipe, int poll)
 	return m->iStatus[pipe].Int();
 	}
 
-extern "C" unsigned symmali_fast_counter()
+extern "C" unsigned symgpu_fast_counter()
 	{
 	return User::FastCounter();
 	}
 
-extern "C" void symmali_log(const char* msg)
+extern "C" void symgpu_log(const char* msg)
 	{
 	RDebug::Printf("%s", msg);
 	}

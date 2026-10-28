@@ -22,6 +22,7 @@
 #include "syborg_priv.h"
 #include <kernel/kpower.h>
 #include <e32keys.h>
+#include "../../../phorepoc/inc/phhal.h"	// the Phorepoc HAL functions this board implements (core)
 extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top allowed CPU clock for 1 s
 
 extern "C" void ekseam_puts(const char* s);
@@ -2157,7 +2158,7 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 		Kern::InfoCopy(*(TDes8*)a1, TPtrC8((const TUint8*)&info, sizeof(info)));
 		return KErrNone;
 		}
-	if (aFunction == 0x574C)
+	if (aFunction == EPhHalPowerWlanMac)
 		{	// OURS (2026-10-10, WiFi W3): the WLAN MAC address (the chip's efuse, read by the rtw88 probe at boot) for
 			// our wlanhwinit.dll (src/wlanhwinit): the engine refuses to start on the stub's 00:E0:DE:AD:BE:EF
 		if (!a64wlan_is_probed())
@@ -2167,17 +2168,17 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 		Kern::InfoCopy(*(TDes8*)a1, TPtrC8(mac, 6));
 		return KErrNone;
 		}
-	if (aFunction == 0x5056)
+	if (aFunction == EPhHalPowerVibra)
 		{	// OURS (2026-10-28): the vibration motor on (a1 != 0) / off, for the HWRM vibra plug-in
 		A64Vibra((TLinAddr)a1 != 0);
 		return KErrNone;
 		}
-	if (aFunction == 0x5047)
+	if (aFunction == EPhHalPowerGuardPing)
 		{	// OURS (2026-10-16): the UI-up / liveness ping of the hang guard (UiGuardTripped; sent by the HWRM plug-in)
 		UiGuardPing();
 		return KErrNone;
 		}
-	if (aFunction == 0x5049)
+	if (aFunction == EPhHalPowerGuardTimeout)
 		{	// OURS (2026-10-17): the boot-guard timeout in seconds (a1), from the developer menu (UiGuardTripped); clamped to 30..3600
 		const TInt secs = (TInt)(TLinAddr)a1;
 		if (secs < 30 || secs > 3600)
@@ -2185,7 +2186,7 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 		UiBootGuardS = (TUint32)secs;
 		return KErrNone;
 		}
-	if (aFunction == 0x5048)
+	if (aFunction == EPhHalPowerBattery)
 		{	// OURS (2026-10-08): the battery for HWRM's power-state plug-in (src/phorepoc/hwrm/PowerStatePlugin.cpp),
 			// which turns it into the KPSUidHWRMPowerState keys SysAp shows in Avkon's battery pane:
 			// [0] fuel gauge % (-1 = not valid), [1] charging, [2] battery mV, [3] VBUS/ACIN present
