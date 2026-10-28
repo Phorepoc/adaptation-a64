@@ -743,10 +743,18 @@ static TLinAddr CapFind(TPhysAddr aPhys, TInt aBytes)
 	return 0;
 	}
 
+static TLinAddr CapMap(TPhysAddr aPhys, TInt aBytes);
 static void CapMapFn(TAny*)
 	{
-	const TPhysAddr phys = CapReqPhys;
-	const TInt bytes = CapReqSize;
+	CapReqLin = CapMap(CapReqPhys, CapReqSize);
+	CapReqState = 2;
+	}
+
+// map a scan-out buffer (DispQ thread only: CapMapFn, the frame log), cached per physical buffer
+static TLinAddr CapMap(TPhysAddr aPhys, TInt aBytes)
+	{
+	const TPhysAddr phys = aPhys;
+	const TInt bytes = aBytes;
 	TLinAddr lin = CapFind(phys, bytes);
 	if (!lin)
 		{
@@ -778,8 +786,7 @@ static void CapMapFn(TAny*)
 		ekseam_puts("[EKERN][disp] capture: mapped scan-out buffer "); ekseam_puthex(phys);
 		ekseam_puts("[EKERN][disp]   lin="); ekseam_puthex(lin);
 		}
-	CapReqLin = lin;
-	CapReqState = 2;
+	return lin;
 	}
 
 // the linear address of a scan-out buffer (thread context; may wait ~ms for the display thread); 0 = could not
@@ -935,11 +942,24 @@ static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
 
 static void FrameSample()
 	{
-	const TLinAddr lin = SrcLin;
+	// what UI channel 1 really scans out (the legacy video RAM, a composition buffer, or one of Alfred's user buffers
+	// the kernel never mapped -- mapped here, on DispQ, like the screenshot's CapMapFn)
 	const TInt w = SrcPhys ? SrcW : 0, h = SrcPhys ? SrcH : 0;
-	if (!lin || w <= 0 || h <= 0)
+	if (w <= 0 || h <= 0)
 		return;
 	const TUint pitch = (TUint)((w * 4 + 63) & ~63);		// the buffers' 64-byte row pitch (ProgramSource)
+	const TPhysAddr phys = Mixer()[(0x3000 + 0x10) / 4];	// OVL_UI_TOP_LADD
+	TLinAddr lin = 0;
+	if (phys == SrcLinPhys && SrcLin)
+		lin = SrcLin;
+	else if (LegacyLin && phys == LegacyLinPhys)
+		lin = LegacyLin;
+	else if (phys == FbPhys && Fb)
+		lin = (TLinAddr)Fb;
+	else if (phys)
+		lin = CapMap(phys, (TInt)(pitch * h));
+	if (!lin)
+		return;
 	TUint n = 0, wh = 0, k = 0, s = 0;
 	for (TInt y = 4; y < h; y += 8)
 		{
@@ -960,7 +980,7 @@ static void FrameSample()
 	FrameLastSum = s;
 	TFrameRec r;
 	r.iMs = (TUint32)(((TUint64)NKern::TickCount() * NKern::TickPeriod()) / 1000);
-	r.iPhys = SrcPhys; r.iSum = s; r.iOff = 0; r.iPad = 0;
+	r.iPhys = phys; r.iSum = s; r.iOff = 0; r.iPad = 0;
 	r.iWhite = (TUint8)(wh * 100 / n);
 	r.iBlack = (TUint8)(k * 100 / n);
 	const TUint32 no = ++FrameNo;
