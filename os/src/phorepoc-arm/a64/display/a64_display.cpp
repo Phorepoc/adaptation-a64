@@ -902,10 +902,81 @@ static void SetCaptureLin(TUint32 aPhys, TLinAddr aLin)
 	SrcLinPhys = aLin ? aPhys : 0;
 	}
 
+// FRAME LOG: a fingerprint of every posted buffer -- the white and black share of a sample grid (every 8th row, every
+// 16th pixel; rows taken as aW * 4 bytes, so a padded stride drifts the grid a little) and a checksum -- in a ring, a
+// line for a frame that is mostly white right after one that was not (the white-flash regressions), and a line for the
+// frame a screen-on shows. The regression check reads these lines; the [mon] line carries the counters.
+struct TFrameRec { TUint32 iMs, iPhys, iSum; TUint8 iWhite, iBlack, iOff, iPad; };
+const TInt KFrameRing = 512;
+static TFrameRec FrameRing[KFrameRing];
+static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs;
+static TUint8 FramePrevWhite = 255;
+const TUint8 KFrameUnknown = 255;
+
+static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
+	{
+	TBuf8<120> b;
+	b.Format(_L8(" #%u t=%u ms phys=%08x white=%u%% black=%u%% sum=%08x"), aNo, aRec.iMs, aRec.iPhys, aRec.iWhite,
+			 aRec.iBlack, aRec.iSum);
+	if (aRec.iOff)
+		b.Append(_L8(" (screen off)"));
+	b.Append('\n');
+	b.Append('\0');
+	ekseam_puts("[EKERN][frame] ");
+	ekseam_puts(aWhat);
+	ekseam_puts((const char*)b.Ptr());
+	}
+
+static void FrameRecord(TUint32 aPhys, TLinAddr aLin, TInt aW, TInt aH, TBool aOff)
+	{
+	TFrameRec r;
+	r.iMs = (TUint32)(((TUint64)NKern::TickCount() * NKern::TickPeriod()) / 1000);
+	r.iPhys = aPhys; r.iSum = 0; r.iOff = (TUint8)(aOff ? 1 : 0); r.iPad = 0;
+	r.iWhite = r.iBlack = KFrameUnknown;
+	if (aLin && aW > 0 && aH > 0)
+		{
+		TUint n = 0, w = 0, k = 0, s = 0;
+		for (TInt y = 4; y < aH; y += 8)
+			{
+			const TUint32* row = (const TUint32*)(aLin + (TUint)y * (TUint)aW * 4);
+			for (TInt x = 8; x < aW; x += 16)
+				{
+				const TUint32 p = row[x];
+				++n;
+				if ((p & 0xF0F0F0) == 0xF0F0F0)
+					++w;
+				else if ((p & 0xE0E0E0) == 0)
+					++k;
+				s = (s << 5 | s >> 27) ^ p;
+				}
+			}
+		if (n)
+			{
+			r.iWhite = (TUint8)(w * 100 / n);
+			r.iBlack = (TUint8)(k * 100 / n);
+			r.iSum = s;
+			}
+		}
+	const TUint32 no = ++FrameNo;
+	FrameRing[no % KFrameRing] = r;
+	if (r.iWhite != KFrameUnknown && r.iWhite >= 85 && FramePrevWhite < 40)
+		{
+		++FrameWhiteFlashes;
+		if (r.iMs - FrameLastLineMs >= 100)		// (bounded: at most 10 lines a second)
+			{
+			FrameLastLineMs = r.iMs;
+			FramePut("WHITE frame after a non-white one", r, no);
+			}
+		}
+	if (r.iWhite != KFrameUnknown)
+		FramePrevWhite = r.iWhite;
+	}
+
 // Show aPhys (aLin: SetCaptureLin). ETrue = the post completes at a vblank (the
 // DFC above); EFalse = it took effect now (display not up yet, or the size changed: full reprogram), complete it now.
 extern "C" TBool A64DisplayFlip(TUint32 aPhys, TLinAddr aLin, TInt aW, TInt aH)
 	{
+	FrameRecord(aPhys, aLin ? aLin : ((LegacyLin && aPhys == LegacyLinPhys) ? LegacyLin : 0), aW, aH, !DisplayReady);
 	TInt irq = __SPIN_LOCK_IRQSAVE(VblankLock);
 	if (!DisplayReady || !VblankBound || aW != SrcW || aH != SrcH)
 		{
@@ -949,6 +1020,8 @@ extern "C" void A64DisplayFlipStats()
 	ekseam_puts(" @2="); ekseam_puthex(FlipDoneAt[2]);
 	ekseam_puts(" @3="); ekseam_puthex(FlipDoneAt[3]);
 	ekseam_puts(" forced="); ekseam_puthex(FlipForced);
+	ekseam_puts(" frames="); ekseam_puthex(FrameNo);
+	ekseam_puts(" white-flashes="); ekseam_puthex(FrameWhiteFlashes);
 	ekseam_puts("\n");
 	}
 
@@ -1374,6 +1447,8 @@ static TBool DisplayUpBody()
 	__SPIN_UNLOCK_IRQRESTORE(VblankLock, irq);
 	}
 	ekseam_puts("[EKERN][disp] DISPLAY UP\n");
+	if (Resuming && FrameNo)
+		FramePut("screen-on shows", FrameRing[FrameNo % KFrameRing], FrameNo);
 	return ETrue;
 	}
 
