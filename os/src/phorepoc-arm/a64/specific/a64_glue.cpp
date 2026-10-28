@@ -71,6 +71,18 @@ static void A64Leds(TUint32 aOn)
 	PioD(KPioDat) = (PioD(KPioDat) & ~(KLedGreen | KLedRed | KLedBlue)) | aOn;
 	}
 
+// The vibration motor (2026-10-28): PD2 drives its switch, active high (the motor runs from DCDC1, always on). Read at
+// boot: PD2 unconfigured (function 7). The HWRM vibra plug-in (core src/hwrm/VibraPlugin.cpp) times the pulses.
+const TUint KPioCfg0 = 0x00;
+const TUint32 KVibra = 1u << 2;
+static void A64Vibra(TBool aOn)
+	{
+	const TInt irq = NKern::DisableAllInterrupts();
+	PioD(KPioCfg0) = (PioD(KPioCfg0) & ~0x00000F00u) | 0x00000100u;		// PD2 = output
+	PioD(KPioDat) = aOn ? (PioD(KPioDat) | KVibra) : (PioD(KPioDat) & ~KVibra);
+	NKern::RestoreInterrupts(irq);
+	}
+
 // The generic timer must count for every NanoWait / tick: spin a while; a frozen CNTPCT -> red/green blink forever.
 static void A64CheckTimer()
 	{
@@ -2153,6 +2165,11 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 		TUint8 mac[6];
 		a64wlan_mac_addr(mac);
 		Kern::InfoCopy(*(TDes8*)a1, TPtrC8(mac, 6));
+		return KErrNone;
+		}
+	if (aFunction == 0x5056)
+		{	// OURS (2026-10-28): the vibration motor on (a1 != 0) / off, for the HWRM vibra plug-in
+		A64Vibra((TLinAddr)a1 != 0);
 		return KErrNone;
 		}
 	if (aFunction == 0x5047)
