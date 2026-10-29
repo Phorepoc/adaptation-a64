@@ -160,6 +160,8 @@ public:
 
 	TInt StartGp(DMaliChannel* aCh, const TMaliGpFrame& aFrame, TPhysAddr aPd);
 	TInt StartPp(DMaliChannel* aCh, TMaliPpFrame& aFrame, TPhysAddr aPd);
+	TInt Run(DMaliChannel* aCh, TInt aPipe, TAny* aFrame);
+	void StartNext(TInt aPipe);
 	void ChannelClosing(DMaliChannel* aCh);
 
 	static void GpIsr(TAny* aDev);
@@ -182,6 +184,8 @@ public:
 	DMutex* iLock;					// job start / channel close
 	TDfcQue* iDfcQ;
 	TMaliPipe iPipe[2];				// 0 = GP, 1 = PP
+	DMaliChannel* iQHead[2];		// per pipe: the channels whose job waits for the pipe, first come first served
+	DMaliChannel* iQTail[2];
 	TInt iPpArg[KMaliMaxPp];		// PpIsr's argument: the PP index
 	TUint iMmuArg[1 + KMaliMaxPp];	// MmuIsr's argument: the MMU's register offset
 	TUint32 iFaultAddr, iFaultStatus;
@@ -223,6 +227,12 @@ public:
 	TWaiter iWait[KWaiters];
 	TInt Submit(TInt aPipe, const TAny* aFrame);
 	TInt WaitFor(TRequestStatus* aStatus, TInt aPipe, TUint32 aSeq);
+	// a job waiting for a pipe another process's job holds (DMaliDevice::Run): one per pipe -- a process starts its
+	// next job on a pipe after its previous one there finished -- linked in the device's queue. Under iDev->iLock.
+	TMaliGpFrame iQGp;
+	TMaliPpFrame iQPp;
+	TBool iQueued[2];
+	DMaliChannel* iQNext[2];
 	TMaliVm iVm;
 	DChunk* iArena;
 	TLinAddr iArenaLin;
@@ -543,6 +553,46 @@ TInt DMaliDevice::StartPp(DMaliChannel* aCh, TMaliPpFrame& aFrame, TPhysAddr aPd
 	return KErrNone;
 	}
 
+// Start aCh's job on aPipe, or queue it while another channel's job holds the pipe (lima_sched: one queue per pipe,
+// whatever process submits). Refusing it instead (KErrInUse) dropped the job: with the window server's GPU composer and
+// two games on the GPU, a game's PP jobs were refused -- textureless frames, then a hang (2026-10-29). The caller holds
+// iLock; StartGp/StartPp validate the frame before they look at the owner, so only valid frames are queued.
+TInt DMaliDevice::Run(DMaliChannel* aCh, TInt aPipe, TAny* aFrame)
+	{
+	const TPhysAddr pd = aCh->iVm.PdPhys();
+	TInt r = aPipe ? StartPp(aCh, *(TMaliPpFrame*)aFrame, pd) : StartGp(aCh, *(const TMaliGpFrame*)aFrame, pd);
+	if (r != KErrInUse || iPipe[aPipe].iOwner == aCh || aCh->iQueued[aPipe])
+		return r;						// (a channel's own job on the pipe: the caller waits for it first)
+	if (aPipe)
+		aCh->iQPp = *(const TMaliPpFrame*)aFrame;
+	else
+		aCh->iQGp = *(const TMaliGpFrame*)aFrame;
+	aCh->iQueued[aPipe] = ETrue;
+	aCh->iQNext[aPipe] = NULL;
+	if (iQTail[aPipe])
+		iQTail[aPipe]->iQNext[aPipe] = aCh;
+	else
+		iQHead[aPipe] = aCh;
+	iQTail[aPipe] = aCh;
+	return KErrNone;
+	}
+
+// the pipe is idle: start the first queued job (the caller holds iLock)
+void DMaliDevice::StartNext(TInt aPipe)
+	{
+	while (!iPipe[aPipe].iOwner && iQHead[aPipe])
+		{
+		DMaliChannel* ch = iQHead[aPipe];
+		iQHead[aPipe] = ch->iQNext[aPipe];
+		if (!iQHead[aPipe])
+			iQTail[aPipe] = NULL;
+		ch->iQueued[aPipe] = EFalse;
+		const TInt r = aPipe ? StartPp(ch, ch->iQPp, ch->iVm.PdPhys()) : StartGp(ch, ch->iQGp, ch->iVm.PdPhys());
+		if (r != KErrNone)
+			ch->Complete(aPipe ? EMaliReqSubmitPp : EMaliReqSubmitGp, r);
+		}
+	}
+
 // lima_gp_irq_handler
 void DMaliDevice::GpIsr(TAny* aDev)
 	{
@@ -670,6 +720,7 @@ void DMaliDevice::PipeDone(TInt aPipe)
 	DMaliChannel* ch = p.iOwner;
 	p.iOwner = NULL;
 	ch->Complete(aPipe ? EMaliReqSubmitPp : EMaliReqSubmitGp, p.iError ? p.iResult : KErrNone);
+	StartNext(aPipe);
 	Kern::MutexSignal(*iLock);
 	NKern::ThreadLeaveCS();
 	}
@@ -679,6 +730,19 @@ void DMaliDevice::ChannelClosing(DMaliChannel* aCh)
 	{
 	for (TInt p = 0; p < 2; ++p)
 		{
+		if (aCh->iQueued[p])			// its queued job never runs
+			{
+			DMaliChannel* prev = NULL;
+			for (DMaliChannel* c = iQHead[p]; c; prev = c, c = c->iQNext[p])
+				if (c == aCh)
+					{
+					(prev ? prev->iQNext[p] : iQHead[p]) = aCh->iQNext[p];
+					if (iQTail[p] == aCh)
+						iQTail[p] = prev;
+					break;
+					}
+			aCh->iQueued[p] = EFalse;
+			}
 		while (iPipe[p].iOwner == aCh)
 			{
 			Kern::MutexSignal(*iLock);
@@ -1052,16 +1116,16 @@ TInt DMaliChannel::Submit(TInt aPipe, const TAny* aFrame)
 		{
 		TMaliGpFrame f;
 		kumemget32(&f, aFrame, sizeof(f));
-		r = iDev->StartGp(this, f, iVm.PdPhys());
+		r = iDev->Run(this, 0, &f);
 		}
 	else
 		{
 		TMaliPpFrame f;
 		kumemget32(&f, aFrame, sizeof(f));
-		r = iDev->StartPp(this, f, iVm.PdPhys());
+		r = iDev->Run(this, 1, &f);
 		}
 	if (r == KErrNone)
-		r = (TInt)++iSeq[aPipe];		// (2^31 jobs: years at 60 frames a second)
+		r = (TInt)++iSeq[aPipe];		// (started or queued: its number either way)		// (2^31 jobs: years at 60 frames a second)
 	Kern::MutexSignal(*iDev->iLock);
 	NKern::ThreadLeaveCS();
 	return r;
@@ -1182,13 +1246,13 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 		{
 		TMaliGpFrame f;
 		kumemget32(&f, args[0], sizeof(f));
-		r = iDev->StartGp(this, f, iVm.PdPhys());
+		r = iDev->Run(this, 0, &f);
 		}
 	else
 		{
 		TMaliPpFrame f;
 		kumemget32(&f, args[0], sizeof(f));
-		r = iDev->StartPp(this, f, iVm.PdPhys());
+		r = iDev->Run(this, 1, &f);
 		}
 	if (r == KErrNone)
 		++iSeq[req == EMaliReqSubmitPp ? 1 : 0];		// (the timeline counts these jobs too)
