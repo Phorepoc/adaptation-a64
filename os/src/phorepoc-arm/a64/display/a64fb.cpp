@@ -32,6 +32,7 @@ extern "C" TInt A64DisplayBrightness();
 extern "C" void A64DisplayBlank(TBool aBlank);
 extern "C" void A64DisplayBacklightOff(TBool aOff);
 extern "C" TBool A64DisplayBacklightIsOff();
+extern "C" void A64DisplayFrameWake();
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
 // the NGA direct-screen-access chunk (tools/kernel/ekern_dsa_glue.cpp); weak so A64_DISPLAY=legacy / NGA_KERNEL=0 still link
@@ -112,8 +113,14 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 			ekseam_dsa_backing_phys = TSyborg::VideoRamPhys();		// the DSA surface = the legacy video RAM (ekern_dsa_glue.cpp)
 			return ekseam_display_memory_handle(0, a1, ((VIRT_FB_WIDTH * 4 + 63) & ~63) * VIRT_FB_HEIGHT);
 		case EDisplayHalSetState:
+			{
+			static TBool on = ETrue;
 			ekseam_puts((TBool)a1 ? "[EKERN][disp] HAL display state ON\n" : "[EKERN][disp] HAL display state OFF\n");
+			if ((TBool)a1 && !on)
+				A64DisplayFrameWake();		// (the frame log: report the first frame after the wake)
+			on = (TBool)a1;
 			return DoHalFunction(aPtr, aFunction, a1, a2);
+			}
 		// ONE display mode, index 0, as on a real phone (2026-10-15, DSA under NGA): Syborg lists 3 identical 32 bpp
 		// modes with 2 current, and the two halves of a DSA then name the screen surface differently -- scdv (WSERV's
 		// DSA device) takes the FIRST 32 bpp mode (0), CDirectScreenBitmap the CURRENT one (2), so the app's updates

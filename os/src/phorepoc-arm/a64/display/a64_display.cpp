@@ -921,6 +921,9 @@ static TFrameRec FrameRing[KFrameRing];
 static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum, FrameLastLin;
 static TUint8 FramePrevWhite = 255;
 static TBool FrameAfterWake;
+// the HAL display state went OFF -> ON (a64fb.cpp): the next sampled frame is the woken panel's first. (The display's
+// own resume path runs only after a real power-down; the screensaver's off / on is this HAL state.)
+extern "C" void A64DisplayFrameWake() { FrameAfterWake = ETrue; }
 const TUint8 KFrameUnknown = 255;
 static TDfc* FrameDfc;
 static void FrameTimerFn(TAny*) { if (FrameDfc) FrameDfc->Add(); }		// ISR context
