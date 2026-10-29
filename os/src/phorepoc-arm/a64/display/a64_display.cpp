@@ -974,6 +974,10 @@ static void FrameSample()
 	if (!lin)
 		return;
 	TUint n = 0, wh = 0, k = 0, s = 0;
+	// the bands an app's header and toolbar use (the top / bottom 13.4 % / 9 % of the screen -- 86 / 57 of 640 rows):
+	// pure-white share each, as a flash there hides in a light UI's whole-screen numbers
+	const TInt topEnd = h * 86 / 640, botStart = h * 583 / 640;
+	TUint tn = 0, tw = 0, bn = 0, bw = 0;
 	for (TInt y = 4; y < h; y += 8)
 		{
 		const TUint32* row = (const TUint32*)(lin + (TUint)y * pitch);
@@ -981,6 +985,11 @@ static void FrameSample()
 			{
 			const TUint32 p = row[x];
 			++n;
+			const TBool pure = (p & 0xFCFCFC) == 0xFCFCFC;
+			if (y < topEnd)
+				{ ++tn; tw += pure; }
+			else if (y >= botStart)
+				{ ++bn; bw += pure; }
 			if ((p & 0xF0F0F0) == 0xF0F0F0)
 				++wh;
 			else if ((p & 0xE0E0E0) == 0)
@@ -994,7 +1003,9 @@ static void FrameSample()
 	FrameLastSum = s;
 	TFrameRec r;
 	r.iMs = (TUint32)(((TUint64)NKern::TickCount() * NKern::TickPeriod()) / 1000);
-	r.iPhys = phys; r.iSum = s; r.iOff = 0; r.iPad = 0;
+	r.iPhys = phys; r.iSum = s;
+	r.iOff = (TUint8)(tn ? tw * 100 / tn : 0);			// (top band pure white %)
+	r.iPad = (TUint8)(bn ? bw * 100 / bn : 0);			// (bottom band pure white %)
 	r.iWhite = (TUint8)(wh * 100 / n);
 	r.iBlack = (TUint8)(k * 100 / n);
 	const TUint32 no = ++FrameNo;
@@ -1014,6 +1025,19 @@ static void FrameSample()
 			}
 		}
 	FramePrevWhite = r.iWhite;
+	// a band turning pure white (header / toolbar flash)
+	static TUint8 prevTop = 255, prevBot = 255;
+	if ((r.iOff >= 60 && prevTop < 20) || (r.iPad >= 60 && prevBot < 20))
+		{
+		++FrameWhiteFlashes;
+		if (r.iMs - FrameLastLineMs >= 100)
+			{
+			FrameLastLineMs = r.iMs;
+			FramePut("WHITE band (top% = off, bottom% = pad)", r, no);
+			}
+		}
+	prevTop = r.iOff;
+	prevBot = r.iPad;
 	}
 
 static void FrameDfcFn(TAny*)
