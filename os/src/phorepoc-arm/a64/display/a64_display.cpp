@@ -940,7 +940,9 @@ static void FramePut(const char* aWhat, const TFrameRec& aRec, TUint32 aNo)
 	ekseam_puts(" white%="); ekseam_puthex(aRec.iWhite);
 	ekseam_puts(" black%="); ekseam_puthex(aRec.iBlack);
 	ekseam_puts(" sum="); ekseam_puthex(aRec.iSum);
-	ekseam_puts(aRec.iOff ? " (screen off)\n" : "\n");
+	ekseam_puts(" top%="); ekseam_puthex(aRec.iOff);		// (the header / toolbar bands' pure-white share)
+	ekseam_puts(" bottom%="); ekseam_puthex(aRec.iPad);
+	ekseam_puts("\n");
 	}
 
 static void FrameSample()
