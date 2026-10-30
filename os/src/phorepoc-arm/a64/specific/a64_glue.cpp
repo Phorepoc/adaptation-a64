@@ -1689,6 +1689,13 @@ extern "C" void A64ThreadDump()
 				{
 				ekseam_puts(" pc="); ekseam_puthex(f->iR15);
 				ekseam_puts(" lr="); ekseam_puthex(f->iR14usr);
+				// the top of its user stack: the callers of a thread blocked in a synchronous wait (a WaitForRequest
+				// under a SendReceive, a GL wait...) are only there
+				ekseam_puts(" sp="); ekseam_puthex(f->iR13usr);
+				TUint32 stk[32];
+				if (Kern::ThreadRawRead(t, (const TAny*)f->iR13usr, stk, sizeof(stk)) == KErrNone)
+					for (TUint k = 0; k < sizeof(stk) / sizeof(stk[0]); ++k)
+						{ ekseam_puts(" s="); ekseam_puthex(stk[k]); }
 				}
 			}
 		ekseam_puts("\n");
