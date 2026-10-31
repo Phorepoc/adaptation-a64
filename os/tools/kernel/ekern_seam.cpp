@@ -656,7 +656,9 @@ extern "C" void __wrap__ZN11ExecHandler10DebugPrintEPvi(void* aDes, int aMode)
 			// (2026-10-18, the S^4 shell on the phone) Qt's qWarning/qCritical texts (QtLockedFile..., QtSingleCoreApplication...) and Orbit's
 			"Qt", "Hb", "QObject", "QPixmap", "QFont", "_WSEVENT",
 			// (2026-10-27) the ECOM server's own lines: rare errors normally, discovery tracing in an ECOM_TRACE=1 build
-			"ECOM", "INFO: Hash Check", "ERROR: Plugin" };
+			"ECOM", "INFO: Hash Check", "ERROR: Plugin",
+			// (2026-10-31) the install server's trace (core swi/mkswi.py, PHOREPOC_SWI_TRACE): why an install failed
+			"[SWI]" };
 		for (unsigned i = 0; i < sizeof(KPass) / sizeof(KPass[0]); ++i)
 			{
 			const char* p = KPass[i];
