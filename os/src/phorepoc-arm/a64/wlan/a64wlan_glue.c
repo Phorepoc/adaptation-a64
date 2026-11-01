@@ -483,13 +483,14 @@ static void a64_set_wmm_default(void)
 }
 
 /* ---------------------------------------------------------------- interface up */
+/* the benchmark (phewlantest scans): scans are good or bad -- 20-26 probe responses or 0-5 -- with the logged state
+ * identical (boots 2084/2085; the chip is NOT power-cycled between them: no IPS once powered, the core stays up across
+ * the WLAN engine's Release / Create). The MAC / BB / RF registers + the antenna arbiter (LTE indirect 0x38 GNT, 0xa0,
+ * 0xa4, 0x54) at every scan end, numbered, to diff the good scans with the bad. */
+static unsigned a64_scan_gen;
+
 /* iface.c ieee80211_do_open for a station + main.c ieee80211_hw_conf_init. Ends powered off (IPS), as Linux does:
  * the first scan or the Join powers the chip on again. Idempotent. */
-/* the benchmark (phewlantest scans): the radio is good or bad per chip power-up -- 20-26 probe responses per scan or
- * 0-5, both scans of one power-up alike, and the logged init identical (boot 2084). The MAC / BB / RF registers + the
- * antenna arbiter (LTE indirect 0x38 GNT, 0xa0, 0xa4) at the first scan end of every power-up, to diff a good one
- * with a bad one. */
-static unsigned a64_powerup_gen, a64_dumped_gen;
 
 int a64wlan_core_up(void)
 {
@@ -500,7 +501,6 @@ int a64wlan_core_up(void)
 		return -ENODEV;
 	if (a64_vif)
 		return 0;
-	a64_powerup_gen++;
 	hw = a64_rtwdev->hw;
 	if (a64_set_chandef(1)) {
 		shim_log("[wlan] no 2.4 GHz band registered\n");
@@ -906,10 +906,9 @@ void a64wlan_tx_report(void)
 	const struct rtw_coex *c;
 	if (!a64_powered())
 		return;
-	if (a64_dumped_gen != a64_powerup_gen) {
+	{
 		char tag[16];
-		a64_dumped_gen = a64_powerup_gen;
-		snprintf(tag, sizeof(tag), "up%u", a64_powerup_gen);
+		snprintf(tag, sizeof(tag), "scan%u", ++a64_scan_gen);
 		rxregs_dump(tag);
 		shim_log("[rxregs %s] lte 38=%08x a0=%08x a4=%08x 54=%08x\n", tag, rtw_coex_read_indirect_reg(a64_rtwdev, 0x38),
 			 rtw_coex_read_indirect_reg(a64_rtwdev, 0xa0), rtw_coex_read_indirect_reg(a64_rtwdev, 0xa4),
