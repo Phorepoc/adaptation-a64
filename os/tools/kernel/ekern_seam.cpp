@@ -1592,7 +1592,6 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 	}
 #endif
 
-static void ekseam_seg(const char* tag, DCodeSeg* s);
 extern "C" void __real__ZN3Exc8DispatchEPvP7NThread(void*, void*);
 extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 	{
@@ -1663,9 +1662,15 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 		for (int k = 0; k < 2; ++k)
 			{
 			DCodeSeg* s = Kern::CodeSegFromAddress(addr[k], TheCurrentThread->iOwningProcess);
-			ekseam_seg(k ? "[EKERN][exc] lr seg=" : "[EKERN][exc] pc seg=", s);
-			if (s)
-				{ ekseam_puts("[EKERN][exc]   offset="); ekseam_puthex(addr[k] - s->iRunAddress); }
+			char nm[48]; unsigned i = 0;	// (the name before the hex: ekseam_puthex ends the line)
+			if (s && s->iFileName)
+				for (const TUint8* p = s->iRootName.Ptr(); i < (unsigned)s->iRootName.Length() && i < sizeof(nm) - 1; ++i)
+					nm[i] = p[i];
+			nm[i] = 0;
+			ekseam_puts(k ? "[EKERN][exc] lr in " : "[EKERN][exc] pc in ");
+			ekseam_puts(s ? nm : "(no code segment)");
+			ekseam_puts(" +");
+			ekseam_puthex(s ? addr[k] - s->iRunAddress : addr[k]);
 			}
 		Kern::EndAccessCode();
 		NKern::ThreadLeaveCS();
