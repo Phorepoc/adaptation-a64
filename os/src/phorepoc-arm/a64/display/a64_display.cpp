@@ -1062,8 +1062,6 @@ static void FrameSample()
 		ekseam_puts("[EKERN][frame] active second: frames="); ekseam_puthex(secFrames);
 		ekseam_puts(" max_gap_ms="); ekseam_puthex(secMaxGap);
 		ekseam_puts(" black_bands="); ekseam_puthex(FrameBlackFlashes - secBlack);
-		ekseam_puts("
-");
 		secFrames = 0;
 		}
 	if (!secFrames)
