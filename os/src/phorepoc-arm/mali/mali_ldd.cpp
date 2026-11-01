@@ -37,8 +37,8 @@ static void LogHex(const char* aWhat, TUint32 aV) { ekseam_puts(aWhat); ekseam_p
 // The per-channel GPU address space: an arena at a fixed VA (the channel's own buffers) and an import region
 // (other drivers' shared chunks: window surfaces), both covered by contiguous page tables.
 const TUint32 KMaliArenaVa = 0x10000000;
-const TInt KMaliArenaPts = 32;						// x 4 MB
-const TInt KMaliArenaMax = KMaliArenaPts << 22;		// 128 MB
+const TInt KMaliArenaPts = 64;						// x 4 MB (the arena ends where the import region starts)
+const TInt KMaliArenaMax = KMaliArenaPts << 22;		// 256 MB
 const TUint32 KMaliImportVa = 0x20000000;
 const TInt KMaliImportPts = 16;						// 64 MB
 const TInt KMaliImportPages = KMaliImportPts << 10;
