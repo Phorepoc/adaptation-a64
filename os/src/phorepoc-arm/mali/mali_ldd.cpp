@@ -1030,7 +1030,7 @@ TInt DMaliChannel::Decommit(TInt aOffset, TInt aSize)
 		iVm.Unmap(KMaliArenaVa + aOffset + (i << 12));
 	ZapMmus();
 	Kern::MutexSignal(*iDev->iLock);
-	const TInt r = Kern::ChunkDecommit(iArena, aOffset, aSize);
+	const TInt r = iArena->Decommit(aOffset, aSize);		// (DChunk, kern_priv.h: there is no Kern:: wrapper)
 	NKern::ThreadLeaveCS();
 	return r;
 	}
