@@ -28,7 +28,6 @@ static struct rtw_dev *a64_rtwdev;
 #define RXD_RF_WIDE
 #endif
 #include "rxregs_dump.h"		/* (always: the per-power-up snapshot below; PHE_RXREGS / PHE_RFWIDE add the old dumps) */
-#endif
 
 /* the host as the sunxi SMHC1 behaves under a64sdio.cpp: PIO, 512-byte blocks, one request up to 64 KB */
 static struct mmc_host a64_host = { .max_req_size = 65536, .max_blk_size = 512, .max_blk_count = 511, .caps = 0 };
