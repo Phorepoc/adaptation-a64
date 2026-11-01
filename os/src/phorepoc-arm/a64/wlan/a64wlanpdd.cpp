@@ -101,7 +101,7 @@ private:
 	void Complete(TCompleteCommandId aId, TStatus aStatus);
 	void ScanStep();
 	void ScanFinish(TStatus aStatus);
-	void SendProbes();
+	void SendProbes(TUint aCount);
 public:
 	void TxDone(TUint aSlot, TBool aAcked);
 private:
@@ -126,6 +126,7 @@ private:
 	TPsMode iPsMode;				// the dot11 power-management mode the UMAC last asked for (echoed in the completion)
 	// scan
 	TBool iScanning;
+	TUint32 iScanRestMs;			// the dwell left after the mid-dwell probes (0 = the channel's dwell is over)
 	TUint iScanCount, iScanIdx;
 	SChannels iScanCh[KMaxScanChannels];
 	TUint32 iScanDwellMs;
@@ -180,7 +181,7 @@ TA64Wha::TA64Wha(MWlanOsa& aOsa, MWlanOsaExt& aExt, WlanHpa& aHpa, WlanSpia& aSp
 	  iCmdDfc(CmdDfcFn, this, A64WlanDfcQ(), KCmdDfcPriority),
 	  iScanTimer(ScanDfcFn, this, A64WlanDfcQ(), KCmdDfcPriority),
 	  iAssocDfc(AssocDfcFn, this, A64WlanDfcQ(), KCmdDfcPriority), iAssocSeen(EFalse),
-	  iCmd(ENone), iReleaseSync(EFalse), iScanning(EFalse), iScanCount(0), iScanIdx(0), iScanDwellMs(KMinDwellMs), iScanRx(0),
+	  iCmd(ENone), iReleaseSync(EFalse), iScanning(EFalse), iScanRestMs(0), iScanCount(0), iScanIdx(0), iScanDwellMs(KMinDwellMs), iScanRx(0),
 	  iPsMode(KPsDisable), iJoined(EFalse), iJoinChannel(0), iBeaconInterval(100), iDtim(1), iReadMib(0), iLastRcpi(0), iTxCount(0), iTxDropped(0), iTxAcked(0), iTxFailed(0), iAid(0), iToUsLogged(0), iRxCtrl(0), iProbeRespToUs(0), iProbeRespFromBss(0), iUnicastProbes(0), iRxJoinedAny(0), iRxJoinedBss(0), iRxIdle(0), iTestAuthSent(0), iTestAuthAnswered(0), iBssidKnown(EFalse),
 	  iProbeReqLen(0), iScanProbes(0), iScanSsidCount(0), iProbesSent(0), iScanProbeResp(0),
 	  iRxDelivered(0), iRxDropped(0), iRxNoBuffer(0), iRxCck(0), iRxOfdm(0), iRxHt(0)
@@ -297,6 +298,7 @@ void TA64Wha::RunCmd()
 			Respond(EScanCommandResponse, KSuccess);
 			iScanning = ETrue;
 			iScanIdx = 0;
+			iScanRestMs = 0;
 			iScanRx = 0;
 			a64wlan_scan_notify(1);		// what mac80211's sw_scan_start tells the driver (coex, firmware, DIG)
 			ScanStep();
@@ -416,6 +418,15 @@ void TA64Wha::ScanStep()
 	{
 	if (!iScanning)
 		return;
+	if (iScanRestMs)
+		{
+		// mid-dwell: the rest of the UMAC's probes, then the rest of the dwell
+		const TUint32 rest = iScanRestMs;
+		iScanRestMs = 0;
+		SendProbes(iScanProbes - (iScanProbes + 1) / 2);
+		iScanTimer.OneShot(NKern::TimerTicks((TInt)rest));
+		return;
+		}
 	const TUint32 now = NowMs();
 	if (iScanIdx)
 		iChDwellMs[iScanIdx - 1] = (TUint16)(now - iChStartMs);
@@ -428,17 +439,28 @@ void TA64Wha::ScanStep()
 	TInt r = a64wlan_set_channel((int)c.iChannel);
 	if (r)
 		shim_log("[wha] scan: channel %u FAILED r=%d", (unsigned)c.iChannel, r);
-	else if (iScanProbes && iProbeReqLen)
-		SendProbes();			// an active scan: the UMAC's probe-request template, per SSID, aNumOfProbeRequests times
 	iChStartMs = NowMs();
 	iChSwitchMs[iScanIdx - 1] = (TUint16)(iChStartMs - now);
 	TUint32 dwell = c.iMaxChannelTime > KMinDwellMs ? c.iMaxChannelTime : KMinDwellMs;
+	// an active scan: the UMAC's probe-request template, per SSID, aNumOfProbeRequests times -- spread over the dwell,
+	// half at its start and the rest at its middle (all at once, one burst of the medium busy lost every probe of the
+	// channel: phewlantest scans in bursty 2.4 GHz air, the same dips on a PC beside the phone)
+	if (!r && iScanProbes && iProbeReqLen)
+		{
+		SendProbes((iScanProbes + 1) / 2);
+		if (iScanProbes > 1)
+			{
+			iScanRestMs = dwell - dwell / 2;
+			dwell /= 2;
+			}
+		}
 	iScanTimer.OneShot(NKern::TimerTicks((TInt)dwell));
 	}
 
 void TA64Wha::ScanFinish(TStatus aStatus)
 	{
 	iScanning = EFalse;
+	iScanRestMs = 0;
 	iScanTimer.Cancel();
 	a64wlan_tx_report();			// (before the scan end: an idle chip is powered off)
 	a64wlan_scan_notify(0);			// sw_scan_complete, back to the operating channel or idle
@@ -466,7 +488,7 @@ void TA64Wha::ScanFinish(TStatus aStatus)
 
 // the template = the 24-byte header + the IEs, the first IE the SSID (empty in the UMAC's template): a directed scan
 // puts each requested SSID there; a broadcast scan sends it as is
-void TA64Wha::SendProbes()
+void TA64Wha::SendProbes(TUint aCount)
 	{
 	TUint8 f[320];
 	if (iProbeReqLen < 26)
@@ -490,7 +512,7 @@ void TA64Wha::SendProbes()
 		// (the W4 bring-up tests that were here -- unicast probes to the joined BSS, test authentications to the
 		// user's other APs during every dwell -- are gone: the ASUS main BSSIDs share the radio with the "Test"
 		// guest BSS, so our MAC was authenticated on one BSS of the AP while joining another; Linux sends neither)
-		for (TUint i = 0; i < iScanProbes; ++i)
+		for (TUint i = 0; i < aCount; ++i)
 			if (a64wlan_tx(f, len, 1, 0, A64WLAN_SEC_NONE) == 0)
 				++iProbesSent;
 		}
