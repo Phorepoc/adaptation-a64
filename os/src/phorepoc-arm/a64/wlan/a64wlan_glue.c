@@ -450,10 +450,15 @@ static void a64_recalc_idle(void)
 	/* no IPS once powered (boot 276): boot 260 never power-cycled the chip and heard 45+ probe responses from many
 	 * APs; every boot with Linux's IPS (a fresh rtw_power_on -- tables, LCK -- before each scan and Join) is heard
 	 * only by the nearest devices and by "Test" intermittently. The RTL8723BS rtw88 series (2026) keeps that chip
-	 * family powered between scan and connect for the same SDIO reason (and drops the LCK at power-on). */
+	 * family powered between scan and connect for the same SDIO reason (and drops the LCK at power-on).
+	 * Boots 2066/2068/2070 (2026-10-31): the code had lost that rule -- every disconnect powered the chip off, and
+	 * some power-ups came back deaf (scans with 3-12 frames and 0-3 probe responses instead of 35-70 / ~30; 30+
+	 * Joins without an authentication answer), so no app could reconnect after the boot's own connection ended.
+	 * So: the first power-up (the first scan or Join after core up) leaves IPS for good; idle no longer powers the
+	 * chip off. While associated, power is saved by LPS (a64wlan_set_ps). */
 	const int idle = !a64_chanctx && !a64_scanning;
 	const int was_idle = (hw->conf.flags & IEEE80211_CONF_IDLE) != 0;
-	if (idle == was_idle)
+	if (idle == was_idle || (idle && a64_powered()))
 		return;
 	if (idle)
 		hw->conf.flags |= IEEE80211_CONF_IDLE;
