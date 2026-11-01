@@ -465,27 +465,6 @@ static void a64_recalc_idle(void)
 	rtw_ops.config(hw, -1, IEEE80211_CONF_CHANGE_IDLE);
 }
 
-/* The antenna is shared with the chip's Bluetooth half, and Phorepoc has no Bluetooth stack: nothing ever loads the BT
- * firmware or answers the coex mailbox, yet rtw88 (efuse btcoex 1) leaves both grants to the hardware arbiter (PTA,
- * LTE_COEX_CTRL 0x00000003, antenna position 2G runtime). phewlantest scans (boot 2086): for ~20 s of every ~60 s the
- * radio hears the APs (20-32 probe responses, ~40 beacons per scan), the rest of the time it does not (0-5, ~7) --
- * transmit and receive together, false alarms unchanged, no register of ours different: the antenna is not ours. So
- * the WLAN-only setup rtw88 itself uses without BT coex (GNT_WL SW high, GNT_BT SW low, path owner WL, the switch to
- * WLG, coex DM stopped), re-applied whenever a power-on's coex init (rtw_power_on: the BT-present setup) replaced it.
- * (Boots 273-291 forced wifi_only through the efuse while chasing the ACK problem, whose cause was the sequence
- * numbers; the efuse is left alone here -- btcoex also selects the PHY tables.) */
-static void a64_wifi_only_antenna(void)
-{
-	struct rtw_dev *d = a64_rtwdev;
-	if (!a64_powered())
-		return;
-	if (d->coex.stop_dm && d->coex.dm.cur_ant_pos_type == COEX_SET_ANT_WONLY)
-		return;
-	rtw_coex_init_hw_config(d, true);
-	shim_log("[wlan] antenna: WLAN only (no BT stack): LTE_COEX_CTRL=0x%08x ant_pos %u stop_dm %d\n",
-		 rtw_coex_read_indirect_reg(d, LTE_COEX_CTRL), (unsigned)d->coex.dm.cur_ant_pos_type, (int)d->coex.stop_dm);
-}
-
 /* util.c ieee80211_set_wmm_default(link, bss_notify = true, enable_qos = false): 802.11-2007 table 7-37 for every
  * AC (aCWmin 15 -- not 11b-only --, aCWmax 1023, AIFSN 2, no TXOP), then BSS_CHANGED_QOS */
 static void a64_set_wmm_default(void)
@@ -596,7 +575,6 @@ void a64wlan_scan_notify(int start)
 		a64_scanning = 1;
 		/* (probes at the 11b basic rate, as Linux) */
 		a64_recalc_idle();			/* leave IPS: a fresh power-on, the port registers restored */
-		a64_wifi_only_antenna();
 		/* (boot 286 swept the crystal cap 0x00..0x3f one value per scan: all 8 probe responses came in scan 1 --
 		 * cap 0x00 -- and none in any later scan, cap 0x00 again included: the crystal is not the variable; the
 		 * break follows the first Join) */
@@ -677,7 +655,6 @@ int a64wlan_join(int channel, const unsigned char *bssid, unsigned beacon_int)
 	 * the table re-apply, the vendor per-join RRSR+2 / RESP_SIFS writes, ACK observation via RCR ACF + RXFLTMAP1, the
 	 * BTG select, max TX power, 6 Mbps management -- see the journal 2026-10-10--22-20. None changed the outcome: the
 	 * cause was our sequence numbers, a64wlan_tx.) */
-	a64_wifi_only_antenna();
 	rtw_ops.mgd_prepare_tx(hw, a64_vif, &info);
 #ifdef PHE_RTW88_VENDOR_DIFF
 	a64_vendor_coex_hw();
