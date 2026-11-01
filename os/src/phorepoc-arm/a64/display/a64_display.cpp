@@ -918,7 +918,7 @@ static void SetCaptureLin(TUint32 aPhys, TLinAddr aLin)
 struct TFrameRec { TUint32 iMs, iPhys, iSum; TUint8 iWhite, iBlack, iOff, iPad; };
 const TInt KFrameRing = 512, KFrameMs = 16;
 static TFrameRec FrameRing[KFrameRing];
-static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum, FrameLastLin;
+static TUint32 FrameNo, FrameWhiteFlashes, FrameLastLineMs, FrameLastSum, FrameLastLin, FrameBlackFlashes, FrameLastBlackMs;
 static TUint8 FramePrevWhite = 255;
 static TBool FrameAfterWake;
 // the HAL display state went OFF -> ON (a64fb.cpp): the next sampled frame is the woken panel's first. (The display's
@@ -979,7 +979,7 @@ static void FrameSample()
 	// the bands an app's header and toolbar use (the top / bottom 13.4 % / 9 % of the screen -- 86 / 57 of 640 rows):
 	// pure-white share each, as a flash there hides in a light UI's whole-screen numbers
 	const TInt topEnd = h * 86 / 640, botStart = h * 583 / 640;
-	TUint tn = 0, tw = 0, bn = 0, bw = 0;
+	TUint tn = 0, tw = 0, bn = 0, bw = 0, mn = 0, mk = 0;	// m = the content band between them (black share)
 	for (TInt y = 4; y < h; y += 8)
 		{
 		const TUint32* row = (const TUint32*)(lin + (TUint)y * pitch);
@@ -992,6 +992,8 @@ static void FrameSample()
 				{ ++tn; tw += pure; }
 			else if (y >= botStart)
 				{ ++bn; bw += pure; }
+			else
+				{ ++mn; mk += (p & 0xE0E0E0) == 0; }
 			if ((p & 0xF0F0F0) == 0xF0F0F0)
 				++wh;
 			else if ((p & 0xE0E0E0) == 0)
@@ -1040,6 +1042,36 @@ static void FrameSample()
 		}
 	prevTop = r.iOff;
 	prevBot = r.iPad;
+	// the content band turning (nearly) all black: a window shown before its app drew it (the scroll / open black flash)
+	static TUint8 prevMid = 255;
+	const TUint8 mid = (TUint8)(mn ? mk * 100 / mn : 0);
+	if (mid >= 97 && prevMid < 85)
+		{
+		++FrameBlackFlashes;
+		if (r.iMs - FrameLastBlackMs >= 100)
+			{
+			FrameLastBlackMs = r.iMs;
+			FramePut("BLACK content band after a drawn one (bottom% = content black%)", TFrameRec{r.iMs, r.iPhys, r.iSum, r.iWhite, r.iBlack, r.iOff, mid}, no);
+			}
+		}
+	prevMid = mid;
+	// activity: one line per second in which the picture changed -- new frames, the longest gap between two, black bands
+	static TUint32 secStart, secFrames, secMaxGap, secBlack, lastMs;
+	if (secFrames && r.iMs - secStart >= 1000)
+		{
+		ekseam_puts("[EKERN][frame] active second: frames="); ekseam_puthex(secFrames);
+		ekseam_puts(" max_gap_ms="); ekseam_puthex(secMaxGap);
+		ekseam_puts(" black_bands="); ekseam_puthex(FrameBlackFlashes - secBlack);
+		ekseam_puts("
+");
+		secFrames = 0;
+		}
+	if (!secFrames)
+		{ secStart = r.iMs; secMaxGap = 0; secBlack = FrameBlackFlashes; }
+	else if (r.iMs - lastMs > secMaxGap)
+		secMaxGap = r.iMs - lastMs;
+	++secFrames;
+	lastMs = r.iMs;
 	}
 
 static void FrameDfcFn(TAny*)
@@ -1112,6 +1144,7 @@ extern "C" void A64DisplayFlipStats()
 	ekseam_puts(" forced="); ekseam_puthex(FlipForced);
 	ekseam_puts(" frames="); ekseam_puthex(FrameNo);
 	ekseam_puts(" white-flashes="); ekseam_puthex(FrameWhiteFlashes);
+	ekseam_puts(" black-flashes="); ekseam_puthex(FrameBlackFlashes);
 	ekseam_puts("\n");
 	}
 
