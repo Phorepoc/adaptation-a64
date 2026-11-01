@@ -1592,6 +1592,7 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 	}
 #endif
 
+static void ekseam_seg(const char* tag, DCodeSeg* s);
 extern "C" void __real__ZN3Exc8DispatchEPvP7NThread(void*, void*);
 extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 	{
@@ -1652,6 +1653,23 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 		ekseam_puts("[EKERN][exc] contextidr="); ekseam_puthex(cid);
 		ekseam_puts("[EKERN][exc] PAR(ATS1CUW far)="); ekseam_puthex(par);
 	}
+	if ((e[23] & 0x1F) == 0x10 && !NKern::KernelLocked())
+		{	// a user fault: the code segments holding pc and lr, per process (RAM-loaded DLLs with static data sit at
+			// per-process addresses, so a bare pc cannot be placed afterwards). offset + 0x8000 = the address in the
+			// image's ELF. Kern::CodeSegFromAddress wants the code-seg lock, held in a critical section.
+		NKern::ThreadEnterCS();
+		Kern::AccessCode();
+		const unsigned addr[2] = { e[kPc], e[kLr] };
+		for (int k = 0; k < 2; ++k)
+			{
+			DCodeSeg* s = Kern::CodeSegFromAddress(addr[k], TheCurrentThread->iOwningProcess);
+			ekseam_seg(k ? "[EKERN][exc] lr seg=" : "[EKERN][exc] pc seg=", s);
+			if (s)
+				{ ekseam_puts("[EKERN][exc]   offset="); ekseam_puthex(addr[k] - s->iRunAddress); }
+			}
+		Kern::EndAccessCode();
+		NKern::ThreadLeaveCS();
+		}
 	if ((e[23] & 0x1F) == 0x10)
 		{	// a user fault: the ROM code addresses among the top 64 stack words = the likely callers (no frame pointers
 			// to walk); symbolize them with the image's .map. At most 12 lines.
