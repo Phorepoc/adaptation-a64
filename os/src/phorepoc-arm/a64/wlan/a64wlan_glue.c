@@ -27,8 +27,7 @@ static struct rtw_dev *a64_rtwdev;
 #ifdef PHE_RFWIDE
 #define RXD_RF_WIDE
 #endif
-#if defined(PHE_RXREGS) || defined(PHE_RFWIDE)	/* opt-in (A64DEFS=-DPHE_RXREGS / -DPHE_RFWIDE) */
-#include "rxregs_dump.h"
+#include "rxregs_dump.h"		/* (always: the per-power-up snapshot below; PHE_RXREGS / PHE_RFWIDE add the old dumps) */
 #endif
 
 /* the host as the sunxi SMHC1 behaves under a64sdio.cpp: PIO, 512-byte blocks, one request up to 64 KB */
@@ -487,6 +486,12 @@ static void a64_set_wmm_default(void)
 /* ---------------------------------------------------------------- interface up */
 /* iface.c ieee80211_do_open for a station + main.c ieee80211_hw_conf_init. Ends powered off (IPS), as Linux does:
  * the first scan or the Join powers the chip on again. Idempotent. */
+/* the benchmark (phewlantest scans): the radio is good or bad per chip power-up -- 20-26 probe responses per scan or
+ * 0-5, both scans of one power-up alike, and the logged init identical (boot 2084). The MAC / BB / RF registers + the
+ * antenna arbiter (LTE indirect 0x38 GNT, 0xa0, 0xa4) at the first scan end of every power-up, to diff a good one
+ * with a bad one. */
+static unsigned a64_powerup_gen, a64_dumped_gen;
+
 int a64wlan_core_up(void)
 {
 	struct ieee80211_hw *hw;
@@ -496,6 +501,7 @@ int a64wlan_core_up(void)
 		return -ENODEV;
 	if (a64_vif)
 		return 0;
+	a64_powerup_gen++;
 	hw = a64_rtwdev->hw;
 	if (a64_set_chandef(1)) {
 		shim_log("[wlan] no 2.4 GHz band registered\n");
@@ -901,13 +907,15 @@ void a64wlan_tx_report(void)
 	const struct rtw_coex *c;
 	if (!a64_powered())
 		return;
-#ifdef PHE_RXREGS
-	{
-		static int dumped;		/* once, at the first scan end (boots 903/905 never reached a Join) */
-		if (!dumped++)
-			rxregs_dump("scan");
+	if (a64_dumped_gen != a64_powerup_gen) {
+		char tag[16];
+		a64_dumped_gen = a64_powerup_gen;
+		snprintf(tag, sizeof(tag), "up%u", a64_powerup_gen);
+		rxregs_dump(tag);
+		shim_log("[rxregs %s] lte 38=%08x a0=%08x a4=%08x 54=%08x\n", tag, rtw_coex_read_indirect_reg(a64_rtwdev, 0x38),
+			 rtw_coex_read_indirect_reg(a64_rtwdev, 0xa0), rtw_coex_read_indirect_reg(a64_rtwdev, 0xa4),
+			 rtw_coex_read_indirect_reg(a64_rtwdev, 0x54));
 	}
-#endif
 #ifdef PHE_RFWIDE
 	{
 		static int wide;	/* once: RF 0x00..0xFF */
