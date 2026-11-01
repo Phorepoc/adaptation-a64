@@ -513,7 +513,7 @@ int a64wlan_core_up(void)
 	/* probes at 6 Mbps OFDM (rtw_get_mgmt_rate: the lowest basic rate): their OFDM answers carry the PHY status CFO
 	 * the crystal tracking needs (CCK frames have none; boot 284 got no OFDM frame at all with 1 Mbps probes) */
 	vif->bss_conf.basic_rates = 0xf;
-	vif->cfg.ps = false;				/* no LPS yet: the UMAC's SetPsMode is echoed */
+	vif->cfg.ps = false;				/* awake until the UMAC's SetPsMode (a64wlan_set_ps) */
 	a64_vif = vif;
 	shim_mac80211_set_vif(vif);
 	r = rtw_ops.add_interface(hw, vif);
@@ -706,6 +706,10 @@ void a64wlan_assoc(unsigned aid, unsigned dtim)
 static void a64_leave(void)
 {
 	struct ieee80211_hw *hw = a64_rtwdev->hw;
+	if (a64_vif->cfg.ps) {			/* mlme.c: PS off with the association (leaves LPS while still linked) */
+		a64_vif->cfg.ps = false;
+		rtw_ops.bss_info_changed(hw, a64_vif, &a64_vif->bss_conf, BSS_CHANGED_PS);
+	}
 	if (a64_vif->cfg.assoc) {
 		a64_vif->cfg.assoc = false;
 		a64_vif->cfg.aid = 0;
@@ -730,6 +734,36 @@ static void a64_leave(void)
 	a64_chanctx = 0;
 	a64_recalc_idle();
 }
+/* WHA SetPsMode = mac80211's ieee80211_recalc_ps -> IEEE80211_CONF_PS / BSS_CHANGED_PS (rtw88 sets SUPPORTS_PS +
+ * SUPPORTS_DYNAMIC_PS: the UMAC's own active/light/deep timers are the dynamic part). rtw88 then enters LPS through its
+ * firmware (H2C SET_PWR_MODE): the firmware sends the PM=1 null frame from the reserved page, dozes, wakes for every
+ * beacon and fetches what the AP buffered for our AID (PS-Poll); leaving sends the PM=0 null and waits for the
+ * hardware to stop setting PM on our data frames. Only while associated (an AID, the reserved pages downloaded);
+ * otherwise the chip stays awake and the mode reported back is 0. rtw88's 2 s watchdog enters LPS by itself only
+ * when traffic is low -- here the UMAC decided, so LPS is entered at once. Returns the mode now in effect. */
+int a64wlan_set_ps(int aOn)
+{
+	struct ieee80211_hw *hw;
+	struct rtw_vif *rv;
+	if (!a64_vif || !a64_rtwdev)
+		return 0;
+	hw = a64_rtwdev->hw;
+	if (aOn && !(a64_vif->cfg.assoc && a64_vif->cfg.aid && a64_powered()))
+		aOn = 0;
+	if (a64_vif->cfg.ps != (aOn != 0)) {
+		a64_vif->cfg.ps = aOn != 0;
+		rtw_ops.bss_info_changed(hw, a64_vif, &a64_vif->bss_conf, BSS_CHANGED_PS);	/* rtw_recalc_lps; off = leave LPS */
+	}
+	if (aOn) {
+		rv = (struct rtw_vif *)a64_vif->drv_priv;
+		mutex_lock(&a64_rtwdev->mutex);
+		if (a64_rtwdev->ps_enabled && !test_bit(RTW_FLAG_SCANNING, a64_rtwdev->flags))
+			rtw_enter_lps(a64_rtwdev, rv->port);
+		mutex_unlock(&a64_rtwdev->mutex);
+	}
+	return test_bit(RTW_FLAG_LEISURE_PS, a64_rtwdev->flags) ? 1 : 0;
+}
+
 static void a64_clear_keys_hw(void);
 void a64wlan_leave(void)
 {

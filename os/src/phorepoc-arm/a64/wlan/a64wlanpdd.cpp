@@ -260,7 +260,7 @@ void TA64Wha::Complete(TCompleteCommandId aId, TStatus aStatus)
 	/* the same first byte for EScanComplete and ESetPsModeComplete: the CURRENT dot11 power-management mode. It MUST be
 	 * the mode the UMAC asked for: WlanDot11PwrMgmtTransitionMode re-issues SetPsMode for as long as current != desired
 	 * (boot 255: an endless SetPsMode(1) loop once the engine wanted PS after the join attempt -- the WLAN thread +
-	 * the serial log pinned two cores and flooded the debug link). The chip itself stays awake (no LPS yet). */
+	 * the serial log pinned two cores and flooded the debug link). ESetPsMode reports the mode really in effect. */
 	p.iScanComplete.iDot11PowerManagementMode = iPsMode;
 	Lock();
 	WhaCb().CommandComplete(aId, aStatus, p);
@@ -324,9 +324,23 @@ void TA64Wha::RunCmd()
 			Respond(EResetResponse, KSuccess);
 			break;
 		case ESetPsMode:
+			{
+			/* associated: rtw88 LPS through the firmware (the PM null frames, the beacon/TIM wakeups, PS-Poll are the
+			 * firmware's -- the UMAC sends none of them). Not associated: there is no AP to buffer for us, the chip
+			 * stays awake and the requested mode is echoed (an honest "failed" here would make the UMAC re-issue it
+			 * forever, boot 255) */
+			const TBool assoc = iAssocSeen && iAid != 0;
+			const TInt now = a64wlan_set_ps(iPsMode == KPsEnable ? 1 : 0);
+			const TPsMode wanted = iPsMode;
+			TStatus st = KSuccess;
+			if (assoc && now != (wanted == KPsEnable ? 1 : 0))
+				{ iPsMode = now ? KPsEnable : KPsDisable; st = KFailed; }
+			shim_log("[wha] SetPsMode(%u): chip %s%s", (unsigned)wanted, now ? "in LPS" : "awake",
+					 assoc ? (st == KSuccess ? "" : " -- FAILED") : " (not associated: echoed)");
 			Respond(ESetPsModeCommandResponse, KSuccess);
-			Complete(ESetPsModeComplete, KSuccess);
+			Complete(ESetPsModeComplete, st);
 			break;
+			}
 		case ESetBssParams:
 			a64wlan_assoc(iAid, iDtim);		// mac80211's set_associated: EDCA, linked, AID, reserved pages
 			Respond(ESetBssParametersResponse, KSuccess);
@@ -756,7 +770,6 @@ void TA64Wha::Reset()
 
 void TA64Wha::SetPsMode(TPsMode aPsMode)
 	{
-	shim_log("[wha] SetPsMode(%u) -- echoed, the chip stays awake", (unsigned)aPsMode);
 	iPsMode = aPsMode;
 	Post(ESetPsMode);
 	}

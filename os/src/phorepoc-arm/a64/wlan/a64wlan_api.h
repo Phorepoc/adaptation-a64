@@ -27,6 +27,7 @@ void a64wlan_scan_notify(int aStart);	/* the software scan start (leave IPS, sw_
 int  a64wlan_join(int aChannel, const unsigned char *aBssid, unsigned aBeaconInterval);	/* WHA Join = prep_connection + mgd_prepare_tx */
 void a64wlan_assoc(unsigned aAid, unsigned aDtim);	/* WHA SetBssParameters = assoc_success / set_associated */
 void a64wlan_leave(void);			/* WHA Reset = set_disassoc */
+int  a64wlan_set_ps(int aOn);		/* WHA SetPsMode = BSS_CHANGED_PS -> rtw88 LPS (firmware); the mode now in effect */
 void a64wlan_conf_tx(const unsigned short aCwMin[4], const unsigned short aCwMax[4], const unsigned char aAifsn[4],
 					 const unsigned short aTxOpUs[4]);	/* WHA ConfigureAC (WHA queue order BE BK VI VO) */
 void a64wlan_set_slot_time(unsigned aUs);	/* WHA dot11SlotTime MIB: 9 = short slot */
