@@ -67,6 +67,16 @@ extern "C" int symgpu_commit(symgpu_t* m, uint32_t offset, uint32_t size)
 	return m->iChannel.Commit(offset, size);
 	}
 
+extern "C" int symgpu_heap_create(symgpu_t* m, uint32_t offset, uint32_t max, uint32_t precommitted)
+	{
+	return m->iChannel.HeapCreate(offset, max, precommitted);
+	}
+
+extern "C" int symgpu_heap_free(symgpu_t* m, uint32_t offset)
+	{
+	return m->iChannel.HeapFree(offset);
+	}
+
 extern "C" int symgpu_import(symgpu_t* m, int chunk_handle, uint32_t offset, uint32_t size, uint32_t* va)
 	{
 	RChunk c;

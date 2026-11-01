@@ -76,7 +76,9 @@ enum TMaliControl { EMaliCtrlGetInfo, EMaliCtrlOpenArena, EMaliCtrlCommit, EMali
 	EMaliCtrlCacheSync,
 	EMaliCtrlImportAddress,			// (G6b, appended: an old LDD answers KErrNotSupported)
 	EMaliCtrlSubmit,				// start a job, returns its job number (any thread; wait with EMaliReqWait)
-	EMaliCtrlCompleted };			// the last finished job number of a pipe
+	EMaliCtrlCompleted,				// the last finished job number of a pipe
+	EMaliCtrlHeapCreate,			// a GROWABLE GP tile heap (lima LIMA_BO_FLAG_HEAP): TInt[3] = arena offset, reserved size, bytes already committed
+	EMaliCtrlHeapFree };			// (arena offset): the heap is gone, the pages it grew are decommitted
 enum TMaliRequest { EMaliReqSubmitGp, EMaliReqSubmitPp, EMaliReqWait, EMaliReqCount };
 const TInt KMaliMajorVersion = 1;
 
@@ -128,6 +130,12 @@ public:
 	// only): Submit = the job number (> 0) or an error; Wait completes aStatus -- the caller's -- with that job's result
 	inline TInt Submit(TInt aPipe, const TAny* aFrame) { return DoControl(EMaliCtrlSubmit, (TAny*)aPipe, (TAny*)aFrame); }
 	inline TInt Completed(TInt aPipe) { return DoControl(EMaliCtrlCompleted, (TAny*)aPipe); }
+	// a growable GP tile heap at arena [aOffset, aOffset + aMax), its first aPrecommitted bytes already committed (the
+	// arena's linear high-water mark): the kernel commits its first pages now and grows it, doubling, whenever a GP job
+	// runs out of tile memory (PLBU out of memory) -- the job is resumed, not failed (Linux lima_gp_task_recover)
+	inline TInt HeapCreate(TInt aOffset, TInt aMax, TInt aPrecommitted)
+		{ TInt a[3] = { aOffset, aMax, aPrecommitted }; return DoControl(EMaliCtrlHeapCreate, a); }
+	inline TInt HeapFree(TInt aOffset) { return DoControl(EMaliCtrlHeapFree, (TAny*)aOffset); }
 	inline void Wait(TInt aPipe, TInt aJob, TRequestStatus& aStatus) { DoRequest(EMaliReqWait, aStatus, (TAny*)aPipe, (TAny*)aJob); }
 	inline TInt CacheSync(TUint32 aVa, TInt aSize, TInt aOp)
 		{

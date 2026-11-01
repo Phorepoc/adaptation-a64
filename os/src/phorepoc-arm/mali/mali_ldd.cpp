@@ -132,6 +132,11 @@ struct TMaliPipe
 	TDfc* iDoneDfc;
 	NTimer* iTimer;
 	TBool iError;
+	// GP: the job's growable tile heap (lima task->heap): its index in the owner's iHeap, -1 none; the PLBU allocation
+	// window the GP was given; iOom = the error was PLBU out of memory alone (recoverable)
+	TInt iHeap;
+	TUint32 iAllocStart, iAllocEnd;
+	TBool iOom;
 	};
 
 class DMaliDevice : public DLogicalDevice
@@ -157,6 +162,7 @@ public:
 	TInt MmuInit(TUint aOff);
 	void MmuSwitch(TUint aOff, TPhysAddr aPd);
 	void MmuFaultRecover(TUint aOff);
+	TBool GpHeapRecover();
 
 	TInt StartGp(DMaliChannel* aCh, const TMaliGpFrame& aFrame, TPhysAddr aPd);
 	TInt StartPp(DMaliChannel* aCh, TMaliPpFrame& aFrame, TPhysAddr aPd);
@@ -205,7 +211,12 @@ public:
 	virtual TInt Request(TInt aReqNo, TAny* a1, TAny* a2);
 	void Complete(TInt aReq, TInt aResult);
 private:
+public:
 	TInt Commit(TInt aOffset, TInt aSize);
+	TInt Decommit(TInt aOffset, TInt aSize);
+	TInt HeapCreate(TInt aOffset, TInt aMax, TInt aPre);
+	TInt HeapFree(TInt aOffset);
+private:
 	TInt Import(TMaliImport& aImp, TBool aByAddress = EFalse);
 	TInt Unimport(TUint32 aVa, TBool aLocked);
 	TInt CacheSync(const TMaliCacheSync& aSync);
@@ -238,6 +249,11 @@ public:
 	TLinAddr iArenaLin;
 	TUint32 iArenaMapAttr;
 	TMaliImportRec iImport[KMaliMaxImports];
+	// growable GP tile heaps (lima LIMA_BO_FLAG_HEAP): GPU VA (0 = free slot), reserved size, committed size, and the part
+	// the arena's linear commit already covered (never decommitted here). Under iDev->iLock.
+	struct THeap { TUint32 iVa; TInt iMax; TInt iSize; TInt iPre; };
+	enum { KHeaps = 8 };
+	THeap iHeap[KHeaps];
 	TUint32 iImportMap[KMaliImportPages / 32];		// 1 = page of the import region in use
 	};
 
@@ -496,6 +512,18 @@ TInt DMaliDevice::StartGp(DMaliChannel* aCh, const TMaliGpFrame& aFrame, TPhysAd
 	TMaliPipe& p = iPipe[0];
 	if (p.iOwner)
 		return KErrInUse;
+	// lima_gp_task_run: a growable heap's PLBU window ends at its COMMITTED size (the frame asks for the reservation)
+	TUint32 fr[KGpFrameRegs];
+	for (TInt i = 0; i < KGpFrameRegs; ++i)
+		fr[i] = f[i];
+	TInt heap = -1;
+	for (TInt i = 0; i < DMaliChannel::KHeaps; ++i)
+		if (aCh->iHeap[i].iVa && aCh->iHeap[i].iVa == f[4])
+			{
+			heap = i;
+			fr[5] = f[4] + aCh->iHeap[i].iSize;
+			break;
+			}
 	TUint32 cmd = 0;
 	if (f[0] != f[1])
 		cmd |= KGpCmdStartVs;
@@ -509,9 +537,13 @@ TInt DMaliDevice::StartGp(DMaliChannel* aCh, const TMaliGpFrame& aFrame, TPhysAd
 		}
 	p.iOwner = aCh;
 	p.iError = EFalse;
+	p.iOom = EFalse;
 	p.iResult = KErrNone;
+	p.iHeap = heap;
+	p.iAllocStart = fr[4];
+	p.iAllocEnd = fr[5];
 	for (TInt i = 0; i < KGpFrameRegs; ++i)
-		W(KMaliOffGp + KGpVsclStart + i * 4, f[i]);
+		W(KMaliOffGp + KGpVsclStart + i * 4, fr[i]);
 	W(KMaliOffGp + KGpCmd, KGpCmdUpdatePlbuAlloc);
 	p.iTimer->OneShot(NKern::TimerTicks(KMaliJobTimeoutMs));
 	W(KMaliOffGp + KGpCmd, cmd);
@@ -606,6 +638,7 @@ void DMaliDevice::GpIsr(TAny* aDev)
 		{
 		d.W(KMaliOffGp + KGpIntMask, 0);		// masked until the hard reset
 		d.iPipe[0].iError = ETrue;
+		d.iPipe[0].iOom = (state & KGpIrqError) == KGpIrqPlbuOutOfMem;	// lima: out of heap alone is recoverable
 		d.iPipe[0].iResult = -(TInt)(0x10000 | (state & 0xFFFF));	// (decodable in the log)
 		done = ETrue;
 		}
@@ -689,6 +722,12 @@ void DMaliDevice::PipeDone(TInt aPipe)
 		return;
 		}
 	p.iTimer->Cancel();
+	if (aPipe == 0 && p.iError && p.iOom && p.iHeap >= 0 && GpHeapRecover())
+		{
+		Kern::MutexSignal(*iLock);
+		NKern::ThreadLeaveCS();
+		return;
+		}
 	if (p.iError)
 		{
 		LogHex(aPipe ? "[EKERN][mali] pp job failed r=" : "[EKERN][mali] gp job failed r=", (TUint32)p.iResult);
@@ -723,6 +762,65 @@ void DMaliDevice::PipeDone(TInt aPipe)
 	StartNext(aPipe);
 	Kern::MutexSignal(*iLock);
 	NKern::ThreadLeaveCS();
+	}
+
+// lima_sched_recover_work + lima_gp_task_recover: the GP stopped with PLBU OUT OF MEMORY on a growable heap. Grow the
+// heap (double, up to its reservation), then resume the job where it stopped: the new allocation window starts at the
+// old window's end. True = the job runs on. The caller holds iLock; it is released while pages are committed (the pipe
+// stays owned, so nothing else can start on it).
+TBool DMaliDevice::GpHeapRecover()
+	{
+	TMaliPipe& p = iPipe[0];
+	DMaliChannel* ch = p.iOwner;
+	DMaliChannel::THeap& h = ch->iHeap[p.iHeap];
+	if (!h.iVa)
+		return EFalse;
+	if (p.iAllocEnd >= h.iVa + (TUint32)h.iSize)		// the window reached the committed end: grow
+		{
+		if (h.iSize >= h.iMax)
+			{
+			LogHex("[EKERN][mali] gp tile heap exhausted at ", (TUint32)h.iSize);
+			return EFalse;
+			}
+		TInt grow = h.iSize;
+		if (h.iSize + grow > h.iMax)
+			grow = h.iMax - h.iSize;
+		const TInt base = (TInt)(h.iVa - KMaliArenaVa);
+		const TInt from = base + h.iSize;
+		const TInt pre = base + h.iPre;					// pages below this are the arena's linear commit: there already
+		Kern::MutexSignal(*iLock);
+		TInt r = KErrNone;
+		if (from + grow > pre)
+			{
+			const TInt c0 = from < pre ? pre : from;
+			r = ch->Commit(c0, from + grow - c0);
+			}
+		Kern::MutexWait(*iLock);
+		if (r != KErrNone)
+			{
+			LogHex("[EKERN][mali] gp tile heap grow failed r=", (TUint32)r);
+			return EFalse;
+			}
+		h.iSize += grow;
+		static TInt logged;
+		if (logged < 16)
+			{
+			++logged;
+			LogHex("[EKERN][mali] gp tile heap grown to ", (TUint32)h.iSize);
+			}
+		}
+	L2Flush();
+	W(KMaliOffGp + KGpIntMask, KGpIrqUsed);
+	p.iAllocStart = p.iAllocEnd;
+	p.iAllocEnd = h.iVa + h.iSize;
+	W(KMaliOffGp + KGpPlbuAllocStart, p.iAllocStart);
+	W(KMaliOffGp + KGpPlbuAllocEnd, p.iAllocEnd);
+	p.iError = EFalse;
+	p.iOom = EFalse;
+	p.iResult = KErrNone;
+	p.iTimer->OneShot(NKern::TimerTicks(KMaliJobTimeoutMs));
+	W(KMaliOffGp + KGpCmd, KGpCmdUpdatePlbuAlloc);
+	return ETrue;
 	}
 
 // A closing channel's VM must not stay in a pipe (its tables are freed): back to the empty VM, after the job.
@@ -919,6 +1017,77 @@ TInt DMaliChannel::Commit(TInt aOffset, TInt aSize)
 	Kern::Free(list);
 	NKern::ThreadLeaveCS();
 	return r;
+	}
+
+// Unmap [aOffset, aOffset + aSize) of the arena from the GPU and decommit it.
+TInt DMaliChannel::Decommit(TInt aOffset, TInt aSize)
+	{
+	if (aOffset < 0 || aSize <= 0 || (aOffset & 0xFFF) || (aSize & 0xFFF) || aOffset + aSize > KMaliArenaMax)
+		return KErrArgument;
+	NKern::ThreadEnterCS();
+	Kern::MutexWait(*iDev->iLock);
+	for (TInt i = 0; i < (aSize >> 12); ++i)
+		iVm.Unmap(KMaliArenaVa + aOffset + (i << 12));
+	ZapMmus();
+	Kern::MutexSignal(*iDev->iLock);
+	const TInt r = Kern::ChunkDecommit(iArena, aOffset, aSize);
+	NKern::ThreadLeaveCS();
+	return r;
+	}
+
+// lima_heap_alloc's first allocation: 32 KB (lima_heap_init_nr_pages = 8) of the reservation.
+const TInt KMaliHeapInitial = 0x8000;
+TInt DMaliChannel::HeapCreate(TInt aOffset, TInt aMax, TInt aPre)
+	{
+	if (aOffset < 0 || (aOffset & 0xFFF) || aMax < KMaliHeapInitial || (aMax & 0xFFF) || aOffset + aMax > KMaliArenaMax ||
+	    aPre < 0 || (aPre & 0xFFF) || aPre > aMax)
+		return KErrArgument;
+	TInt slot = -1;
+	for (TInt i = 0; i < KHeaps; ++i)
+		if (!iHeap[i].iVa)
+			{
+			slot = i;
+			break;
+			}
+	if (slot < 0)
+		return KErrOverflow;
+	const TInt size = aPre > KMaliHeapInitial ? aPre : KMaliHeapInitial;
+	if (size > aPre)
+		{
+		const TInt r = Commit(aOffset + aPre, size - aPre);
+		if (r != KErrNone)
+			return r;
+		}
+	NKern::ThreadEnterCS();
+	Kern::MutexWait(*iDev->iLock);
+	iHeap[slot].iMax = aMax;
+	iHeap[slot].iSize = size;
+	iHeap[slot].iPre = aPre;
+	iHeap[slot].iVa = KMaliArenaVa + aOffset;
+	Kern::MutexSignal(*iDev->iLock);
+	NKern::ThreadLeaveCS();
+	return KErrNone;
+	}
+
+TInt DMaliChannel::HeapFree(TInt aOffset)
+	{
+	NKern::ThreadEnterCS();
+	Kern::MutexWait(*iDev->iLock);
+	THeap h;
+	h.iVa = 0;
+	h.iSize = h.iPre = 0;
+	for (TInt i = 0; i < KHeaps; ++i)
+		if (iHeap[i].iVa && iHeap[i].iVa == KMaliArenaVa + (TUint32)aOffset)
+			{
+			h = iHeap[i];
+			iHeap[i].iVa = 0;
+			break;
+			}
+	Kern::MutexSignal(*iDev->iLock);
+	NKern::ThreadLeaveCS();
+	if (!h.iVa)
+		return KErrNotFound;
+	return h.iSize > h.iPre ? Decommit(aOffset + h.iPre, h.iSize - h.iPre) : KErrNone;
 	}
 
 // After a page-table change of a VM a pipe is using: drop the MMUs' cached translations (the caller holds iLock).
@@ -1198,6 +1367,14 @@ TInt DMaliChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 				}
 			case EMaliCtrlCommit:
 				return Commit((TInt)a1, (TInt)a2);
+			case EMaliCtrlHeapCreate:
+				{
+				TInt a[3];
+				const TInt r = Kern::ThreadRawRead(&Kern::CurrentThread(), a1, a, sizeof(a));
+				return r == KErrNone ? HeapCreate(a[0], a[1], a[2]) : r;
+				}
+			case EMaliCtrlHeapFree:
+				return HeapFree((TInt)a1);
 			case EMaliCtrlImport:
 			case EMaliCtrlImportAddress:
 				{
