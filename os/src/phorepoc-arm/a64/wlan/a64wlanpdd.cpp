@@ -130,6 +130,12 @@ private:
 	SChannels iScanCh[KMaxScanChannels];
 	TUint32 iScanDwellMs;
 	TUint iScanRx;
+	// per channel of the scan (the benchmark's 3-vs-25 BSSID scans): frames heard on the dwell, of them beacons /
+	// probe responses, of them on another channel (the radio not yet / no longer on the dwell's), the switch + probe
+	// cost and the real dwell length (ms)
+	TUint16 iChHeard[KMaxScanChannels], iChBeacons[KMaxScanChannels], iChOther[KMaxScanChannels];
+	TUint16 iChSwitchMs[KMaxScanChannels], iChDwellMs[KMaxScanChannels];
+	TUint32 iChStartMs;
 	// join
 	TBool iJoined;
 	TInt iKeyResult;				// AddKey: the parse result, answered once the CAM is written (EAddKey)
@@ -401,10 +407,18 @@ void TA64Wha::RunCmd()
 	}
 
 // ---------------------------------------------------------------- scan, a channel per timer tick
+static TUint32 NowMs()
+	{
+	return (TUint32)((TUint64)NKern::TickCount() * (TUint64)NKern::TickPeriod() / 1000u);
+	}
+
 void TA64Wha::ScanStep()
 	{
 	if (!iScanning)
 		return;
+	const TUint32 now = NowMs();
+	if (iScanIdx)
+		iChDwellMs[iScanIdx - 1] = (TUint16)(now - iChStartMs);
 	if (iScanIdx >= iScanCount)
 		{
 		ScanFinish(KSuccess);
@@ -416,6 +430,8 @@ void TA64Wha::ScanStep()
 		shim_log("[wha] scan: channel %u FAILED r=%d", (unsigned)c.iChannel, r);
 	else if (iScanProbes && iProbeReqLen)
 		SendProbes();			// an active scan: the UMAC's probe-request template, per SSID, aNumOfProbeRequests times
+	iChStartMs = NowMs();
+	iChSwitchMs[iScanIdx - 1] = (TUint16)(iChStartMs - now);
 	TUint32 dwell = c.iMaxChannelTime > KMinDwellMs ? c.iMaxChannelTime : KMinDwellMs;
 	iScanTimer.OneShot(NKern::TimerTicks((TInt)dwell));
 	}
@@ -428,6 +444,16 @@ void TA64Wha::ScanFinish(TStatus aStatus)
 	a64wlan_scan_notify(0);			// sw_scan_complete, back to the operating channel or idle
 	shim_log("[wha] scan done: %u channels, %u probes sent (%u tx completions so far), %u frames to the UMAC of which %u probe responses (dropped %u, no buffer %u)",
 			 iScanCount, iProbesSent, a64wlan_tx_done_count(), iScanRx, iScanProbeResp, iRxDropped, iRxNoBuffer);
+	{
+	char line[KMaxScanChannels * 24 + 1];
+	TUint n = 0;
+	for (TUint i = 0; i < iScanCount && n + 24 < sizeof(line); ++i)
+		n += (TUint)shim_snprintf(line + n, sizeof(line) - n, " %u:%u/%u/%u %u+%u", (unsigned)iScanCh[i].iChannel,
+							 (unsigned)iChHeard[i], (unsigned)iChBeacons[i], (unsigned)iChOther[i],
+							 (unsigned)iChSwitchMs[i], (unsigned)iChDwellMs[i]);
+	line[n] = 0;
+	shim_log("[wha] scan per channel (ch:heard/beacons/off-channel switch+dwell ms):%s", line);
+	}
 	shim_log("[wha] rx rates: CCK %u OFDM %u HT %u", iRxCck, iRxOfdm, iRxHt);
 	if (iCfoN)
 		shim_log("[wha] carrier offset of received OFDM frames: %d frames, mean %d kHz (min %d max %d); from the joined BSS: %d frames, mean %d kHz",
@@ -572,6 +598,13 @@ void TA64Wha::OnRx(const TUint8* aFrame, TUint aLen, TInt aDbm, TUint aRateIdx, 
 	if (ctrl || aLen < 24) { ++iRxDropped; return; }		// control frames are never the UMAC's
 	if (iScanning)
 		{
+		if (iScanIdx && iScanIdx <= iScanCount)
+			{
+			const TUint ci = iScanIdx - 1;
+			++iChHeard[ci];
+			if (beaconLike) ++iChBeacons[ci];
+			if ((TUint)ChannelFromFreq(aFreqMhz) != (TUint)iScanCh[ci].iChannel) ++iChOther[ci];
+			}
 		if (!beaconLike) { ++iRxDropped; return; }
 		if (subtype == 5) ++iScanProbeResp;
 		}
@@ -728,6 +761,8 @@ void TA64Wha::Scan(TRate aMaxTransmitRate, TBand aBand, TUint8 aNumOfChannels, c
 		iScanSsid[i] = aSsid[i];
 	iProbesSent = 0;
 	iScanProbeResp = 0;
+	memclr(iChHeard, sizeof(iChHeard)); memclr(iChBeacons, sizeof(iChBeacons)); memclr(iChOther, sizeof(iChOther));
+	memclr(iChSwitchMs, sizeof(iChSwitchMs)); memclr(iChDwellMs, sizeof(iChDwellMs));
 	shim_log("[wha] Scan: type %d, %u channels (first %u, dwell %u..%u ms), %u probes, %u SSIDs%s%.*s%s",
 			 (int)aScanType, (unsigned)aNumOfChannels, iScanCount ? (unsigned)iScanCh[0].iChannel : 0u,
 			 iScanCount ? (unsigned)iScanCh[0].iMinChannelTime : 0u, iScanCount ? (unsigned)iScanCh[0].iMaxChannelTime : 0u,
