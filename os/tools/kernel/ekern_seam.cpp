@@ -2020,7 +2020,19 @@ static void ekseam_oom_chunks()
 extern "C" int __real__ZN11ExecHandler11ChunkAdjustEP6DChunkiii(DChunk*, int, int, int);
 extern "C" int __wrap__ZN11ExecHandler11ChunkAdjustEP6DChunkiii(DChunk* aChunk, int aType, int a1, int a2)
 	{
+	const TUint32 t0 = NKern::FastCounter();
 	int r = __real__ZN11ExecHandler11ChunkAdjustEP6DChunkiii(aChunk, aType, a1, a2);
+	{	// a slow commit (>= 10 ms): which thread, how much, how long -- a thread stalled here lets its siblings run ahead
+	const TUint32 us = (TUint32)((TUint64)(NKern::FastCounter() - t0) * 1000000u / (TUint32)NKern::FastCounterFrequency());
+	if (us >= 10000)
+		{
+		TBuf8<96> fn;
+		TheCurrentThread->FullName(fn);
+		fn.Append('\0');
+		ekseam_puts("[EKERN][cadj] slow ChunkAdjust thread='"); ekseam_puts((const char*)fn.Ptr()); ekseam_puts("' type/a1/a2/us=");
+		ekseam_puthex((unsigned)aType); ekseam_puthex((unsigned)a1); ekseam_puthex((unsigned)a2); ekseam_puthex(us);
+		}
+	}
 	if (r == KErrNoMemory)
 		{
 		ekseam_oom("ChunkAdjust", a1, a2);
