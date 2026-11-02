@@ -1720,7 +1720,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				// blocked thread; a running one only shows where it last entered). Read directly, not by
 				// NKern::ThreadGetUserContext: that one interrupts the CPU a running thread is on and waits for it.
 				const SThreadExcStack* x = (const SThreadExcStack*)(TLinAddr(t->iNThread.iStackBase) + t->iNThread.iStackSize) - 1;
-				sib[n].iMask = x->iExcCode <= SThreadExcStack::EInit ? (TUint32)x->iExcCode | (t->iNThread.iCurrent ? 0x100u : 0) : 0xFFu;
+				sib[n].iMask = x->iExcCode <= SThreadExcStack::EInit ? (TUint32)x->iExcCode : 0xFFu;
 				for (int r = 0; r < 13; ++r)
 					sib[n].iR[r] = (&x->iR0)[r];
 				sib[n].iR[13] = x->iR13usr;
@@ -1733,7 +1733,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 		Kern::AccessCode();
 		for (int j = 0; j < n; ++j)
 			{
-			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6, +0x100 running)=");
+			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6)=");
 			ekseam_puthex(sib[j].iMask);
 			const unsigned where[3] = { sib[j].iR[15], sib[j].iR[14], sib[j].iR[13] };
 			static const char* const KWhat[3] = { "[EKERN][sib]   pc ", "[EKERN][sib]   lr ", "[EKERN][sib]   sp=" };
