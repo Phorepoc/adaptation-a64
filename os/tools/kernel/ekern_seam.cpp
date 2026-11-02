@@ -1716,8 +1716,16 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				for (; k < nm.Length() && k < (int)sizeof(sib[n].iName) - 1; ++k)
 					sib[n].iName[k] = (char)nm[k];
 				sib[n].iName[k] = 0;
-				sib[n].iMask = 0;
-				NKern::ThreadGetUserContext(&t->iNThread, sib[n].iR, sib[n].iMask);
+				// the user registers saved at the top of its supervisor stack on its last entry to the kernel (exact for a
+				// blocked thread; a running one only shows where it last entered). Read directly, not by
+				// NKern::ThreadGetUserContext: that one interrupts the CPU a running thread is on and waits for it.
+				const SThreadExcStack* x = (const SThreadExcStack*)(TLinAddr(t->iNThread.iStackBase) + t->iNThread.iStackSize) - 1;
+				sib[n].iMask = x->iExcCode <= SThreadExcStack::EInit ? (TUint32)x->iExcCode | (t->iNThread.iCurrent ? 0x100u : 0) : 0xFFu;
+				for (int r = 0; r < 13; ++r)
+					sib[n].iR[r] = (&x->iR0)[r];
+				sib[n].iR[13] = x->iR13usr;
+				sib[n].iR[14] = x->iR14usr;
+				sib[n].iR[15] = x->iR15;
 				++n;
 				}
 			pr->SignalProcessLock();
@@ -1725,7 +1733,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 		Kern::AccessCode();
 		for (int j = 0; j < n; ++j)
 			{
-			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' mask=");
+			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6, +0x100 running)=");
 			ekseam_puthex(sib[j].iMask);
 			const unsigned where[3] = { sib[j].iR[15], sib[j].iR[14], sib[j].iR[13] };
 			static const char* const KWhat[3] = { "[EKERN][sib]   pc ", "[EKERN][sib]   lr ", "[EKERN][sib]   sp=" };
