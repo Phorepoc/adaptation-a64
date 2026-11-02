@@ -15,7 +15,7 @@ How an ARM Phorepoc image is made, from the kernel link to the ROM the board's b
 
 **Status:** these scripts still expect the single-tree layout they were written in (the OS sources, the pdk's
 `emitter/` tools and the Symbian packages under one root, run from that root). The pdk will assemble that view
-and run them (`ph image` for ARM boards); until then they document the recipe and are not run by CI.
+and run them (`phe image` for ARM boards); until then they document the recipe and are not run by CI.
 
 Typical phone build (once wired): `BOARD=a64 SMP=1 MMODEL=flexible SECONDARY=efile PHOREPOC=1 BOOT=ssm
 build_ekern_rom.sh`, then the board's image script (boot.scr + symbian.img) and its SD script (a whole
