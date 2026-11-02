@@ -457,6 +457,24 @@ ssize_t a64_mipi_dsi_write(uint8_t channel,
   ginfodumpbuffer("pkt", pkt, pktlen);
   DEBUGASSERT(pktlen >= 4);
 
+  /* As Linux sun6i_dsi_transfer: let a running instruction sequence finish, else abort it, BEFORE the command
+   * registers are written. Once HS video runs (a64_mipi_dsi_start) the engine loops and INSTRU_EN never clears:
+   * writing the packet under it and restarting made the first command time out -- the screen-off's DCS display-off
+   * (0x28) never reached the panel (every screen-off, boot 2237).
+   */
+
+  for (i = 0; i < DSI_TIMEOUT_MS; i++)
+    {
+      if ((getreg32(DSI_BASIC_CTL0_REG) & INSTRU_EN) == 0)
+        {
+          break;
+        }
+
+      up_mdelay(1);
+    }
+
+  a64_disable_dsi_processing();
+
   /* DSI Low Power Control Register (A31 Page 854)
    * Set RX_Overflow (Bit 26) to 1 (Clear flag for "Receive Overflow")
    * Set RX_Flag (Bit 25) to 1 (Clear flag for "Receive has started")
