@@ -1699,7 +1699,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			// Copies are taken under the process lock; the code-segment lookups come after it (no nested lock order).
 		const int KMaxSib = 8, KSibWords = 64;
 		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; TUint32 iSched[4]; TUint32 iWtObj;
-			TUint32 iHolder; char iHolderName[64]; };
+			TUint32 iHolder; char iHolderName[64]; TUint32 iKStk[16]; TUint32 iKStkN; };
 		static TSib sib[KMaxSib];		// one faulting thread at a time prints this (serial-log debugging only)
 		int n = 0;
 		DProcess* pr = TheCurrentThread->iOwningProcess;
@@ -1738,6 +1738,18 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				sib[n].iSched[3] = *(const TUint32*)&nt.iWaitState;
 				// blocked on a fast mutex (wait type EWaitFastMutex = 2): which one, and the thread holding it
 				sib[n].iWtObj = ((const TUint32*)&nt.iWaitState)[1];
+				// a blocked thread's kernel call chain: the kernel code addresses on its supervisor stack (saved sp .. top)
+				sib[n].iKStkN = 0;
+				if (sib[n].iSched[0] >> 16 == 0)		// not ready, not running: the saved sp is current
+					{
+					const TLinAddr top = TLinAddr(nt.iStackBase) + nt.iStackSize;
+					for (TLinAddr a = nt.iSavedSP; a >= TLinAddr(nt.iStackBase) && a + 4 <= top && sib[n].iKStkN < 16; a += 4)
+						{
+						const TUint32 w = *(const TUint32*)a;
+						if (w >= 0x80000000u && w < 0x80400000u)
+							sib[n].iKStk[sib[n].iKStkN++] = w;
+						}
+					}
 				sib[n].iHolder = 0;
 				sib[n].iHolderName[0] = 0;
 				if (((sib[n].iSched[3] >> 8) & 0xFF) == 2 && sib[n].iWtObj && !(sib[n].iWtObj & 3))
@@ -1773,6 +1785,8 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			ekseam_puts("[EKERN][sib] suspendcount="); ekseam_puthex(sib[j].iSched[2]);
 			ekseam_puts("[EKERN][sib] waitstate="); ekseam_puthex(sib[j].iSched[3]);
 			ekseam_puts("[EKERN][sib] wait object="); ekseam_puthex(sib[j].iWtObj);
+			for (TUint32 k = 0; k < sib[j].iKStkN; ++k)
+				{ ekseam_puts("[EKERN][sib]   kstk "); ekseam_puthex(sib[j].iKStk[k]); }
 			ekseam_puts("[EKERN][sib]   (system lock="); ekseam_puthex((TUint32)&TheScheduler.iLock);
 			ekseam_puts("[EKERN][sib]   holder="); ekseam_puthex(sib[j].iHolder);
 			if (sib[j].iHolderName[0])
