@@ -474,6 +474,7 @@ ssize_t a64_mipi_dsi_write(uint8_t channel,
     }
 
   a64_disable_dsi_processing();
+  up_mdelay(1);                 /* an aborted HS video line ends, the lanes back in LP */
 
   /* DSI Low Power Control Register (A31 Page 854)
    * Set RX_Overflow (Bit 26) to 1 (Clear flag for "Receive Overflow")
@@ -530,9 +531,19 @@ ssize_t a64_mipi_dsi_write(uint8_t channel,
   a64_disable_dsi_processing();
   a64_enable_dsi_processing();
 
-  /* Wait for transmission to complete */
+  /* Wait for transmission to complete; a command that timed out right after HS video was aborted is sent once more
+   * (the engine is idle by then: the second attempt went through every time, boot 2238)
+   */
 
   ret = a64_wait_dsi_transmit();
+  if (ret < 0)
+    {
+      a64_disable_dsi_processing();
+      up_mdelay(1);
+      a64_enable_dsi_processing();
+      ret = a64_wait_dsi_transmit();
+    }
+
   if (ret < 0)
     {
       a64_disable_dsi_processing();
