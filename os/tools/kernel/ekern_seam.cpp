@@ -1698,7 +1698,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			// process (a thread used before its sibling set it up) shows up here as "what was the sibling doing".
 			// Copies are taken under the process lock; the code-segment lookups come after it (no nested lock order).
 		const int KMaxSib = 8, KSibWords = 64;
-		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; };
+		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; };
 		static TSib sib[KMaxSib];		// one faulting thread at a time prints this (serial-log debugging only)
 		int n = 0;
 		DProcess* pr = TheCurrentThread->iOwningProcess;
@@ -1726,13 +1726,18 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				sib[n].iR[13] = x->iR13usr;
 				sib[n].iR[14] = x->iR14usr;
 				sib[n].iR[15] = x->iR15;
+				// the requested priority (DThread, a TThreadPriority) and the one the scheduler uses (NThread, 0..63)
+				sib[n].iPri = ((TUint32)(t->iThreadPriority & 0xFFFF) << 16) | t->iNThread.iPriority;
 				++n;
 				}
 			pr->SignalProcessLock();
 			}
+		ekseam_puts("[EKERN][sib] faulting thread priority (requested<<16 | scheduler)=");
+		ekseam_puthex(((TUint32)(TheCurrentThread->iThreadPriority & 0xFFFF) << 16) | TheCurrentThread->iNThread.iPriority);
 		Kern::AccessCode();
 		for (int j = 0; j < n; ++j)
 			{
+			ekseam_puts("[EKERN][sib] priority (requested<<16 | scheduler)="); ekseam_puthex(sib[j].iPri);
 			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6)=");
 			ekseam_puthex(sib[j].iMask);
 			const unsigned where[3] = { sib[j].iR[15], sib[j].iR[14], sib[j].iR[13] };
