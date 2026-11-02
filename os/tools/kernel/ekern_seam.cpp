@@ -1100,6 +1100,13 @@ extern "C" void ekseam_dump_thread(void* aNThread)
 	{
 	DThread* t = _LOFF(aNThread, DThread, iNThread);
 	if (t->iThreadType != EThreadUser) return;   // only trace the USER secondary; kernel threads are noise
+	// the FIRST user thread only (= boot stage 4). It used to run at every user thread's start: a dozen log lines and
+	// the board's stage 4, whose synchronous SD log flush waits for the SD lock -- behind any C: transfer. A new thread
+	// then sat in here for up to a second before its first instruction, and SDK games that resume a setup thread
+	// and use what it sets up at once (Fragger, Gravity Guy: "Program closed: Mixer") read a null pointer (2026-11-02).
+	static TInt once = 0;
+	if (__e32_atomic_swp_ord32(&once, 1) != 0)
+		return;
 	NThreadBase* nt = (NThreadBase*)aNThread;
 	ekseam_puts("\n[EKERN] *** EpocThreadFunction: USER thread first-run ***\n");
 	ekseam_puts("[EKERN][thr] NThr.Attributes(iSpare2)="); ekseam_puthex((unsigned)nt->Attributes());
