@@ -1700,6 +1700,34 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			}
 		}
 	if ((e[23] & 0x1F) == 0x10 && !NKern::KernelLocked())
+		{	// the same for RAM-loaded code (installed apps, our Qt): the words among the top 256 that fall in one of the
+			// process's code segments, placed there (no .map covers them). At most 24 lines.
+		DProcess* pr = TheCurrentThread->iOwningProcess;
+		NKern::ThreadEnterCS();
+		Kern::AccessCode();
+		unsigned sp = e[19], shown = 0;
+		for (unsigned i = 0; i < 256 && shown < 24; ++i, sp += 4)
+			{
+			if ((sp & 0xFFF) == 0 || i == 0)
+				if (!UserCanAccess(sp, false))
+					break;
+			const unsigned w = *(volatile unsigned*)sp;
+			if (w < 0x00400000u || (w >= 0x80000000u && w < 0x90000000u))
+				continue;
+			DCodeSeg* s = Kern::CodeSegFromAddress(w, pr);
+			if (!s)
+				continue;
+			char nm[48]; unsigned k = 0;
+			for (const TUint8* q = s->iRootName.Ptr(); k < (unsigned)s->iRootName.Length() && k < sizeof(nm) - 1; ++k)
+				nm[k] = q[k];
+			nm[k] = 0;
+			ekseam_puts("[EKERN][exc] stk "); ekseam_puts(nm); ekseam_puts(" +"); ekseam_puthex(w - s->iRunAddress);
+			++shown;
+			}
+		Kern::EndAccessCode();
+		NKern::ThreadLeaveCS();
+		}
+	if ((e[23] & 0x1F) == 0x10 && !NKern::KernelLocked())
 		{	// the OTHER threads of the faulting process: where each one is (user pc / lr / sp from its saved user context) and
 			// the code addresses on the top of its user stack, placed in their code segments. A race between threads of one
 			// process (a thread used before its sibling set it up) shows up here as "what was the sibling doing".
