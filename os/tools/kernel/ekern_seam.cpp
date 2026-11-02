@@ -1698,7 +1698,7 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			// process (a thread used before its sibling set it up) shows up here as "what was the sibling doing".
 			// Copies are taken under the process lock; the code-segment lookups come after it (no nested lock order).
 		const int KMaxSib = 8, KSibWords = 64;
-		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; };
+		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; TUint32 iSched[4]; };
 		static TSib sib[KMaxSib];		// one faulting thread at a time prints this (serial-log debugging only)
 		int n = 0;
 		DProcess* pr = TheCurrentThread->iOwningProcess;
@@ -1728,16 +1728,28 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				sib[n].iR[15] = x->iR15;
 				// the requested priority (DThread, a TThreadPriority) and the one the scheduler uses (NThread, 0..63)
 				sib[n].iPri = ((TUint32)(t->iThreadPriority & 0xFFFF) << 16) | t->iNThread.iPriority;
+				// the scheduler's view: ready (cpu | EReadyOffset) / current / last cpu / suspended, the CPU affinity, the
+				// suspend count, the wait-state word (flags + wait type: is it waiting, and on what)
+				const NThread& nt = t->iNThread;
+				sib[n].iSched[0] = (TUint32)nt.iSpare1 << 24 | (TUint32)nt.iSpare2 << 16 | (TUint32)nt.iSpare3 << 8 | nt.iSuspended;
+				sib[n].iSched[1] = nt.iCpuAffinity;
+				sib[n].iSched[2] = (TUint32)nt.iSuspendCount;
+				sib[n].iSched[3] = *(const TUint32*)&nt.iWaitState;
 				++n;
 				}
 			pr->SignalProcessLock();
 			}
+		ekseam_puts("[EKERN][sib] faulting thread affinity="); ekseam_puthex(TheCurrentThread->iNThread.iCpuAffinity);
 		ekseam_puts("[EKERN][sib] faulting thread priority (requested<<16 | scheduler)=");
 		ekseam_puthex(((TUint32)(TheCurrentThread->iThreadPriority & 0xFFFF) << 16) | TheCurrentThread->iNThread.iPriority);
 		Kern::AccessCode();
 		for (int j = 0; j < n; ++j)
 			{
 			ekseam_puts("[EKERN][sib] priority (requested<<16 | scheduler)="); ekseam_puthex(sib[j].iPri);
+			ekseam_puts("[EKERN][sib] ready<<24|current<<16|lastcpu<<8|suspended="); ekseam_puthex(sib[j].iSched[0]);
+			ekseam_puts("[EKERN][sib] affinity="); ekseam_puthex(sib[j].iSched[1]);
+			ekseam_puts("[EKERN][sib] suspendcount="); ekseam_puthex(sib[j].iSched[2]);
+			ekseam_puts("[EKERN][sib] waitstate="); ekseam_puthex(sib[j].iSched[3]);
 			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6)=");
 			ekseam_puthex(sib[j].iMask);
 			const unsigned where[3] = { sib[j].iR[15], sib[j].iR[14], sib[j].iR[13] };
