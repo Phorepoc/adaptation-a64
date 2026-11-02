@@ -1689,9 +1689,11 @@ static void ScreenOffSeq()
 	const unsigned char off = 0x28, slp = 0x10;
 	const long r1 = a64_mipi_dsi_write(0, 0x05, &off, 1);
 	ph_mdelay(20);
+	const TInt pm1 = PanelRead(0x0A);			// power mode: bit 2 = display on (0x9c on, 0x98 off)
 	const long r2 = a64_mipi_dsi_write(0, 0x05, &slp, 1);
 	NKern::Sleep(NKern::TimerTicks(120));
 	ekseam_puts("[EKERN][power] panel 0x28 r="); ekseam_puthex((unsigned)r1);
+	ekseam_puts("[EKERN][power] panel mode after 0x28="); ekseam_puthex((unsigned)pm1);
 	ekseam_puts("[EKERN][power] panel 0x10 r="); ekseam_puthex((unsigned)r2);
 	a64_board_panel_reset(0);
 	ph_mdelay(2);
