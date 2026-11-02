@@ -1698,7 +1698,8 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			// process (a thread used before its sibling set it up) shows up here as "what was the sibling doing".
 			// Copies are taken under the process lock; the code-segment lookups come after it (no nested lock order).
 		const int KMaxSib = 8, KSibWords = 64;
-		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; TUint32 iSched[4]; };
+		struct TSib { char iName[40]; TUint32 iR[18]; TUint32 iMask; TUint32 iPri; TUint32 iSched[4]; TUint32 iWtObj;
+			TUint32 iHolder; char iHolderName[64]; };
 		static TSib sib[KMaxSib];		// one faulting thread at a time prints this (serial-log debugging only)
 		int n = 0;
 		DProcess* pr = TheCurrentThread->iOwningProcess;
@@ -1735,6 +1736,27 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 				sib[n].iSched[1] = nt.iCpuAffinity;
 				sib[n].iSched[2] = (TUint32)nt.iSuspendCount;
 				sib[n].iSched[3] = *(const TUint32*)&nt.iWaitState;
+				// blocked on a fast mutex (wait type EWaitFastMutex = 2): which one, and the thread holding it
+				sib[n].iWtObj = ((const TUint32*)&nt.iWaitState)[1];
+				sib[n].iHolder = 0;
+				sib[n].iHolderName[0] = 0;
+				if (((sib[n].iSched[3] >> 8) & 0xFF) == 2 && sib[n].iWtObj && !(sib[n].iWtObj & 3))
+					{
+					NKern::Lock();
+					const TUint32 h = (TUint32)((NFastMutex*)sib[n].iWtObj)->iHoldingThread & ~1u;
+					sib[n].iHolder = h;
+					NKern::Unlock();
+					if (h)
+						{
+						DThread* ht = _LOFF((NThread*)h, DThread, iNThread);
+						TBuf8<64> hn;
+						ht->FullName(hn);
+						int k = 0;
+						for (; k < hn.Length() && k < (int)sizeof(sib[n].iHolderName) - 1; ++k)
+							sib[n].iHolderName[k] = (char)hn[k];
+						sib[n].iHolderName[k] = 0;
+						}
+					}
 				++n;
 				}
 			pr->SignalProcessLock();
@@ -1750,6 +1772,11 @@ extern "C" void __wrap__ZN3Exc8DispatchEPvP7NThread(void* aInfo, void* aNThread)
 			ekseam_puts("[EKERN][sib] affinity="); ekseam_puthex(sib[j].iSched[1]);
 			ekseam_puts("[EKERN][sib] suspendcount="); ekseam_puthex(sib[j].iSched[2]);
 			ekseam_puts("[EKERN][sib] waitstate="); ekseam_puthex(sib[j].iSched[3]);
+			ekseam_puts("[EKERN][sib] wait object="); ekseam_puthex(sib[j].iWtObj);
+			ekseam_puts("[EKERN][sib]   (system lock="); ekseam_puthex((TUint32)&TheScheduler.iLock);
+			ekseam_puts("[EKERN][sib]   holder="); ekseam_puthex(sib[j].iHolder);
+			if (sib[j].iHolderName[0])
+				{ ekseam_puts("[EKERN][sib]   holder name='"); ekseam_puts(sib[j].iHolderName); ekseam_puts("'\n"); }
 			ekseam_puts("[EKERN][sib] thread='"); ekseam_puts(sib[j].iName); ekseam_puts("' entry(0..6)=");
 			ekseam_puthex(sib[j].iMask);
 			const unsigned where[3] = { sib[j].iR[15], sib[j].iR[14], sib[j].iR[13] };
