@@ -1678,6 +1678,13 @@ static void ScreenOffSeq()
 	__SPIN_UNLOCK_IRQRESTORE(VblankLock, irq);
 	if (armed && VblankDfc)
 		VblankDfc->Add();						// (the post that was waiting for a vblank completes)
+	// TCON0 off FIRST: in trigger mode it restarts the DSI video instructions every frame, so a DCS command sent under
+	// it timed out whenever a frame began mid-command -- the display-off (0x28) was lost on about half the screen-offs
+	// (boots 2237-2239) and the panel went to sleep with its display on. Without video the panel keeps its last frame.
+	volatile TUint32* tcon = (volatile TUint32*)(ph_a64_io + 0xC000);
+	tcon[0x40 / 4] &= ~(1u << 31);				// TCON0_CTL: channel 0 off (sun4i_tcon_channel_disable)
+	tcon[0] &= ~(1u << 31);						// TCON_GCTL: TCON off (sun4i_tcon_disable)
+	ph_mdelay(20);								// the frame in flight ends
 	// the panel: display off, then sleep in (the ST7703 wants 120 ms before its supplies may go)
 	const unsigned char off = 0x28, slp = 0x10;
 	const long r1 = a64_mipi_dsi_write(0, 0x05, &off, 1);
@@ -1686,9 +1693,6 @@ static void ScreenOffSeq()
 	NKern::Sleep(NKern::TimerTicks(120));
 	ekseam_puts("[EKERN][power] panel 0x28 r="); ekseam_puthex((unsigned)r1);
 	ekseam_puts("[EKERN][power] panel 0x10 r="); ekseam_puthex((unsigned)r2);
-	volatile TUint32* tcon = (volatile TUint32*)(ph_a64_io + 0xC000);
-	tcon[0x40 / 4] &= ~(1u << 31);				// TCON0_CTL: channel 0 off (sun4i_tcon_channel_disable)
-	tcon[0] &= ~(1u << 31);						// TCON_GCTL: TCON off (sun4i_tcon_disable)
 	a64_board_panel_reset(0);
 	ph_mdelay(2);
 	ScreenClocksOff();
