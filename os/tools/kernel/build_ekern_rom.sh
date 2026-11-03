@@ -144,6 +144,11 @@ if [ "${SECONDARY:-minisec}" = "efile" ]; then
     mkdir -p .fb-out; printf 'start phfs\r\n' > .fb-out/autoexec.bat
     SEC_ARGS+=(--xip 'Sys\Bin\phfs.exe=emitter/phfs.exe' --data "AUTOEXEC.BAT=.fb-out/autoexec.bat")
   fi
+  # EWSRV built from its own mmp (the component build) imports the key translator and the domain client as DLLs;
+  # the older bespoke ewsrv build compiled them in
+  for d in ektran.dll domaincli.dll; do
+    [ -f "emitter/$d" ] && SEC_ARGS+=(--xip "Sys${BS}Bin${BS}$d=emitter/$d")
+  done
   # GUI=1 -- the Symbian "minigui" configuration (windowserver/minigui/*.oby), from
   # source: the GRAPHICAL window server takes the EWSRV.EXE slot (wserv.iby:
   # wserv_nonnga.exe -> EwSrv.exe), econswserv.dll takes the ECONS.DLL slot
