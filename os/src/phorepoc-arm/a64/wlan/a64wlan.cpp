@@ -97,8 +97,13 @@ static void HopDfc(TAny*)
 	ekseam_puts(" -- rx frames so far "); ekseam_puthex(a64wlan_rx_frames());
 	HopTimer->OneShot(NKern::TimerTicks(3000));
 	}
+// The chip bring-up (SDIO host, probe), once. It runs on the WLAN DFC queue: from the timer that starts it 8 s after the
+// boot, or sooner when the power HAL is asked for the MAC first (A64WlanEnsureProbed below). Both run on the one WLAN
+// thread, one after the other, so the second finds the chip probed.
 static void StartDfc(TAny*)
 	{
+	if (a64wlan_is_probed())
+		return;
 	ekseam_puts("[wlan] === RTL8723CS WiFi chip core (rtl8703b over SMHC1) ===\n");
 		{
 		const char* const path[] = { "resource", "wlan", "rtw8703b_fw.bin" };
@@ -150,6 +155,19 @@ extern "C" void a64wlan_kick_tx() { if (TxDfcObj) TxDfcObj->Enque(); }
 _LIT(KWlanDfc, "A64WlanDfc");
 static TDfc* StartDfcObj;
 static NTimer* KickTimer;
+// The power HAL's MAC query (wlanhwinit, from the engine's constructor): the chip is probed by now or is probed on this call, from
+// any thread -- the bring-up itself runs on the WLAN thread. ETrue = probed (the MAC is final); EFalse = timed out.
+extern "C" TBool A64WlanEnsureProbed(TInt aTimeoutMs)
+	{
+	if (a64wlan_is_probed())
+		return ETrue;
+	if (!StartDfcObj)
+		return EFalse;
+	StartDfcObj->Enque();
+	for (TInt waited = 0; waited < aTimeoutMs && !a64wlan_is_probed(); waited += 20)
+		NKern::Sleep(NKern::TimerTicks(20));
+	return a64wlan_is_probed() != 0;
+	}
 extern "C" void A64WlanInstall()
 	{
 #ifdef A64_SDIO_TEST

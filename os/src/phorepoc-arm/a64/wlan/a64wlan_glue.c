@@ -69,12 +69,13 @@ int a64wlan_probe(void)
 	if (r)
 		return r;
 	hw = sdio_get_drvdata(&a64_func);
-	a64_rtwdev = hw->priv;
+	struct rtw_dev *rd = hw->priv;
 	/* the phone's efuse holds no MAC (normal: Linux takes local-mac-address, which U-Boot derives from the SoC
 	 * SID); rtw88 made a random locally-administered one, some APs refuse those (W4 boot 240): Realtek's OUI + the
 	 * random tail (a stable SID-derived tail is a later rung). mac80211 copies perm_addr to the interface. */
-	a64_rtwdev->efuse.addr[0] = 0x00; a64_rtwdev->efuse.addr[1] = 0xe0; a64_rtwdev->efuse.addr[2] = 0x4c;
-	SET_IEEE80211_PERM_ADDR(hw, a64_rtwdev->efuse.addr);
+	rd->efuse.addr[0] = 0x00; rd->efuse.addr[1] = 0xe0; rd->efuse.addr[2] = 0x4c;
+	SET_IEEE80211_PERM_ADDR(hw, rd->efuse.addr);
+	a64_rtwdev = rd;		/* last: a64wlan_is_probed() (the power HAL, another thread) means the MAC below is final */
 	/* the antenna grant (boots 257-271): our MAC's ACK exchange worked only while WiFi held the grant in software
 	 * (GNT_WL high: boot 257, before coex's first run -- the AP's ACK was seen, the association completed); under the
 	 * hardware arbiter (PTA) every boot since misses ACKs both ways, BT off (265, 267) or BT on (270: coex still reads

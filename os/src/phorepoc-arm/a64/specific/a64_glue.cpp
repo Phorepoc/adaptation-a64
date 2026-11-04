@@ -2164,6 +2164,7 @@ static void A64BatteryTick()
 	}
 
 extern "C" int a64wlan_is_probed(void);				// a64wlan_glue.c (the rtw88 probe at boot)
+extern "C" TBool A64WlanEnsureProbed(TInt aTimeoutMs);		// a64wlan.cpp: the chip probe, on demand
 extern "C" void a64wlan_mac_addr(unsigned char out[6]);
 
 TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
@@ -2189,7 +2190,9 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 	if (aFunction == EPhHalPowerWlanMac)
 		{	// OURS (2026-10-10, WiFi W3): the WLAN MAC address (the chip's efuse, read by the rtw88 probe at boot) for
 			// our wlanhwinit.dll (src/wlanhwinit): the engine refuses to start on the stub's 00:E0:DE:AD:BE:EF
-		if (!a64wlan_is_probed())
+		// the engine asks as it starts (wlmserver, on demand), which can be before the chip is probed: probe it now
+		// (the probe takes a few seconds), else wlanhwinit falls back to the stub MAC and the engine does not start
+		if (!A64WlanEnsureProbed(20000))
 			return KErrNotReady;
 		TUint8 mac[6];
 		a64wlan_mac_addr(mac);
