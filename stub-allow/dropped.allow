@@ -1,0 +1,4 @@
+# The sources only this SoC's registry leaves out of a build (the pdk's tools/stub_audit.py check, kind 5; the reasons are
+# its tools/stub-allow/dropped-reasons.txt). Each line: reason component source
+# phgl's null GPU channel: EXTEND builds the Mali channel (src/symgl/symmali.cpp) in its place
+D16 phgl symgpu_null.cpp
