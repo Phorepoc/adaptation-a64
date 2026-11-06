@@ -448,8 +448,10 @@ void CPheRecSession::ServiceL(const RMessage2& aMessage)
 		{
 		const TInt arg = aMessage.Function() == EPrRead ? 1 : 0;
 		const TInt max = aMessage.GetDesMaxLengthL(arg);
-		HBufC8* out = HBufC8::NewLC(Min(Max(max, 8), KPhFsMaxReply));
-		TPtr8 p = out->Des();
+		const TInt size = Min(Max(max, 8), KPhFsMaxReply);
+		HBufC8* out = HBufC8::NewLC(size);
+		TPtr8 p((TUint8*)out->Ptr(), 0, size);	// exactly the client's room: Des() may be the heap cell's rounded-up size
+												// (a full ring burst then overflowed the client's descriptor: KErrOverflow)
 		if (aMessage.Function() == EPrRead)
 			Rec().Read((TUint32)aMessage.Int0(), p);
 		else
