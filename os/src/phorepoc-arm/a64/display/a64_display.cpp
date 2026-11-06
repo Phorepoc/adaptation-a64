@@ -588,6 +588,10 @@ static void ProgramSource()
 const TInt KStripH = 80;
 extern "C" void A64BarsStart();
 extern "C" TUint32* A64PanelFb() { return Fb; }
+// change counters for a capture that copies only what changed (phfs screen recorder, usbcc/phfs_ldd.cpp): the panel
+// layer's drawings (a64_bars.cpp counts each when it is done) and the OS picture's posts (FlipCount, below)
+static volatile TUint32 PanelGen;
+extern "C" void A64PanelChanged() { __e32_atomic_add_ord32(&PanelGen, 1); }
 // SOFT KEY BAR (2026-10-07): the bottom black bar (rows 1360-1439) carries the S^3 hardware keys the phone lacks --
 // green (call) | Menu | red (end); a64touch.cpp turns a touch there into the key. Channel 2 now scans the WHOLE panel
 // buffer: the rows between the bars get alpha 0 (ARGB, pixel alpha) so the OS picture on channel 1 shows through.
@@ -612,6 +616,7 @@ static void Pill(TInt aCx, TInt aCy, TInt aW, TInt aH, TUint32 aArgb)
 
 static void KeyBarDraw()
 	{
+	struct TDrawn { ~TDrawn() { A64PanelChanged(); } } drawn;
 	const TInt y0 = KPanelH - KStripH, cy = y0 + KStripH / 2, third = KPanelW / 3;
 	Fill(0, y0, KPanelW, KStripH, 0xFF000000);
 	Pill(third / 2, cy, 150, 44, 0xFF1FA83A);						// green: call / answer
@@ -858,6 +863,14 @@ static TDfc* VblankDfc;					// the PDD's completion DFC
 static TBool VblankBound, VblankMeasuring;
 static volatile TUint32 FlipArmed, FlipAge, VblankCount, FlipForced;
 static volatile TUint32 FlipCount, FlipDoneAt[4];	// posts, and how many completed at the 1st/2nd/3rd vblank (or forced)
+
+// the OS picture's post count (0 = the OS never posted: it draws into a fixed buffer, every capture must copy it) and
+// the panel layer's drawing count
+extern "C" void A64DisplayChangeCounts(TUint32* aPosts, TUint32* aPanel)
+	{
+	*aPosts = FlipCount;
+	*aPanel = PanelGen;
+	}
 
 static volatile TUint32& Gint0() { return *(volatile TUint32*)(ph_a64_io + 0xC004); }
 static volatile TUint32* Mixer() { return (volatile TUint32*)ph_a64_de + 0x100000 / 4; }
@@ -1472,7 +1485,10 @@ static TBool DisplayUpBody()
 		{
 		r = Epoc::AllocPhysicalRam(fbSize, FbPhys, 12);
 		if (r == KErrNone)
-			Fb = (TUint32*)Map(4, FbPhys, fbSize);
+			Fb = (TUint32*)Map(4, FbPhys, fbSize, EMapAttrSupRw | EMapAttrBufferedC);
+			// normal uncached (bufferable), as the OS picture buffers: its only mapping, and reads (screenshots, the
+			// phfs screen recorder) may burst -- strongly ordered (Map's default, for registers) made a 360x720
+			// capture take 33 ms (2026-11-05)
 		}
 	NKern::ThreadLeaveCS();
 	if (!ph_a64_de || !ph_a64_io || !ph_a64_dsi || !ph_a64_r || !Fb)

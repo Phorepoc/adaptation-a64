@@ -20,6 +20,9 @@ extern "C" void A64CpuInputBoost();	// power/a64_cpufreq.cpp: input -> the top a
 extern "C" void ekseam_puts(const char* s);
 extern "C" void ekseam_puthex(unsigned v);
 extern "C" TUint32* A64PanelFb();
+extern "C" void A64PanelChanged();	// a64_display.cpp: a capture copies the bars again (phfs screen recorder)
+// in every function that draws: counts the change when the drawing is done, whichever way it returns
+struct TPanelDrawn { ~TPanelDrawn() { A64PanelChanged(); } };
 extern "C" TInt A64CpuBusy(TUint64* aLastNow, TUint64* aLastIdle, TUint* aBusy, TInt aMax);
 #ifdef A64_GOLDEN
 extern "C" TBool A64SdTransfer(TUint aSector, TUint aCount, TUint32* aBuf, TBool aWrite);
@@ -209,6 +212,7 @@ static void Spark(TInt aX, TInt aY, TInt aW, TInt aH, const TUint8* aHist, TUint
 
 static void TopDraw()
 	{
+	TPanelDrawn drawn;
 	char b[80];
 	Rect(0, 0, KW, KBarH, KBg);
 	// line 1 (y 8..29, scale 3): CPU % + per-core bars + sparkline | RAM free + sparkline | battery
@@ -358,6 +362,7 @@ static void ClearMiddle(TInt aY, TInt aH)
 
 static void OvlDraw()
 	{
+	TPanelDrawn drawn;
 	if (OvlShown != Ovl)
 		{
 		ClearMiddle(KBarH, KH - 2 * KBarH);
