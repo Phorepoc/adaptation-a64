@@ -16,6 +16,14 @@ os/src/<component>/         programs and tests that use these drivers (phevdec, 
 registry/components_a64.py  the components this repository adds
 ```
 
+### The screen recorder
+
+`os/src/pherec/` (`pherec.exe`) records the screen for PhoneLab's `record_start` / `record_stop`: it captures what the
+user sees through the debug link's capture channel, skips unchanged pictures and keeps H.264 records in a ring PhoneLab
+polls. The H.264 encoder itself (`os/src/pherecenc/`, the video engine's hardware encoder) is patent-encumbered, so it is
+never in an image: it is this repository's Catalogue package `screenrec-a64` (`package.conf`, `recipes/sis.sh`). Without
+it the recorder refuses to record and PhoneLab says to install it.
+
 At build time `os/` is laid over [core](https://github.com/Phorepoc/core)'s `os/`, so the paths line up with core's.
 
 ## Building

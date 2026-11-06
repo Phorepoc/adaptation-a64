@@ -50,6 +50,14 @@ COMPONENTS = {
                         arm_archives=[".codecpack/openh264-arm/lib/libopenh264enc.a"]),
     # through the "PhFs.A64" LDD); started by the SSM's non-critical list (r_cmd_phfs)
     "phfs": dict(mmp=os.path.join(OS_ROOT, "src/phfs/phfs.mmp")),
+    # pherec.exe (2026-11-06): the screen recorder server phfs starts for PhoneLab's "record"; the H.264 encoder is
+    # pherecenc.dll below (not in the image). NEON flags for its colour conversion (src/pheencbench/csc.cpp), as pheencbench
+    "pherec": dict(mmp=os.path.join(OS_ROOT, "src/pherec/pherec.mmp"),
+                   flags=["-march=armv7-a", "-mfpu=neon-vfpv4", "-mfloat-abi=softfp", "-mword-relocations"]),
+    # pherecenc.dll (2026-11-06): the recorder's H.264 encoder plug-in (the VE). device-only = never in an image (H.264 is
+    # patent-encumbered): it ships as this repository's Catalogue package (package.conf, recipes/sis.sh)
+    "pherecenc": dict(mmp=os.path.join(OS_ROOT, "src/pherecenc/pherecenc.mmp"), device=True,
+                      **{"def": os.path.join(OS_ROOT, "src/pherecenc/pherecenc.def")}),
     # phecam (camera-plan.md C1): the TestCamera plug-in with its pixel source replaced by RDevCameraSc (the 2010 shared-chunk camera driver, built into ekern on x86). Generated
     # CAMERA_RAW=1: Bayer raw8 + our debayer (camera-plan.md "the reference uses RAW"; kernel side A64DEFS=-DA64_CAMERA_RAW)
     "phecam": dict(mmp=os.path.join(OS_ROOT, "src/phecam/phecam.mmp"), defs=(["PHE_CAM_RAW"] if os.environ.get("CAMERA_RAW") == "1" else [])),

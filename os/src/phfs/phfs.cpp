@@ -7,11 +7,13 @@
 // against the real file server (RFs) and replies. One request at a time; started by the SSM's non-critical list.
 // Paths arrive as UTF-8 "/C:/dir/file" ("/" = the drive list). [phfs] lines (A64_RDEBUG_LOG).
 // Since 2026-10-19 also delete, and the terminal requests: PhoneLab's Terminal panel reaches the phetty daemon's ttys here.
+// Since 2026-11-06 the screen recorder requests: passed on to pherec.exe (src/pherec), PhoneLab's "record".
 #include <e32base.h>
 #include <e32debug.h>
 #include <f32file.h>
 #include "phfs_api.h"
 #include "phetty.h"
+#include "pherec.h"		// the screen recorder server (src/pherec)
 
 static TUint32 Le32(const TUint8* aP)
 	{
@@ -81,7 +83,7 @@ class CPhFs : public CBase
 	{
 public:
 	static CPhFs* NewL();
-	CPhFs() : iRep(NULL, 0) {}
+	CPhFs() : iRep(NULL, 0), iRecOpen(EFalse) {}
 	~CPhFs();
 	void Run();
 private:
@@ -91,6 +93,7 @@ private:
 	TInt Write(const TUint8* aP, TInt aLen);
 	TInt Delete(const TUint8* aP, TInt aLen);
 	TInt Tty(TInt aOp, const TUint8* aP, TInt aLen);
+	TInt Rec(TInt aOp, const TUint8* aP, TInt aLen);
 	void Finish(TInt aStatus);
 private:
 	RFs iFs;
@@ -101,6 +104,8 @@ private:
 	TPtr8 iRep;							// {status, data}: data is appended after the 4 status bytes
 	RPheTty iTty;
 	TBool iTtyOpen;
+	RPheRec iRec;
+	TBool iRecOpen;
 	};
 
 CPhFs* CPhFs::NewL()
@@ -120,6 +125,8 @@ CPhFs::~CPhFs()
 	{
 	if (iTtyOpen)
 		iTty.Close();
+	if (iRecOpen)
+		iRec.Close();
 	iCh.Close();
 	iFs.Close();
 	delete iReqBuf;
@@ -163,6 +170,8 @@ void CPhFs::Handle(const TUint8* aReq, TInt aLen)
 	case EPhFsDelete:r = Delete(aReq + 4, aLen - 4); break;
 	case EPhTtyList: case EPhTtyNew: case EPhTtyRead: case EPhTtyWrite: case EPhTtyResize: case EPhTtyKill:
 		r = Tty(op, aReq + 4, aLen - 4); break;
+	case EPhRecStart: case EPhRecRead: case EPhRecStop:
+		r = Rec(op, aReq + 4, aLen - 4); break;
 	default:		r = KErrNotSupported; break;
 		}
 	Finish(r);
@@ -401,6 +410,38 @@ TInt CPhFs::Tty(TInt aOp, const TUint8* aP, TInt aLen)
 		}
 	if (r == KErrServerTerminated)
 		{ iTty.Close(); iTtyOpen = EFalse; r = KErrNotFound; }	// phettyd went away: reconnect next time
+	return r;
+	}
+
+// the screen recorder requests (phfs_api.h): passed on to pherec.exe (started on the first one). Its answers go after the
+// status in the reply; no waiting except Stop, which ends the recorder thread.
+TInt CPhFs::Rec(TInt aOp, const TUint8* aP, TInt aLen)
+	{
+	if (!iRecOpen)
+		{
+		const TInt r = iRec.Connect();
+		if (r != KErrNone)
+			return r;
+		iRecOpen = ETrue;
+		}
+	TPtr8 tail((TUint8*)iRep.Ptr() + iRep.Length(), 0, iRep.MaxLength() - iRep.Length());
+	TInt r = KErrNotSupported;
+	switch (aOp)
+		{
+	case EPhRecStart:
+		r = aLen < 12 ? KErrArgument : iRec.Start((TInt)Le32(aP), (TInt)Le32(aP + 4));
+		break;
+	case EPhRecRead:
+		r = aLen < 4 ? KErrArgument : iRec.Read(Le32(aP), tail);
+		break;
+	case EPhRecStop:
+		r = iRec.Stop(tail);
+		break;
+		}
+	if (r == KErrServerTerminated)
+		{ iRec.Close(); iRecOpen = EFalse; }	// pherec.exe went away: started again next time
+	if (r == KErrNone)
+		iRep.SetLength(iRep.Length() + tail.Length());
 	return r;
 	}
 

@@ -14,9 +14,11 @@ EPOCSTACKSIZE	0x40000
 
 OS_LAYER_SYSTEMINCLUDE_SYMBIAN
 OS_LAYER_LIBC_SYSTEMINCLUDE
-USERINCLUDE		../phorepoc-arm/vde ../phevdec ../phevenctest ../../.codecpack/openh264-arm/include
+USERINCLUDE		../phorepoc-arm/vde ../phevdec ../phevenctest ../pherecenc ../../.codecpack/openh264-arm/include
 SOURCEPATH		.
-SOURCE			bench_main.cpp bench_common.cpp enc_sw.cpp enc_hw.cpp
+SOURCE			bench_main.cpp bench_common.cpp csc.cpp enc_sw.cpp enc_hw.cpp
+SOURCEPATH		../pherecenc		// the encoder (also the screen recorder's plug-in)
+SOURCE			ve_enc.cpp
 SOURCEPATH		../phevdec
 SOURCE			h264_parser.cpp ve_h264.cpp
 STATICLIBRARY	libcrt0.lib

@@ -1,0 +1,21 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: Apache-2.0
+
+// pherec.mmp -- OURS (2026-11-06, PhoneLab "record"): the screen recorder server (pherec.cpp). Started on demand by phfs.exe;
+// captures through the PhFs.A64 capture channel (ReadDeviceData) and encodes with pherecenc.dll (the screen recorder package), which
+// is not in the image (pherecenc.h). The DLL's capabilities (All -TCB) cover this process's.
+TARGET			pherec.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE7015814
+CAPABILITY		ReadDeviceData
+VENDORID		0
+EPOCHEAPSIZE	0x10000 0x100000
+
+OS_LAYER_SYSTEMINCLUDE
+USERINCLUDE		. ../phorepoc-arm/a64/usbcc ../pheencbench
+SOURCEPATH		.
+SOURCE			pherec.cpp
+SOURCEPATH		../pheencbench
+SOURCE			csc.cpp			// RGB -> NV12 (NEON)
+LIBRARY			euser.lib hal.lib
+SMPSAFE

@@ -7,6 +7,7 @@
 #define PHE_BENCH_COMMON_H
 #include <stdint.h>
 #include <stddef.h>
+#include "csc.h"
 
 extern "C" {
 uint32_t ph_ticks(void);			// User::FastCounter()
@@ -27,14 +28,6 @@ void GenXrgb(int aW, int aH, int aK, uint32_t* aDst);
 // the worst case of the first VE benchmark (phevenctest2): a full-frame gradient + a moving checker square (every macroblock has residual)
 void GenStress(int aW, int aH, int aK, uint32_t* aDst);
 void ToRgb565(const uint32_t* aSrc, int aW, int aH, uint16_t* aDst);
-
-enum TSrc { EXrgb, ERgb565 };
-// Colour conversion (BT.601 limited range). aU2 == NULL: aU is the interleaved UV plane (NV12), else planar (I420 U, V).
-// aNeon: the NEON kernel for whole 16-pixel groups (the tail columns run scalar).
-void Csc(TSrc aFmt, const void* aSrc, int aSrcStrideBytes, int aW, int aH, uint8_t* aY, int aYStride, uint8_t* aU, uint8_t* aV, int aCStride,
-	bool aNeon);
-// replicate the last column / row of an NV12 picture into the MB-aligned padding
-void PadNv12(uint8_t* aY, uint8_t* aUv, int aW, int aH, int aAW, int aAH);
 
 // PSNR (hundredths of a dB, 9999 = identical) of the aW x aH luma region
 int PsnrY(const uint8_t* aA, int aStrideA, const uint8_t* aB, int aStrideB, int aW, int aH);

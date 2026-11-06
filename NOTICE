@@ -7,3 +7,7 @@ Licences: our own code is Apache-2.0 (LICENSES/Apache-2.0.txt); the Nokia-derive
 Corporation and/or its subsidiary(-ies) and the Symbian Foundation. Files derived from it
 keep Nokia's copyright notice (or "Portions Copyright (c) Nokia Corporation") alongside ours. Third-party files keep
 their own copyright and licence, as their headers say.
+
+Patents: H.264 is patent-grey in many jurisdictions. The screen recorder's H.264 encoder (pherecenc.dll, our own code
+driving the video engine's hardware encoder) is therefore never part of an image: it is the separate package screenrec-a64
+(package.conf) that users install themselves through Catalogue, and they are responsible for any licences their use needs.

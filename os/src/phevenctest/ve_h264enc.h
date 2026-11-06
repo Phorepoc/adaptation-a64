@@ -38,7 +38,9 @@ public:
 class THeaders
 	{
 public:
-	THeaders(MBitSink& aSink, int aMbW, int aMbH, int aQp) : iSink(aSink), iMbW(aMbW), iMbH(aMbH), iQp(aQp), iBits(0) {}
+	THeaders(MBitSink& aSink, int aMbW, int aMbH, int aQp) : iSink(aSink), iMbW(aMbW), iMbH(aMbH), iQp(aQp), iBits(0), iCropR(0), iCropB(0) {}
+	// the picture is smaller than the coded macroblocks: crop aRight / aBottom pixels (even counts, 4:2:0) in the SPS
+	void SetCrop(int aRight, int aBottom) { iCropR = aRight; iCropB = aBottom; }
 	void Sps()
 		{
 		Start(3, 7);
@@ -54,7 +56,14 @@ public:
 		Ue(iMbH - 1);					// pic_height_in_map_units_minus1
 		Bits(1, 1);						// frame_mbs_only_flag
 		Bits(1, 1);						// direct_8x8_inference_flag
-		Bits(0, 1);						// frame_cropping_flag
+		Bits(iCropR || iCropB ? 1 : 0, 1);	// frame_cropping_flag
+		if (iCropR || iCropB)
+			{							// in chroma sample units (2 pixels)
+			Ue(0);
+			Ue(iCropR / 2);
+			Ue(0);
+			Ue(iCropB / 2);
+			}
 		Bits(0, 1);						// vui_parameters_present_flag
 		Trailing();
 		}
@@ -159,7 +168,7 @@ private:
 			Bits(0, 8 - (iBits & 7));	// alignment zeros (iBits counts the payload bits of this NAL, from the NAL header)
 		}
 	MBitSink& iSink;
-	int iMbW, iMbH, iQp, iBits;
+	int iMbW, iMbH, iQp, iBits, iCropR, iCropB;
 	};
 
 // CRC-32 (IEEE, reflected) over a byte range
