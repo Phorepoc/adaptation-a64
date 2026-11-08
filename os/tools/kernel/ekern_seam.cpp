@@ -1389,7 +1389,7 @@ static unsigned VfpVecReg(unsigned aReg, unsigned aIndex, unsigned aStride)
 // bit0 = the ATS access check once per page per trap (it was two ATS+ISB per instruction), word fetch of instructions;
 // bit1 = lane operations straight on the saved s[] words with VLDR/VSTR (no VMOV core<->VFP round trips, the opcode
 //        switch hoisted out of the lane loop). Both keep the semantics exactly.
-volatile unsigned PhVfpOpt = 0;
+volatile unsigned PhVfpOpt = 3;
 
 static inline bool VfpRangeOk(unsigned aAddr, unsigned aLen, bool aWrite, unsigned& aPage)
 	{
