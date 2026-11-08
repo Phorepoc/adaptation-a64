@@ -1343,6 +1343,9 @@ static bool EmulateAlign(volatile unsigned* e)
 // the interpretation at that instruction (lane-0 behaviour again, logged).
 TInt HandleVFPOperation(TAny* aPtr);
 static unsigned VfpVecTraps, VfpVecBails;
+// cost statistics (24 MHz generic timer): one bounded summary every 0x4000 traps, no per-trap output
+static inline unsigned VfpTicks() { unsigned lo, hi; __asm__ volatile("isb\n mrrc p15, 0, %0, %1, c14" : "=r"(lo), "=r"(hi)); return lo; }
+static unsigned VfpStTicks, VfpStInstr, VfpStLanes, VfpStTraps, VfpStStart;
 static inline unsigned VfpFpexc() { unsigned v; __asm__ volatile(".fpu vfp\n vmrs %0, fpexc" : "=r"(v)); return v; }
 static inline unsigned VfpGetFpscr() { unsigned v; __asm__ volatile(".fpu vfp\n vmrs %0, fpscr" : "=r"(v)); return v; }
 static inline void VfpSetFpscr(unsigned v) { __asm__ volatile(".fpu vfp\n vmsr fpscr, %0" : : "r"(v) : "memory"); }
@@ -1382,6 +1385,33 @@ static unsigned VfpVecReg(unsigned aReg, unsigned aIndex, unsigned aStride)
 	return (aReg & ~7u) | ((aReg + aIndex * aStride) & 7u);
 	}
 
+// Optimisation switches, kept as a global so a debugger / PhoneLab poke can A/B them on one image:
+// bit0 = the ATS access check once per page per trap (it was two ATS+ISB per instruction), word fetch of instructions;
+// bit1 = lane operations straight on the saved s[] words with VLDR/VSTR (no VMOV core<->VFP round trips, the opcode
+//        switch hoisted out of the lane loop). Both keep the semantics exactly.
+volatile unsigned PhVfpOpt = 0;
+
+static inline bool VfpRangeOk(unsigned aAddr, unsigned aLen, bool aWrite, unsigned& aPage)
+	{
+	const unsigned p0 = aAddr >> 12, p1 = (aAddr + aLen - 1) >> 12;
+	if ((PhVfpOpt & 1) && p0 == aPage && p1 == aPage)
+		return true;
+	const bool ok = UserRangeOk(aAddr, aLen, aWrite);
+	if (ok && p0 == p1 && !aWrite)
+		aPage = p0;
+	return ok;
+	}
+
+// one vector instruction, lane by lane, on the s[] words: d = d op n,m (s0 = d, s1 = n, s2 = m, loaded straight from memory)
+#define PH_LANES(ins) \
+	for (unsigned i = 0; i < n; ++i) \
+		{ \
+		const unsigned di = VfpVecReg(sd, i, stride), ni = VfpVecReg(sn, i, stride); \
+		const unsigned mi = mScalar ? sm : VfpVecReg(sm, i, stride); \
+		__asm__ volatile(".fpu vfp\n vldr s0, [%0]\n vldr s1, [%1]\n vldr s2, [%2]\n " ins "\n vstr s0, [%0]" \
+		                 : : "r"(&s[di]), "r"(&s[ni]), "r"(&s[mi]) : "memory"); \
+		}
+
 static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 	{
 	if (e[21] != 2 || (e[23] & (1u << 5)) || (e[23] & 0x1F) != 0x10)
@@ -1394,6 +1424,8 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 		HandleVFPOperation(aInfo);			// load this thread's VFP context; the UDF traps again with VFP on
 		return true;
 		}
+	const unsigned tStart = VfpTicks();
+	unsigned nInstr = 0, nLanes = 0;
 	NKern::Lock();
 	if (!(VfpFpexc() & (1u << 30)))
 		{
@@ -1402,14 +1434,16 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 		}
 	unsigned s[32];
 	VfpSave(s);
+	unsigned rdPg = ~0u;
 	unsigned vbits = 0;						// the guest's LEN|STRIDE (the hardware FPSCR never holds them)
 	bool done = false;
 	const char* why = 0;
 	for (int steps = 0; steps < 1024 && !done; ++steps)
 		{
-		if (!UserRangeOk(pc, 4, false))
+		if (!VfpRangeOk(pc, 4, false, rdPg))
 			{ why = "pc"; break; }
-		const unsigned op = LoadWord(pc);
+		const unsigned op = (PhVfpOpt & 1) && !(pc & 3) ? *(const volatile unsigned*)pc : LoadWord(pc);
+		++nInstr;
 		const bool udf = (op & 0xFFFFFFF0u) == 0xE7F560F0u;
 		if (!udf && (op >> 28) != 0xE)
 			{ why = "cond"; break; }
@@ -1466,7 +1500,7 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 				{ addr = base - imm * 4; count = imm; }
 			else
 				{ why = "vldm form"; break; }
-			if (!count || sd + count > 32 || !UserRangeOk(addr, count * 4, !load))
+			if (!count || sd + count > 32 || !(load ? VfpRangeOk(addr, count * 4, false, rdPg) : UserRangeOk(addr, count * 4, true)))
 				{ why = "vldm range"; break; }
 			for (unsigned i = 0; i < count; ++i)
 				{
@@ -1520,12 +1554,41 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 				const unsigned i8 = (((op >> 16) & 0xF) << 4) | (op & 0xF);
 				immv = ((i8 & 0x80u) << 24) | ((i8 & 0x40u) ? 0x3E000000u : 0x40000000u) | ((i8 & 0x3Fu) << 19);
 				}
-			for (unsigned i = 0; i < n; ++i)
+			nLanes += n;
+			if (imm)
 				{
-				const unsigned di = VfpVecReg(sd, i, stride), ni = VfpVecReg(sn, i, stride);
-				const unsigned mi = mScalar ? sm : VfpVecReg(sm, i, stride);
-				s[di] = imm ? immv : VfpScalar((unsigned)kind, s[di], s[ni], s[mi]);
+				for (unsigned i = 0; i < n; ++i)
+					s[VfpVecReg(sd, i, stride)] = immv;
 				}
+			else if (!(PhVfpOpt & 2))
+				{
+				for (unsigned i = 0; i < n; ++i)
+					{
+					const unsigned di = VfpVecReg(sd, i, stride), ni = VfpVecReg(sn, i, stride);
+					const unsigned mi = mScalar ? sm : VfpVecReg(sm, i, stride);
+					s[di] = VfpScalar((unsigned)kind, s[di], s[ni], s[mi]);
+					}
+				}
+			else
+				switch (kind)
+					{
+					case 0: PH_LANES("vmla.f32 s0, s1, s2") break;
+					case 1: PH_LANES("vmls.f32 s0, s1, s2") break;
+					case 2: PH_LANES("vnmls.f32 s0, s1, s2") break;
+					case 3: PH_LANES("vnmla.f32 s0, s1, s2") break;
+					case 4: PH_LANES("vmul.f32 s0, s1, s2") break;
+					case 5: PH_LANES("vnmul.f32 s0, s1, s2") break;
+					case 6: PH_LANES("vadd.f32 s0, s1, s2") break;
+					case 7: PH_LANES("vsub.f32 s0, s1, s2") break;
+					case 8: PH_LANES("vdiv.f32 s0, s1, s2") break;
+					case 9:
+						for (unsigned i = 0; i < n; ++i)
+							s[VfpVecReg(sd, i, stride)] = s[mScalar ? sm : VfpVecReg(sm, i, stride)];
+						break;
+					case 10: PH_LANES("vabs.f32 s0, s2") break;
+					case 11: PH_LANES("vneg.f32 s0, s2") break;
+					case 12: PH_LANES("vsqrt.f32 s0, s2") break;
+					}
 			pc += 4;
 			continue;
 			}
@@ -1576,7 +1639,7 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 			const unsigned base = rn == 15 ? (pc + 8) : GetReg(e, rn, pc);
 			const unsigned addr = (op & (1u << 23)) ? base + imm : base - imm;
 			const bool load = op & (1u << 20);
-			if (rd == 15 || !UserRangeOk(addr, 4, !load))
+			if (rd == 15 || !(load ? VfpRangeOk(addr, 4, false, rdPg) : UserRangeOk(addr, 4, true)))
 				{ why = "ldr"; break; }
 			if (load)
 				SetReg(e, rd, LoadWord(addr));
@@ -1593,7 +1656,17 @@ static bool EmulateVfpVector(volatile unsigned* e, void* aInfo)
 	VfpLoad(s);
 	e[22] = pc;
 	NKern::Unlock();
+	const unsigned tEnd = VfpTicks();
 	++VfpVecTraps;
+	VfpStTicks += tEnd - tStart; VfpStInstr += nInstr; VfpStLanes += nLanes;
+	if (++VfpStTraps == 0x4000)
+		{
+		ekseam_puts("[EKERN][vfpvec] stat 16384 traps: ticks="); ekseam_puthex(VfpStTicks);
+		ekseam_puts("[EKERN][vfpvec]   instr="); ekseam_puthex(VfpStInstr);
+		ekseam_puts("[EKERN][vfpvec]   lanes="); ekseam_puthex(VfpStLanes);
+		ekseam_puts("[EKERN][vfpvec]   wall="); ekseam_puthex(tEnd - VfpStStart);
+		VfpStTicks = VfpStInstr = VfpStLanes = VfpStTraps = 0; VfpStStart = tEnd;
+		}
 	if (why && (++VfpVecBails <= 8 || (VfpVecBails & 0xFFF) == 0))
 		{ ekseam_puts("[EKERN][vfpvec] stopped ("); ekseam_puts(why); ekseam_puts(") at pc="); ekseam_puthex(pc); }
 	if (VfpVecTraps <= 2 || (VfpVecTraps & 0xFFFF) == 0)
