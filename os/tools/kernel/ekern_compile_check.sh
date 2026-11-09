@@ -96,6 +96,9 @@ $MMTUS
 pass=0; fail=0; failed=""
 for tu in $TUS; do
   [ -f "$B/$tu" ] || { echo "MISSING $tu"; fail=$((fail+1)); failed="$failed $tu"; continue; }
+  SRC="$B/$tu"
+  # R2: DServer::Close cancels a pending accepted-message completion before detaching its sessions (marked-delta copy)
+  [ "$tu" = kernel/sipc.cpp ] && SRC="$REPO/tools/kernel/deltas/sipc.cpp"
   # ONLY='kernel/arm/ckernel' = recompile just the TUs whose path contains it (keep every other object as it is)
   [ -n "${ONLY:-}" ] && [ "${tu#*$ONLY}" = "$tu" ] && continue
   # cexec.cia declares the exec dispatch tables via asm(".word %a0" :: "i"(&f)); GCC
@@ -113,7 +116,7 @@ for tu in $TUS; do
     # VFP, and the thread dies (phone boot 428: phwebtest's first vldr in a WebCore static ctor)
     kernel/arm/ckernel.cpp|kernel/arm/ckernel.cia) XD=(-D__MARM_INTERWORK__) ;;
   esac
-  if SYMCC_PREINC="$PREINC" SYMCC_NKERN=$NK SYMCC_ARM=1 bash "$REPO/toolchain/symcc" -k "$B/$tu" "$OPT" \
+  if SYMCC_PREINC="$PREINC" SYMCC_NKERN=$NK SYMCC_ARM=1 bash "$REPO/toolchain/symcc" -k "$SRC" "$OPT" \
         -fno-function-sections -fno-data-sections "${EXTRA[@]}" "${SMPD[@]}" "${XD[@]}" \
         -o "$OUT/$(echo "$tu" | tr '/' '_').o" >/dev/null 2>"$OUT/err.log"; then
     pass=$((pass+1))
