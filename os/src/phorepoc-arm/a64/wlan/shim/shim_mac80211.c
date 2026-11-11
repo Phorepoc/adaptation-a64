@@ -309,7 +309,13 @@ void ieee80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb)
 	unsigned i, hdr_len, ielen;
 	const u8 *ies;
 	int chan = -1;
-	(void)hw;
+	/* rtw88 sets RX_INCLUDES_FCS: like mac80211 (ieee80211_rx_monitor), drop the 4 FCS bytes before anyone looks.
+	 * Left on, a 1500-byte IP packet became a 1518-byte Ethernet frame the stack dropped: every full-MSS TCP
+	 * segment was lost, retransmitted and lost again (the connect timeouts, round 14) */
+	if (ieee80211_hw_check(hw, RX_INCLUDES_FCS) && skb->len >= 4) {
+		skb->len -= 4;
+		skb->tail -= 4;
+	}
 	shim_rx_frames++;
 	if ((shim_rx_frames & 63) == 1)
 		shim_log("[wlan] rx frames=%u beacons=%u bss=%u\n", shim_rx_frames, shim_rx_beacons, shim_bss_count);
