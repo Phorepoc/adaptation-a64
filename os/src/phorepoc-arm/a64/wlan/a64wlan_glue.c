@@ -166,6 +166,7 @@ static unsigned a64_maccnt_n;
 static void a64_maccnt(const char *when);
 #endif
 static void a64_lps_watchdog(void);
+static unsigned a64_wd_fallbacks;	/* a64_lps_watchdog acting for a stalled rtw88 watchdog */
 static unsigned a64_status_n;
 void (*a64wlan_status_hook)(void);	/* DIAG: the PDD's counters (set by the PDD, a64wlan_api.h) */
 void a64wlan_irq_poll(void)
@@ -179,8 +180,10 @@ void a64wlan_irq_poll(void)
 #endif
 		a64_lps_watchdog();
 		if (++a64_status_n % 15 == 0 && a64_rtwdev) {	/* DIAG (round 15): every 30 s, the receive path's counters + LPS */
-			shim_log("[wlan] status: lps %d ps_enabled %d assoc %d\n", test_bit(RTW_FLAG_LEISURE_PS, a64_rtwdev->flags) ? 1 : 0,
-				 a64_rtwdev->ps_enabled ? 1 : 0, a64_vif && a64_vif->cfg.assoc ? 1 : 0);
+			shim_log("[wlan] status: lps %d ps_enabled %d assoc %d; rtw88 watchdog %u, fallback %u; rx tp %u tx tp %u\n",
+				 test_bit(RTW_FLAG_LEISURE_PS, a64_rtwdev->flags) ? 1 : 0, a64_rtwdev->ps_enabled ? 1 : 0,
+				 a64_vif && a64_vif->cfg.assoc ? 1 : 0, a64_rtwdev->watch_dog_cnt, a64_wd_fallbacks,
+				 (unsigned)a64_rtwdev->stats.rx_throughput, (unsigned)a64_rtwdev->stats.tx_throughput);
 			if (a64wlan_status_hook)
 				a64wlan_status_hook();
 		}
@@ -842,9 +845,14 @@ void a64wlan_set_wakeup(unsigned aMode, unsigned aListen)
 	}
 }
 
-/* rtw_watch_dog_work's power-save half (main.c), every 2 s from a64wlan_irq_poll: the traffic count of the last
- * period decides; the chip is woken first (Linux does it for the dynamic mechanisms -- it also gives the AP a PM=0
- * null and the chip an awake window every 2 s), then dozes again when idle. */
+/* rtw_watch_dog_work's power-save half (main.c) -- a FALLBACK only. rtw88's own watchdog runs here too: rtw_core_start
+ * arms it and the shim's delayed work fires it every 2 s; it counts the last 2 s of unicast data (rtw_tx_stats /
+ * rtw_rx_stats), resets the counts, leaves LPS and re-enters only below RTW_LPS_THRESHOLD. Running this copy as well
+ * (round 15) made two watchdogs on unrelated 2 s clocks reset the same counts: the later one judged a sliver of the
+ * period and could put the chip in LPS mid-transfer (a download stall seen on one AP was not this: it stays
+ * with the chip never dozing). So: act only while
+ * rtw88's watchdog is not advancing (watch_dog_cnt). */
+static unsigned a64_rtw_wd_seen;
 static void a64_lps_watchdog(void)
 {
 	struct rtw_dev *rtwdev = a64_rtwdev;
@@ -852,6 +860,11 @@ static void a64_lps_watchdog(void)
 	int ps_active;
 	if (!rtwdev || !a64_vif || !a64_chanctx || a64_scanning)
 		return;
+	if (rtwdev->watch_dog_cnt != a64_rtw_wd_seen) {	/* rtw88's watchdog ran since the last look: it owns LPS */
+		a64_rtw_wd_seen = rtwdev->watch_dog_cnt;
+		return;
+	}
+	a64_wd_fallbacks++;
 	mutex_lock(&rtwdev->mutex);
 	ps_active = rtwdev->stats.tx_cnt > RTW_LPS_THRESHOLD || rtwdev->stats.rx_cnt > RTW_LPS_THRESHOLD;
 	rtwdev->stats.tx_cnt = 0;
