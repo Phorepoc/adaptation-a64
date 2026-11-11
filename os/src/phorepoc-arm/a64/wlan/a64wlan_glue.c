@@ -503,6 +503,7 @@ static void a64_set_wmm_default(void)
  * 0xa4, 0x54) at every scan end, numbered, to diff the good scans with the bad. */
 static unsigned a64_scan_gen, a64_scan_rx0;
 unsigned a64wlan_rx_frames(void);
+extern unsigned a64_sdio_rx[6], a64_rx_types[5];	/* rtw88/sdio.c DIAG */
 
 /* iface.c ieee80211_do_open for a station + main.c ieee80211_hw_conf_init. Ends powered off (IPS), as Linux does:
  * the first scan or the Join powers the chip on again. Idempotent. */
@@ -598,6 +599,8 @@ void a64wlan_scan_notify(int start)
 		if (a64_powered())
 			a64_rtwdev->chip->ops->false_alarm_statistics(a64_rtwdev);
 		a64_scan_rx0 = a64wlan_rx_frames();
+		memset(a64_sdio_rx, 0, sizeof(a64_sdio_rx));
+		memset(a64_rx_types, 0, sizeof(a64_rx_types));
 	#ifdef PHE_RTW88_VENDOR_DIFF
 	a64_vendor_coex_hw();
 #endif
@@ -1025,6 +1028,13 @@ void a64wlan_tx_report(void)
 			shim_log("[rxregs %s] phy this scan: ok cck %u ofdm %u ht %u | FA cck %u ofdm %u | CCA ofdm %u | host rx %u | IGI 0x%02x\n",
 				 tag, dm->cck_ok_cnt, dm->ofdm_ok_cnt, dm->ht_ok_cnt, dm->cck_fa_cnt, dm->ofdm_fa_cnt,
 				 dm->ofdm_cca_cnt, a64wlan_rx_frames() - a64_scan_rx0, rtw_read8(a64_rtwdev, 0xc50) & 0x7f);
+			shim_log("[rxregs %s] sdio rx this scan: requests %u bytes %u subframes %u desc_fail %u read_err %u alloc_fail %u | "
+				 "RXDMA_STATUS(288)=%08x HISR=%08x RXPKT_NUM(284)=%08x RX0_REQ_LEN=%u\n", tag, a64_sdio_rx[0], a64_sdio_rx[1],
+				 a64_sdio_rx[2], a64_sdio_rx[3], a64_sdio_rx[4], a64_sdio_rx[5], rtw_read32(a64_rtwdev, 0x0288),
+				 rtw_read32(a64_rtwdev, REG_SDIO_HISR), rtw_read32(a64_rtwdev, 0x0284),
+				 rtw_read16(a64_rtwdev, REG_SDIO_RX0_REQ_LEN));
+			shim_log("[rxregs %s] host frame mix: beacon %u probe_resp %u mgmt %u data %u ctrl %u | RCR=%08x\n", tag, a64_rx_types[0], a64_rx_types[1], a64_rx_types[2], a64_rx_types[3], a64_rx_types[4],
+				 rtw_read32(a64_rtwdev, REG_RCR));
 		}
 		shim_log("[rxregs %s] lte 38=%08x a0=%08x a4=%08x 54=%08x\n", tag, rtw_coex_read_indirect_reg(a64_rtwdev, 0x38),
 			 rtw_coex_read_indirect_reg(a64_rtwdev, 0xa0), rtw_coex_read_indirect_reg(a64_rtwdev, 0xa4),

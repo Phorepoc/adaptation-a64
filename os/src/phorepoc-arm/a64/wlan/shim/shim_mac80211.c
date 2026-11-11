@@ -294,6 +294,7 @@ u32 cfg80211_calculate_bitrate(struct rate_info *rate)
 struct shim_bss { u8 bssid[6]; u8 chan; s8 rssi; u16 seen; u8 ssid_len; char ssid[33]; };
 static struct shim_bss shim_bss_table[32];
 static unsigned shim_bss_count, shim_rx_frames, shim_rx_beacons;
+unsigned a64_rx_types[5];	/* beacon, probe resp, other mgmt, data, control */
 unsigned a64wlan_rx_frames(void) { return shim_rx_frames; }
 unsigned shim_mac80211_bss_count(void) { return shim_bss_count; }
 /* the WHA PDD's receive path (a64wlan_api.h): every frame, before the beacon table looks at it */
@@ -317,6 +318,9 @@ void ieee80211_rx_irqsafe(struct ieee80211_hw *hw, struct sk_buff *skb)
 		skb->tail -= 4;
 	}
 	shim_rx_frames++;
+	if (skb->len >= 2)	/* DIAG: per-scan frame mix (a64wlan_glue.c resets and logs it) */
+		a64_rx_types[ieee80211_is_beacon(mgmt->frame_control) ? 0 : ieee80211_is_probe_resp(mgmt->frame_control) ? 1 :
+			     ieee80211_is_mgmt(mgmt->frame_control) ? 2 : ieee80211_is_data(mgmt->frame_control) ? 3 : 4]++;
 	if ((shim_rx_frames & 63) == 1)
 		shim_log("[wlan] rx frames=%u beacons=%u bss=%u\n", shim_rx_frames, shim_rx_beacons, shim_bss_count);
 	if (skb->len >= 10 && (rx->flag & RX_FLAG_FAILED_FCS_CRC)) {

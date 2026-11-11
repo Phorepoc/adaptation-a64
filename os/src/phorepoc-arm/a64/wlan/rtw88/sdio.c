@@ -974,6 +974,9 @@ static void rtw_sdio_rx_skb(struct rtw_dev *rtwdev, struct sk_buff *skb,
 	ieee80211_rx_irqsafe(rtwdev->hw, skb);
 }
 
+/* phorepoc DIAG: per-scan RX path counts (reset and logged by a64wlan_glue.c): requests, bytes, subframes,
+ * rx-desc failures (whole aggregate freed), port read errors, alloc failures */
+unsigned a64_sdio_rx[6];
 static void rtw_sdio_rxfifo_recv(struct rtw_dev *rtwdev, u32 rx_len)
 {
 	struct rtw_sdio *rtwsdio = (struct rtw_sdio *)rtwdev->priv;
@@ -989,12 +992,17 @@ static void rtw_sdio_rxfifo_recv(struct rtw_dev *rtwdev, u32 rx_len)
 
 	bufsz = sdio_align_size(rtwsdio->sdio_func, rx_len);
 
+	a64_sdio_rx[0]++;
+	a64_sdio_rx[1] += rx_len;
 	skb = dev_alloc_skb(bufsz);
-	if (!skb)
+	if (!skb) {
+		a64_sdio_rx[5]++;
 		return;
+	}
 
 	ret = rtw_sdio_read_port(rtwdev, skb->data, bufsz);
 	if (ret) {
+		a64_sdio_rx[4]++;
 		dev_kfree_skb_any(skb);
 		return;
 	}
@@ -1004,10 +1012,12 @@ static void rtw_sdio_rxfifo_recv(struct rtw_dev *rtwdev, u32 rx_len)
 		ret = rtw_rx_query_rx_desc(rtwdev, rx_desc,
 					   &pkt_stat, &rx_status);
 		if (ret) {
+			a64_sdio_rx[3]++;
 			dev_kfree_skb_any(skb);
 			return;
 		}
 
+		a64_sdio_rx[2]++;
 		pkt_offset = pkt_desc_sz + pkt_stat.drv_info_sz +
 			     pkt_stat.shift;
 
