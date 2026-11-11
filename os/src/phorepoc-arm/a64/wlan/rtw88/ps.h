@@ -7,6 +7,8 @@
 
 #define RTW_LPS_THRESHOLD	50
 
+void a64wlan_lps_wakeup(u8 *rlbm, u8 *awake_interval);	/* PHE: a64wlan_glue.c */
+
 #define POWER_MODE_ACK		BIT(6)
 #define POWER_MODE_PG		BIT(4)
 #define POWER_TX_WAKE		BIT(1)

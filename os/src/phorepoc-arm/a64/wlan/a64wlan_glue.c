@@ -777,6 +777,57 @@ int a64wlan_set_ps(int aOn)
 	return aOn ? (a64_rtwdev->ps_enabled ? 1 : 0) : 0;
 }
 
+/* WHA wlanWakeUpInterval (the UMAC's light/deep PS wake-up setting) -> the firmware's SET_PWR_MODE RLBM and awake
+ * interval. Linux rtw88 always sends RLBM 1 / awake 1 (wake for every beacon; mac80211 only puts the listen interval
+ * into the association request). RLBM 2 = a driver-defined awake interval in beacons (the vendor driver,
+ * rtl8703b_cmd.c, see wlan-security-design.md). Mapping (N = the UMAC's listen interval, the value its association
+ * request announced; 0 counts as 1):
+ *   all beacons            -> rtw88's RLBM 1 / awake 1
+ *   all DTIMs              -> RLBM 2, awake = DTIM period
+ *   every Nth beacon       -> RLBM 2, awake = N
+ *   every Nth DTIM         -> RLBM 2, awake = N * DTIM period
+ * The vendor's PS_MODE_DTIM uses DTIM + 1; with the DTIM period 1 of the test APs that is every second beacon, which
+ * misses half the DTIMs (the broadcast/ARP traffic the AP sends after them), so the DTIM period is used as is.
+ * The UMAC switches light/deep several times a second (boot 2434): the setting is only stored here and the 2 s
+ * watchdog (a64_lps_watchdog, which leaves and re-enters LPS) applies it -- no extra H2C traffic. */
+static unsigned a64_wake_mode, a64_wake_listen;
+static unsigned a64_wake_awake(unsigned *aRlbm)
+{
+	unsigned dtim = a64_vif && a64_vif->bss_conf.dtim_period ? a64_vif->bss_conf.dtim_period : 1;
+	unsigned n = a64_wake_listen ? a64_wake_listen : 1, awake;
+	switch (a64_wake_mode) {
+	case 1: awake = dtim; break;
+	case 2: awake = n; break;
+	case 3: awake = n * dtim; break;
+	default: *aRlbm = 1; return 1;
+	}
+	*aRlbm = 2;
+	return awake > 255 ? 255 : awake;
+}
+
+void a64wlan_lps_wakeup(u8 *rlbm, u8 *awake_interval)
+{
+	unsigned r, a = a64_wake_awake(&r);
+	*rlbm = (u8)r;
+	*awake_interval = (u8)a;
+}
+
+void a64wlan_set_wakeup(unsigned aMode, unsigned aListen)
+{
+	static unsigned logged;
+	unsigned r, a;
+	if (aMode == a64_wake_mode && aListen == a64_wake_listen)
+		return;
+	a64_wake_mode = aMode;
+	a64_wake_listen = aListen;
+	a = a64_wake_awake(&r);
+	if (logged < 8) {	/* the UMAC toggles light/deep all the time: the first few only */
+		logged++;
+		shim_log("[wlan] wake-up mode %u listen %u -> RLBM %u awake %u (DTIM %u)\n", aMode, aListen, r, a,
+				 a64_vif ? (unsigned)a64_vif->bss_conf.dtim_period : 0u);
+	}
+}
+
 /* rtw_watch_dog_work's power-save half (main.c), every 2 s from a64wlan_irq_poll: the traffic count of the last
  * period decides; the chip is woken first (Linux does it for the dynamic mechanisms -- it also gives the AP a PM=0
  * null and the chip an awake window every 2 s), then dozes again when idle. */

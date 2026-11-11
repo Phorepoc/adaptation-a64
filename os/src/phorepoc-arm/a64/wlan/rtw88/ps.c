@@ -234,6 +234,7 @@ static void rtw_enter_lps_core(struct rtw_dev *rtwdev)
 	conf->awake_interval = 1;
 	conf->rlbm = 1;
 	conf->smart_ps = 2;
+	a64wlan_lps_wakeup(&conf->rlbm, &conf->awake_interval);	/* PHE: the UMAC's wlanWakeUpInterval MIB */
 
 	rtw_coex_lps_notify(rtwdev, COEX_LPS_ENABLE);
 

@@ -879,6 +879,12 @@ TStatus TA64Wha::WriteMib(TMib aMib, TUint16 aLength, const void* aData, TBool a
 			shim_log("[wha] WriteMib dot11GroupAddressesTable enable=%d n=%u", (int)static_cast<const Sdot11GroupAddressesTable*>(aData)->iEnable,
 					 (unsigned)static_cast<const Sdot11GroupAddressesTable*>(aData)->iNumOfAddrs);
 			break;
+		case KMibWlanWakeUpInterval:
+			{
+			const SwlanWakeUpInterval* w = static_cast<const SwlanWakeUpInterval*>(aData);	// the glue logs the changes
+			a64wlan_set_wakeup((unsigned)w->iMode, (unsigned)w->iListenInterval);
+			break;
+			}
 		default:
 			shim_log("[wha] WriteMib %s (0x%04x), %u bytes", MibName(aMib), (unsigned)aMib, (unsigned)aLength);
 			break;
