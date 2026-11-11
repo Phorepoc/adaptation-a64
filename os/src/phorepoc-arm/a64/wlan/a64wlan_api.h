@@ -67,6 +67,8 @@ void a64wlan_clear_keys(void);		/* the whole CAM (also done at disassociation) *
 typedef void (*a64wlan_rx_sink_fn)(void *aCtx, const unsigned char *aFrame, unsigned aLen, int aSignalDbm,
 								   unsigned aRateIdx, unsigned aFreqMhz, unsigned aFlags);
 void a64wlan_set_rx_sink(a64wlan_rx_sink_fn aFn, void *aCtx);
+/* DIAG (round 15): called every 30 s from the chip core's poll (the PDD logs its receive counters) */
+extern void (*a64wlan_status_hook)(void);
 unsigned a64wlan_rx_frames(void);
 
 /* W3b: transmit. aFrame = the 802.11 frame (header + body, no FCS), aMgmt = 1 for a management frame; the frame is

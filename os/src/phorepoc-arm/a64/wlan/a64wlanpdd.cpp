@@ -74,6 +74,7 @@ public:
 					  TUint32 aBeaconInterval, TRate aBasicRateSet, TUint16 aAtimWindow, TPreamble aPreambleType, TBool aProbeForJoin);
 	virtual void Reset();
 	virtual void SetPsMode(TPsMode aPsMode);
+	void Status();							// DIAG: the 30 s counters (a64wlan_pdd_status)
 	virtual void SetBssParameters(TUint8 aDTIM, TUint16 aAID);
 	virtual void ReadMib(TMib aMib);
 	virtual TStatus WriteMib(TMib aMib, TUint16 aLength, const void* aData, TBool aMore);
@@ -699,6 +700,19 @@ void TA64Wha::AssocDfcFn(TAny* aPtr)
 	a64wlan_assoc(w->iAid, w->iDtim);
 	}
 
+extern "C" void a64wlan_pdd_status()
+	{
+	if (TheWha)
+		TheWha->Status();
+	A64SecReport();
+	}
+
+void TA64Wha::Status()
+	{
+	shim_log("[wha] status: rx delivered %u dropped %u no-buffer %u; tx %u acked %u failed %u",
+			 iRxDelivered, iRxDropped, iRxNoBuffer, iTxCount, iTxAcked, iTxFailed);
+	}
+
 extern "C" void a64wlan_pdd_rx(void* aCtx, const unsigned char* aFrame, unsigned aLen, int aDbm, unsigned aRateIdx, unsigned aFreq, unsigned aFlags)
 	{
 	static_cast<TA64Wha*>(aCtx)->OnRx(aFrame, aLen, aDbm, aRateIdx, aFreq, aFlags);
@@ -999,6 +1013,7 @@ public:
 			if (TheWha)
 				{
 				a64wlan_set_rx_sink(a64wlan_pdd_rx, TheWha);
+				a64wlan_status_hook = a64wlan_pdd_status;
 				a64wlan_set_tx_sink(a64wlan_pdd_tx_done, TheWha);
 				}
 			}

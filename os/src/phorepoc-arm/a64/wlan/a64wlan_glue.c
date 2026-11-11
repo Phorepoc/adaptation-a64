@@ -166,6 +166,8 @@ static unsigned a64_maccnt_n;
 static void a64_maccnt(const char *when);
 #endif
 static void a64_lps_watchdog(void);
+static unsigned a64_status_n;
+void (*a64wlan_status_hook)(void);	/* DIAG: the PDD's counters (set by the PDD, a64wlan_api.h) */
 void a64wlan_irq_poll(void)
 {
 	if (a64_powered() && test_bit(RTW_FLAG_RUNNING, a64_rtwdev->flags) && a64_func.irq_handler)
@@ -176,6 +178,12 @@ void a64wlan_irq_poll(void)
 		a64_cfo_track();
 #endif
 		a64_lps_watchdog();
+		if (++a64_status_n % 15 == 0 && a64_rtwdev) {	/* DIAG (round 15): every 30 s, the receive path's counters + LPS */
+			shim_log("[wlan] status: lps %d ps_enabled %d assoc %d\n", test_bit(RTW_FLAG_LEISURE_PS, a64_rtwdev->flags) ? 1 : 0,
+				 a64_rtwdev->ps_enabled ? 1 : 0, a64_vif && a64_vif->cfg.assoc ? 1 : 0);
+			if (a64wlan_status_hook)
+				a64wlan_status_hook();
+		}
 	}
 #ifdef PHE_MACCNT
 	if (a64_powered() && a64_chanctx && !a64_scanning && a64_maccnt_n < 30 && (long)(jiffies - a64_cfo_next) >= -1000 && (long)(jiffies - a64_cfo_next) < -980) {
@@ -791,10 +799,16 @@ int a64wlan_set_ps(int aOn)
  * The UMAC switches light/deep several times a second (boot 2434): the setting is only stored here and the 2 s
  * watchdog (a64_lps_watchdog, which leaves and re-enters LPS) applies it -- no extra H2C traffic. */
 static unsigned a64_wake_mode, a64_wake_listen;
+static const int a64_wake_vendor = 0;	/* 1 = the vendor RLBM 2 mapping (deaf when idle, round 15) */
 static unsigned a64_wake_awake(unsigned *aRlbm)
 {
 	unsigned dtim = a64_vif && a64_vif->bss_conf.dtim_period ? a64_vif->bss_conf.dtim_period : 1;
 	unsigned n = a64_wake_listen ? a64_wake_listen : 1, awake;
+	/* round 15: rtw88 as Linux runs it -- RLBM 1 / awake 1 whatever the UMAC asks (ps.c rtw_enter_lps; mac80211 never
+	 * passes a wake-up interval down). With RLBM 2 (the UMAC's light/deep switches, the vendor mapping below) the
+	 * phone went deaf after some minutes idle: ARP from the LAN unanswered, DNS replies never delivered (boots
+	 * 2458 / 2460) -- the mapping is kept for the record, not used. */
+	if (!a64_wake_vendor) { *aRlbm = 1; (void)dtim; (void)n; return 1; }
 	switch (a64_wake_mode) {
 	case 1: awake = dtim; break;
 	case 2: awake = n; break;
