@@ -501,7 +501,8 @@ static void a64_set_wmm_default(void)
  * identical (boots 2084/2085; the chip is NOT power-cycled between them: no IPS once powered, the core stays up across
  * the WLAN engine's Release / Create). The MAC / BB / RF registers + the antenna arbiter (LTE indirect 0x38 GNT, 0xa0,
  * 0xa4, 0x54) at every scan end, numbered, to diff the good scans with the bad. */
-static unsigned a64_scan_gen;
+static unsigned a64_scan_gen, a64_scan_rx0;
+unsigned a64wlan_rx_frames(void);
 
 /* iface.c ieee80211_do_open for a station + main.c ieee80211_hw_conf_init. Ends powered off (IPS), as Linux does:
  * the first scan or the Join powers the chip on again. Idempotent. */
@@ -593,6 +594,10 @@ void a64wlan_scan_notify(int start)
 		 * cap 0x00 -- and none in any later scan, cap 0x00 again included: the crystal is not the variable; the
 		 * break follows the first Join) */
 		rtw_ops.sw_scan_start(hw, a64_vif, a64_vif->addr);
+		/* per-scan PHY vs host counts: read-and-reset the BB counters now, again at the scan end */
+		if (a64_powered())
+			a64_rtwdev->chip->ops->false_alarm_statistics(a64_rtwdev);
+		a64_scan_rx0 = a64wlan_rx_frames();
 	#ifdef PHE_RTW88_VENDOR_DIFF
 	a64_vendor_coex_hw();
 #endif
@@ -1014,6 +1019,13 @@ void a64wlan_tx_report(void)
 		char tag[16];
 		snprintf(tag, sizeof(tag), "scan%u", ++a64_scan_gen);
 		rxregs_dump(tag);
+		{
+			struct rtw_dm_info *dm = &a64_rtwdev->dm_info;
+			a64_rtwdev->chip->ops->false_alarm_statistics(a64_rtwdev);
+			shim_log("[rxregs %s] phy this scan: ok cck %u ofdm %u ht %u | FA cck %u ofdm %u | CCA ofdm %u | host rx %u | IGI 0x%02x\n",
+				 tag, dm->cck_ok_cnt, dm->ofdm_ok_cnt, dm->ht_ok_cnt, dm->cck_fa_cnt, dm->ofdm_fa_cnt,
+				 dm->ofdm_cca_cnt, a64wlan_rx_frames() - a64_scan_rx0, rtw_read8(a64_rtwdev, 0xc50) & 0x7f);
+		}
 		shim_log("[rxregs %s] lte 38=%08x a0=%08x a4=%08x 54=%08x\n", tag, rtw_coex_read_indirect_reg(a64_rtwdev, 0x38),
 			 rtw_coex_read_indirect_reg(a64_rtwdev, 0xa0), rtw_coex_read_indirect_reg(a64_rtwdev, 0xa4),
 			 rtw_coex_read_indirect_reg(a64_rtwdev, 0x54));
