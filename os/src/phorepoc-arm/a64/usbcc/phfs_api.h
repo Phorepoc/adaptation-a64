@@ -28,6 +28,11 @@
 //   EPhRecRead  12: from seq u32                    -> state u32 (0 idle, 1 recording, 2 stopped, < 0 = the error it
 //                                                    stopped with), seq u32 of the first byte, then the bytes (no wait)
 //   EPhRecStop  13:                                 -> text "state=.. frames=.. dups=.. drops=.. bytes=.. cap_us=.. ..."
+// Typing characters (2026-11-11, PhoneLab "type_chars"): phfs.exe sends each character to the focused window group as a
+// key event that carries the character code and no scan code (RWsSession::SimulateKeyEvent), so it arrives as typed
+// whatever the FEP's keypad mode: raw scan codes go through AknFep's ITU-T multitap while the phone reports no keyboard
+// (KAknKeyBoardLayout 0), which ate '1', '!' and '#'. A line feed is Enter.
+//   EPhKeyText  14: UTF-8 text                      -> count u32 (the characters sent)
 // The byte stream: records {magic "PREC", frame u32, time us u64, flags u32 (bit 0 = IDR), mean luma u16, white
 // permille u16, length u32} + an Annex B access unit; a reader that falls behind the ring jumps to the oldest whole record.
 #ifndef PHFS_API_H
@@ -42,7 +47,7 @@ _LIT(KPhFsLddName, "PhFs.A64");
 
 enum TPhFsOp { EPhFsList = 1, EPhFsRead = 2, EPhFsWrite = 3, EPhFsDelete = 4,
 	EPhTtyList = 5, EPhTtyNew = 6, EPhTtyRead = 7, EPhTtyWrite = 8, EPhTtyResize = 9, EPhTtyKill = 10,
-	EPhRecStart = 11, EPhRecRead = 12, EPhRecStop = 13 };
+	EPhRecStart = 11, EPhRecRead = 12, EPhRecStop = 13, EPhKeyText = 14 };
 // the screen recorder's capture (RPhFsCapture): KPhCapW x KPhCapH XRGB8888, rows packed (stride KPhCapW * 4)
 const TInt KPhCapW = 360, KPhCapH = 720;
 _LIT8(KPhFsCaptureInfo, "capture");

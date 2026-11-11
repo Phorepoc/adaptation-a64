@@ -11,6 +11,8 @@
 #include <e32base.h>
 #include <e32debug.h>
 #include <f32file.h>
+#include <w32std.h>
+#include <e32keys.h>
 #include "phfs_api.h"
 #include "phetty.h"
 #include "pherec.h"		// the screen recorder server (src/pherec)
@@ -94,6 +96,7 @@ private:
 	TInt Delete(const TUint8* aP, TInt aLen);
 	TInt Tty(TInt aOp, const TUint8* aP, TInt aLen);
 	TInt Rec(TInt aOp, const TUint8* aP, TInt aLen);
+	TInt KeyText(const TUint8* aP, TInt aLen);
 	void Finish(TInt aStatus);
 private:
 	RFs iFs;
@@ -172,6 +175,7 @@ void CPhFs::Handle(const TUint8* aReq, TInt aLen)
 		r = Tty(op, aReq + 4, aLen - 4); break;
 	case EPhRecStart: case EPhRecRead: case EPhRecStop:
 		r = Rec(op, aReq + 4, aLen - 4); break;
+	case EPhKeyText:	r = KeyText(aReq + 4, aLen - 4); break;
 	default:		r = KErrNotSupported; break;
 		}
 	Finish(r);
@@ -443,6 +447,34 @@ TInt CPhFs::Rec(TInt aOp, const TUint8* aP, TInt aLen)
 	if (r == KErrNone)
 		iRep.SetLength(iRep.Length() + tail.Length());
 	return r;
+	}
+
+// EPhKeyText: each character as a key event with its code and no scan code, to the focused window group (the FEP
+// passes a key that is not one of its keypad keys to the editor as it is)
+TInt CPhFs::KeyText(const TUint8* aP, TInt aLen)
+	{
+	RWsSession ws;
+	TInt r = ws.Connect();
+	if (r != KErrNone)
+		return r;
+	TBuf16<512> text;
+	FromUtf8(text, aP, aLen);
+	TInt n = 0;
+	for (; n < text.Length(); ++n)
+		{
+		TKeyEvent k;
+		const TBool enter = text[n] == 0x0a;
+		k.iCode = enter ? (TUint)EKeyEnter : (TUint)text[n];
+		k.iScanCode = enter ? EStdKeyEnter : 0;
+		k.iModifiers = 0;
+		k.iRepeats = 0;
+		ws.SimulateKeyEvent(k);
+		ws.Flush();
+		User::After(40000);									// the editor's pace (an echo per character)
+		}
+	ws.Close();
+	AppendLe32(iRep, (TUint32)n);
+	return KErrNone;
 	}
 
 TInt E32Main()
