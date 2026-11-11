@@ -165,6 +165,7 @@ static int a64_powered(void) { return a64_rtwdev && test_bit(RTW_FLAG_POWERON, a
 static unsigned a64_maccnt_n;
 static void a64_maccnt(const char *when);
 #endif
+static void a64_lps_watchdog(void);
 void a64wlan_irq_poll(void)
 {
 	if (a64_powered() && test_bit(RTW_FLAG_RUNNING, a64_rtwdev->flags) && a64_func.irq_handler)
@@ -174,6 +175,7 @@ void a64wlan_irq_poll(void)
 #ifdef PHE_RTW88_VENDOR_DIFF
 		a64_cfo_track();
 #endif
+		a64_lps_watchdog();
 	}
 #ifdef PHE_MACCNT
 	if (a64_powered() && a64_chanctx && !a64_scanning && a64_maccnt_n < 30 && (long)(jiffies - a64_cfo_next) >= -1000 && (long)(jiffies - a64_cfo_next) < -980) {
@@ -750,12 +752,18 @@ static void a64_leave(void)
  * firmware (H2C SET_PWR_MODE): the firmware sends the PM=1 null frame from the reserved page, dozes, wakes for every
  * beacon and fetches what the AP buffered for our AID (PS-Poll); leaving sends the PM=0 null and waits for the
  * hardware to stop setting PM on our data frames. Only while associated (an AID, the reserved pages downloaded);
- * otherwise the chip stays awake and the mode reported back is 0. rtw88's 2 s watchdog enters LPS by itself only
- * when traffic is low -- here the UMAC decided, so LPS is entered at once. Returns the mode now in effect. */
+ * otherwise the chip stays awake and the mode reported back is 0.
+ * As on Linux (mac80211 with SUPPORTS_DYNAMIC_PS), the UMAC's mode only ALLOWS power save (cfg.ps -> ps_enabled);
+ * whether the chip dozes is rtw88's 2 s watchdog policy (rtw_watch_dog_work, emulated in a64_lps_watchdog): leave
+ * LPS every 2 s, enter it again only when the last 2 s carried at most RTW_LPS_THRESHOLD frames each way. Entering
+ * LPS at once on every UMAC SetPsMode(1) (it toggles several times a second) left the phone deaf to the LAN after
+ * some minutes idle: the host's ping got "Destination host unreachable" (no ARP answer), DNS replies were lost, while
+ * a 40-minute run with LPS never entered had no loss at all (boots 2426 / 2430). Returns the mode granted (the PDD
+ * compares it with the one asked). */
 int a64wlan_set_ps(int aOn)
 {
 	struct ieee80211_hw *hw;
-	struct rtw_vif *rv;
+	struct rtw_vif *rv = (struct rtw_vif *)0;
 	if (!a64_vif || !a64_rtwdev)
 		return 0;
 	hw = a64_rtwdev->hw;
@@ -765,14 +773,31 @@ int a64wlan_set_ps(int aOn)
 		a64_vif->cfg.ps = aOn != 0;
 		rtw_ops.bss_info_changed(hw, a64_vif, &a64_vif->bss_conf, BSS_CHANGED_PS);	/* rtw_recalc_lps; off = leave LPS */
 	}
-	if (aOn) {
+	(void)rv;
+	return aOn ? (a64_rtwdev->ps_enabled ? 1 : 0) : 0;
+}
+
+/* rtw_watch_dog_work's power-save half (main.c), every 2 s from a64wlan_irq_poll: the traffic count of the last
+ * period decides; the chip is woken first (Linux does it for the dynamic mechanisms -- it also gives the AP a PM=0
+ * null and the chip an awake window every 2 s), then dozes again when idle. */
+static void a64_lps_watchdog(void)
+{
+	struct rtw_dev *rtwdev = a64_rtwdev;
+	struct rtw_vif *rv;
+	int ps_active;
+	if (!rtwdev || !a64_vif || !a64_chanctx || a64_scanning)
+		return;
+	mutex_lock(&rtwdev->mutex);
+	ps_active = rtwdev->stats.tx_cnt > RTW_LPS_THRESHOLD || rtwdev->stats.rx_cnt > RTW_LPS_THRESHOLD;
+	rtwdev->stats.tx_cnt = 0;
+	rtwdev->stats.rx_cnt = 0;
+	if (!test_bit(RTW_FLAG_SCANNING, rtwdev->flags)) {
+		rtw_leave_lps(rtwdev);
 		rv = (struct rtw_vif *)a64_vif->drv_priv;
-		mutex_lock(&a64_rtwdev->mutex);
-		if (a64_rtwdev->ps_enabled && !test_bit(RTW_FLAG_SCANNING, a64_rtwdev->flags))
-			rtw_enter_lps(a64_rtwdev, rv->port);
-		mutex_unlock(&a64_rtwdev->mutex);
+		if (rtwdev->ps_enabled && a64_vif->cfg.ps && a64_vif->cfg.assoc && !ps_active)
+			rtw_enter_lps(rtwdev, rv->port);
 	}
-	return test_bit(RTW_FLAG_LEISURE_PS, a64_rtwdev->flags) ? 1 : 0;
+	mutex_unlock(&rtwdev->mutex);
 }
 
 static void a64_clear_keys_hw(void);
