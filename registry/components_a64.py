@@ -50,6 +50,8 @@ COMPONENTS = {
                         arm_archives=[".codecpack/openh264-arm/lib/libopenh264enc.a"]),
     # through the "PhFs.A64" LDD); started by the SSM's non-critical list (r_cmd_phfs)
     "phfs": dict(mmp=os.path.join(OS_ROOT, "src/phfs/phfs.mmp")),
+    # phekeys.exe: PhoneLab type_chars (phfs op 14) through the window server; UI image only (the golden has no ws32)
+    "phekeys": dict(mmp=os.path.join(OS_ROOT, "src/phekeys/phekeys.mmp")),
     # pherec.exe (2026-11-06): the screen recorder server phfs starts for PhoneLab's "record"; the H.264 encoder is
     # pherecenc.dll below (not in the image). NEON flags for its colour conversion (src/pheencbench/csc.cpp), as pheencbench
     "pherec": dict(mmp=os.path.join(OS_ROOT, "src/pherec/pherec.mmp"),

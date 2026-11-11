@@ -11,7 +11,6 @@
 #include <e32base.h>
 #include <e32debug.h>
 #include <f32file.h>
-#include <w32std.h>
 #include <e32keys.h>
 #include "phfs_api.h"
 #include "phetty.h"
@@ -449,35 +448,36 @@ TInt CPhFs::Rec(TInt aOp, const TUint8* aP, TInt aLen)
 	return r;
 	}
 
-// EPhKeyText: each character as a key event with its code and no scan code, to the focused window group (the FEP
-// passes a key that is not one of its keypad keys to the editor as it is)
+// EPhKeyText: typed by phekeys.exe (UI image only: phfs is also in the text-shell golden ROM, which has no window server,
+// so phfs never links ws32). Its command line = 8 hex digits of modifiers + the text; its exit reason = characters typed.
+// Without phekeys (the golden ROM) = KErrNotSupported.
 TInt CPhFs::KeyText(const TUint8* aP, TInt aLen)
 	{
-	RWsSession ws;
-	TInt r = ws.Connect();
-	if (r != KErrNone)
-		return r;
 	if (aLen < 4)
-		{ ws.Close(); return KErrArgument; }
-	const TUint mods = Le32(aP);							// the key events' modifiers (PhoneLab: EModifierSpecial)
+		return KErrArgument;
+	HBufC* cmd = HBufC::New(8 + aLen);
+	if (!cmd)
+		return KErrNoMemory;
+	TPtr c = cmd->Des();
+	c.AppendNumFixedWidth(Le32(aP), EHex, 8);
 	TBuf16<512> text;
 	FromUtf8(text, aP + 4, aLen - 4);
-	TInt n = 0;
-	for (; n < text.Length(); ++n)
-		{
-		TKeyEvent k;
-		const TBool enter = text[n] == 0x0a;
-		k.iCode = enter ? (TUint)EKeyEnter : (TUint)text[n];
-		k.iScanCode = enter ? EStdKeyEnter : 0;
-		const TUint c = text[n];
-		const TBool keypad = (c >= '0' && c <= '9') || c == '*' || c == '#';
-		k.iModifiers = enter ? 0 : (mods & 0x7fffffff);
-		k.iRepeats = (keypad && (mods & 0x80000000)) ? 1 : 0;	// bit 31: a keypad character as a repeat (a long press: the FEP's digit)
-		ws.SimulateKeyEvent(k);
-		ws.Flush();
-		User::After(40000);									// the editor's pace (an echo per character)
-		}
-	ws.Close();
+	c.Append(text);
+	RProcess p;
+	TInt r = p.Create(_L("phekeys.exe"), c);
+	delete cmd;
+	if (r == KErrNotFound || r == KErrPathNotFound)
+		return KErrNotSupported;
+	if (r != KErrNone)
+		return r;
+	TRequestStatus st;
+	p.Logon(st);
+	p.Resume();
+	User::WaitForRequest(st);
+	const TInt n = p.ExitType() == EExitKill ? st.Int() : KErrDied;
+	p.Close();
+	if (n < 0)
+		return n;
 	AppendLe32(iRep, (TUint32)n);
 	return KErrNone;
 	}

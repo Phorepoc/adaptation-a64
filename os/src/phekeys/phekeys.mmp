@@ -1,0 +1,16 @@
+// Copyright The Phorepoc Authors
+// SPDX-License-Identifier: Apache-2.0
+
+// phekeys.mmp -- OURS (PhoneLab "type_chars", op 14): types text through the window server. phfs.exe starts it; it lives
+// in the UI image only, so phfs (also in the text-shell golden ROM, which has no window server) never links ws32.
+TARGET			phekeys.exe
+TARGETTYPE		exe
+UID				0x1000007a 0xE7015815
+CAPABILITY		SwEvent
+VENDORID		0
+
+OS_LAYER_SYSTEMINCLUDE
+SOURCEPATH		.
+SOURCE			phekeys.cpp
+LIBRARY			euser.lib ws32.lib
+SMPSAFE
