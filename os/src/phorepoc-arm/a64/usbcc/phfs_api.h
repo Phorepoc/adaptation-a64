@@ -32,7 +32,7 @@
 // key event that carries the character code and no scan code (RWsSession::SimulateKeyEvent), so it arrives as typed
 // whatever the FEP's keypad mode: raw scan codes go through AknFep's ITU-T multitap while the phone reports no keyboard
 // (KAknKeyBoardLayout 0), which ate '1', '!' and '#'. A line feed is Enter.
-//   EPhKeyText  14: UTF-8 text                      -> count u32 (the characters sent)
+//   EPhKeyText  14: modifiers u32, UTF-8 text       -> count u32 (the characters sent)
 // The byte stream: records {magic "PREC", frame u32, time us u64, flags u32 (bit 0 = IDR), mean luma u16, white
 // permille u16, length u32} + an Annex B access unit; a reader that falls behind the ring jumps to the oldest whole record.
 #ifndef PHFS_API_H

@@ -457,8 +457,11 @@ TInt CPhFs::KeyText(const TUint8* aP, TInt aLen)
 	TInt r = ws.Connect();
 	if (r != KErrNone)
 		return r;
+	if (aLen < 4)
+		{ ws.Close(); return KErrArgument; }
+	const TUint mods = Le32(aP);							// the key events' modifiers (PhoneLab: EModifierSpecial)
 	TBuf16<512> text;
-	FromUtf8(text, aP, aLen);
+	FromUtf8(text, aP + 4, aLen - 4);
 	TInt n = 0;
 	for (; n < text.Length(); ++n)
 		{
@@ -466,8 +469,10 @@ TInt CPhFs::KeyText(const TUint8* aP, TInt aLen)
 		const TBool enter = text[n] == 0x0a;
 		k.iCode = enter ? (TUint)EKeyEnter : (TUint)text[n];
 		k.iScanCode = enter ? EStdKeyEnter : 0;
-		k.iModifiers = 0;
-		k.iRepeats = 0;
+		const TUint c = text[n];
+		const TBool keypad = (c >= '0' && c <= '9') || c == '*' || c == '#';
+		k.iModifiers = enter ? 0 : (mods & 0x7fffffff);
+		k.iRepeats = (keypad && (mods & 0x80000000)) ? 1 : 0;	// bit 31: a keypad character as a repeat (a long press: the FEP's digit)
 		ws.SimulateKeyEvent(k);
 		ws.Flush();
 		User::After(40000);									// the editor's pace (an echo per character)
