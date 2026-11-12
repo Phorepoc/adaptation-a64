@@ -39,7 +39,15 @@ DELTAS = {
         '\t// GT: no TEEHBR restore (no ThumbEE in ARMv8 AArch32)\n')]),
     "nkernsmp/arm/ncutils.cia": ("ncutils.cia", [(
         '\tasm("mrc\tp14, 6, r3, c1, c0, 0 ");\n',
-        '\tasm("mov\tr3, #0 ");\t\t\t\t// GT: Arm::SaveState TEEHBR = 0 (no ThumbEE in ARMv8 AArch32)\n')]),
+        '\tasm("mov\tr3, #0 ");\t\t\t\t// GT: Arm::SaveState TEEHBR = 0 (no ThumbEE in ARMv8 AArch32)\n'), (
+        # NKern::NotifyCrash: when an exception already saved the register set ("state_already_saved"), iN.iR0/iR1
+        # are the faulting context's r0/r1, not a0/a1 -- NKCrashHandler(1, ...) then handed K::DoFault a garbage
+        # category and it aborted dereferencing it (boot 2507: a nested data abort inside the fault report). Both
+        # paths store a0/a1 in iCrashArgs[0..1] (the first crash's, if several), so pass those.
+        '\tasm("ldr\tr1, [r4, #%a0] " : : "i" _FOFF(SFullArmRegSet,iN.iR0));\t// original R0 = a0 parameter\n'
+        '\tasm("ldr\tr2, [r4, #%a0] " : : "i" _FOFF(SFullArmRegSet,iN.iR1));\t// original R1 = a1 parameter\n',
+        '\tasm("ldr\tr1, [r4, #%a0] " : : "i" _FOFF(SFullArmRegSet,iCrashArgs[0]));\t// a0 (iCrashArgs, set on both paths)\n'
+        '\tasm("ldr\tr2, [r4, #%a0] " : : "i" _FOFF(SFullArmRegSet,iCrashArgs[1]));\t// a1\n')]),
 }
 
 for src, (dst, reps) in DELTAS.items():
