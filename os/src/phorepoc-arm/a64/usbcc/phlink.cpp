@@ -149,6 +149,8 @@ private:
 	TInt iFsOp, iFsLen, iFsFill;		// 'F': the request being received (FsBuf)
 	TBool iFsOver;						// ... and it was too big: drained, answered KErrTooBig
 	TDfc iFsDfc;						// a reply is staged in BlobBuf: start sending it
+	TInt iFsReplyLen = 0;				// its length, set by the helper's thread; the blob state is set by iFsDfc only
+	TBool iFsPending = EFalse;			// a request met a blob still in flight: dispatched when that blob is done
 	TUint iDeltaTotal, iDeltaDone;		// 'G': the bytes the whole delta will send (one progress bar for all runs)
 	DUsbClientController* iCtrl;
 	DThread* iThread;
@@ -419,6 +421,11 @@ void DPhLink::TxDfc(TAny* aPtr)
 			{
 			self->iBlobStage = self->iBlobNextStage;
 			self->iBlobOff = self->iBlobNextOff;
+			if (!self->iBlobStage && self->iFsPending)
+				{
+				self->iFsPending = EFalse;
+				self->FsDispatch();
+				}
 			}
 		else
 			{
@@ -1147,7 +1154,7 @@ void DPhLink::FsDispatch()
 	if (iFsOver)
 		{ FsFail(KErrTooBig); return; }
 	if (iBlobStage)
-		{ FsFail(KErrInUse); return; }
+		{ iFsPending = ETrue; return; }	// the previous reply's end frame may still be in flight (TxDfc not run yet)
 	const TInt r = PhFsSubmit(iFsOp, FsBuf, iFsLen);
 	if (r != KErrNone)
 		FsFail(r);							// KErrNotReady = phfs.exe is not running
@@ -1176,18 +1183,23 @@ TBool DPhLink::FsReplyBuf(TUint8*& aBuf, TInt& aMax)
 	return ETrue;
 	}
 
+// Called on the helper's (client) thread. The blob fields are set in FsDfcFn, on the DFC queue that builds frames: setting
+// them here raced Kick on another core, which could see iBlobStage = 1 with the previous reply's iBlobOff (== iBlobLen) and
+// send an empty data frame, then the end frame ("file reply: got 0 of 8 bytes" on the PC, 2026-11-12).
 void DPhLink::FsReplyDone(TInt aLen)
 	{
-	iBlobLen = aLen;
-	iBlobKind = 4;
-	iBlobOff = 0;
-	iBlobStage = aLen ? 1 : 2;
+	iFsReplyLen = aLen;
 	iFsDfc.Enque();
 	}
 
 void DPhLink::FsDfcFn(TAny* aPtr)
 	{
-	static_cast<DPhLink*>(aPtr)->Kick();
+	DPhLink* self = static_cast<DPhLink*>(aPtr);
+	self->iBlobLen = self->iFsReplyLen;
+	self->iBlobKind = 4;
+	self->iBlobOff = 0;
+	self->iBlobStage = self->iBlobLen ? 1 : 2;
+	self->Kick();
 	}
 
 static DPhLink* TheLink;
