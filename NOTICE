@@ -11,3 +11,8 @@ their own copyright and licence, as their headers say.
 Patents: H.264 is patent-grey in many jurisdictions. The screen recorder's H.264 encoder (pherecenc.dll, our own code
 driving the video engine's hardware encoder) is therefore never part of an image: it is the separate package screenrec-a64
 (package.conf) that users install themselves through Catalogue, and they are responsible for any licences their use needs.
+
+Cellular data: images built with the modem stack (modem-eg25) include FreeBSD if_cdce.c, BSD-4-Clause, whose licence
+requires this acknowledgement:
+
+    This product includes software developed by Bill Paul.
