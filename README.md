@@ -37,9 +37,9 @@ a board repository that names it and mesa-symbian, and build the image as the pd
 The wiring of a board is the board's. The panel, its backlight and the PMIC rails are functions the board implements
 (`a64_board.h`, in the board's `board/kernel/`). Pin numbers, the touch controller's bus and address, the USB product
 string and the sensor location are macros in the board's `board/kernel/a64_board_config.h`; the code here stops the
-build with an `#error` if one is missing. `a64_glue.cpp` takes the LED and vibrator pins, `a64uart.cpp` the modem's
-control pins, `a64touch.cpp` the touch wiring, `a64_usbcc.cpp` the product string and `ssya64` the sensor location. The
-Bluetooth UART's pins in `a64uart.cpp` are still fixed numbers here.
+build with an `#error` if one is missing. `a64_glue.cpp` takes the LED and vibrator pins, `a64touch.cpp` the touch wiring, `a64_usbcc.cpp` the product string and `ssya64` the sensor location. The
+Bluetooth UART's pins in `a64uart.cpp` are still fixed numbers here. The EG25-G modem's power code and pins come from
+Apache NuttX through the `modem-eg25` repository (`MODEM=1` builds; `MODEM_EG25` = its checkout, default `../modem-eg25`).
 
 ## Code from Linux
 
