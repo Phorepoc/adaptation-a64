@@ -17,17 +17,15 @@
 // The Bluetooth power pins ride on the port (OURS convention): KSignalDTR = the chip's enable PL4 (R_PIO) with the
 // device-wake PH6 asserted (low) together with it; the IO rail (AXP803 DLDO4, 1.8 V) is switched on at create. The
 // timing of the power sequence (enable low 100 ms, high 500 ms) is the client's: SetSignals runs in ISR paths too.
-// Modem rung M1 (2026-10-17, -DPHE_MODEM = the MODEM=1 kernel build only): unit 3 =
-// UART3 at 0x01C28C00 (GIC SPI 3, CCU bit 19, PD0 TX / PD1 RX function 3, no hardware flow control -- the DTS says
-// RTS/CTS are not usable) = the Quectel EG25-G's main UART. Opening unit 3 powers the modem (A64ModemPowerUp, a
-// bounded sequence on its own DFC thread, PWRKEY always released); the modem's STATUS (low = on) reads as
-// KSignalDSR. Closing the port cuts VBAT only once STATUS says the modem is off (the client sends AT+QPOWD first).
+// Modem (-DPHE_MODEM = the MODEM=1 kernel build only): unit 3 = UART3 at 0x01C28C00 (GIC SPI 3, CCU bit 19, no
+// hardware flow control) to the Quectel EG25-G. Opening unit 3 powers the modem with NuttX's pinephone_modem_init on its
+// own DFC thread; STATUS (low = on) reads as KSignalDSR; closing runs the Zephyr power-off sequence (block below).
 #include <kernel/kern_priv.h>
 #include <drivers/comm.h>
 #include <assp.h>
 #include "syborg.h"
 #ifdef PHE_MODEM
-#include "a64_board_config.h"	// the board's modem pins
+#include "phe_modem_power.h"	// modem-eg25/port: NuttX power-on + Zephyr power-off (C, NuttX environment)
 #endif
 
 extern "C" void ekseam_puts(const char*);
@@ -499,108 +497,44 @@ void DA64Uart::Isr(TAny* aPtr)
 	}
 
 #ifdef PHE_MODEM
-// ---- Modem rung M1: the EG25-G power pins + UART3 -----------------------------------------------------------------
-// The control pins are the board's (a64_board_config.h A64_MODEM_*): DTR, PWRKEY, RESET, AP_READY, W_DISABLE# and
-// STATUS in the PIO, the VBAT regulator enable in R_PIO; all through transistors, so the levels below are the GPIO
-// levels. Sequence = the modem manager's gpio_sequence_poweron: RESET + PWRKEY high, 200 ms, RESET low, 1 s, PWRKEY
-// low. Every path releases PWRKEY.
-#ifndef A64_MODEM_PWRKEY_PIN
-#error "the board must define the modem pins in a64_board_config.h (A64_MODEM_*)"
-#endif
+// ---- The EG25-G power + UART3 -------------------------------------------------------------------------------------
+// Power: modem-eg25/port/phe_modem_power.c = Apache NuttX's pinephone_modem_init() (unmodified) for on, the Zephyr
+// modem_cellular power-off sequence (EG2x-G timing) for off; both block, so they run on the modem's own DFC thread.
 static TDynamicDfcQue* ModemQ;
 static TDfc* ModemUpDfc;
 static TDfc* ModemDownDfc;
-static volatile TInt ModemState;		// 0 off, 1 powering, 2 sequence done (STATUS says the rest), 3 powering down
+static volatile TInt ModemState;		// 0 off, 1 powering, 2 on (NuttX init returned OK), 3 powering down
 
-static TBool ModemStatusOn()			{ return !(R32(KHwBaseCcuPio, KPio + A64_MODEM_STATUS_PORT * 0x24 + 0x10) & (1u << A64_MODEM_STATUS_PIN)); }
-static void ModemPin(TUint aPort, TUint aPin, TBool aHigh)	{ PinWrite(KHwBaseCcuPio + KPio, aPort, aPin, aHigh); }
-static void ModemVbat(TBool aOn)		{ PinWrite(KHwBaseRPio + KRPio, 0, A64_MODEM_VBAT_PIN, aOn); }
+extern "C" void phe_modem_sleep_ms(unsigned aMs)	{ NKern::Sleep(NKern::TimerTicks(aMs)); }	// NuttX up_mdelay (modem only)
+static TBool ModemStatusOn()			{ return phe_modem_status_on(); }
 static TBool ModemDsr()					{ return ModemState == 2 && ModemStatusOn(); }
-static void ModemSleepMs(TInt aMs)		{ NKern::Sleep(NKern::TimerTicks(aMs)); }
-
-// raw levels for the log: STATUS, VBAT, with the nanokernel tick (1 ms) as the timestamp
-static TUint ModemStatusLevel()					{ return (R32(KHwBaseCcuPio, KPio + A64_MODEM_STATUS_PORT * 0x24 + 0x10) >> A64_MODEM_STATUS_PIN) & 1; }
-static TUint ModemVbatLevel()					{ return (R32(KHwBaseRPio, KRPio + 0x10) >> A64_MODEM_VBAT_PIN) & 1; }
 static void ModemLog(const char* aStep)
 	{
 	ekseam_puts("[EKERN][modem] t="); ekseam_puthex(NKern::TickCount());
 	ekseam_puts(" "); ekseam_puts(aStep);
-	ekseam_puts(" status="); ekseam_puthex(ModemStatusLevel());
-	ekseam_puts(" vbat="); ekseam_puthex(ModemVbatLevel()); ekseam_puts("\n");
+	ekseam_puts(" on="); ekseam_puthex(ModemStatusOn()); ekseam_puts("\n");
 	}
 
 static void ModemUpFn(TAny*)
 	{
-	// Boot 895 lesson: with VBAT off, STATUS reads LOW (nothing drives the STATUS transistor), which looks like "on" --
-	// so STATUS is only trusted once VBAT has been on. The pulse is skipped only if VBAT was ALREADY on before we
-	// came and STATUS reads low (on); a modem whose VBAT we switch on is off by definition and always gets the pulse.
-	ModemLog("power-up start");
-	if (ModemVbatLevel() && ModemStatusOn())
-		{
-		ModemLog("VBAT already on and STATUS low (on): no PWRKEY pulse");
-		ModemState = 2;
-		return;
-		}
-	ModemVbat(ETrue);
-	ModemLog("VBAT on");
-	ModemSleepMs(100);										// VBAT_BB settle (eg25-manager uses >= 60 ms)
-	ModemLog("VBAT settled");
-	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, ETrue);								// RESET asserted
-	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, ETrue);								// PWRKEY asserted
-	ModemLog("RESET+PWRKEY high");
-	ModemSleepMs(200);
-	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse);
-	ModemLog("RESET low");
-	ModemSleepMs(1000);
-	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse);							// PWRKEY released: never held longer than 1.2 s
-	ModemLog("PWRKEY low (sequence done)");
-	ModemState = 2;
-	// watch STATUS for 15 s (bounded; only the changes logged) so the STATUS polarity is recorded from the hardware
-	TUint last = ModemStatusLevel();
-	for (TInt i = 0; i < 150; ++i)
-		{
-		ModemSleepMs(100);
-		const TUint now = ModemStatusLevel();
-		if (now != last)
-			{
-			ModemLog("STATUS changed");
-			last = now;
-			}
-		}
-	ModemLog("STATUS watch end");
+	ModemLog("power-up (NuttX pinephone_modem_init)");
+	const int r = phe_modem_power_on();
+	ModemState = (r == 0) ? 2 : 0;
+	ModemLog(r == 0 ? "modem ready (STATUS low)" : "power-up failed");
 	}
 
-// Power-down on close (ModemQ thread, after any running power-up): a modem is never left on. The client should have
-// sent AT+QPOWD=1 already (STATUS high); if STATUS still says on, the Quectel PWRKEY power-off pulse (eg25-manager
-// gpio_sequence_shutdown: PWRKEY 1 s; EG25-G spec >= 650 ms), then up to 30 s for STATUS high, then VBAT off --
-// cut even when STATUS never drops (logged "FORCED": the last resort).
 static void ModemDownFn(TAny*)
 	{
-	ModemLog("power-down start");
-	if (ModemStatusOn())
-		{
-		ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, ETrue);
-		ModemLog("PWRKEY high (off-pulse)");
-		ModemSleepMs(1000);
-		ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse);						// released: bounded 1 s
-		ModemLog("PWRKEY low");
-		for (TInt i = 0; i < 300 && ModemStatusOn(); ++i)	// 30 s
-			ModemSleepMs(100);
-		}
-	const TBool forced = ModemStatusOn();
-	if (!forced)
-		ModemSleepMs(500);									// STATUS high, then a short margin before VBAT goes
-	ModemVbat(EFalse);
-	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse);
+	ModemLog("power-down (Zephyr power-off sequence)");
+	phe_modem_power_off();
 	ModemState = 0;
-	ModemLog(forced ? "VBAT off FORCED (STATUS never dropped)" : "VBAT off (STATUS off)");
+	ModemLog("PWR_BAT off");
 	}
 
 static void A64ModemRelease()
 	{
 	A64SoundVoiceRoute(EFalse);
 	ModemLog("port closed");
-	ekseam_puts("[EKERN][modem] close: state="); ekseam_puthex(ModemState); ekseam_puts(" -> power-down queued\n");
 	ModemState = 3;
 	ModemDownDfc->Enque();
 	}
@@ -619,18 +553,7 @@ static TInt A64ModemCreate(DA64Uart& aPort)
 		if (!ModemUpDfc || !ModemDownDfc)
 			return KErrNoMemory;
 		}
-	// control pins: outputs at their idle levels before anything else (DTR low = awake, AP_READY low = host awake,
-	// W_DISABLE# low = RF enabled, RESET/PWRKEY released); STATUS input; VBAT output (level kept)
-	ModemPin(A64_MODEM_DTR_PORT, A64_MODEM_DTR_PIN, EFalse); PinFunction(A64_MODEM_DTR_PORT, A64_MODEM_DTR_PIN, 1);
-	ModemPin(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, EFalse); PinFunction(A64_MODEM_PWRKEY_PORT, A64_MODEM_PWRKEY_PIN, 1);
-	ModemPin(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, EFalse); PinFunction(A64_MODEM_RESET_PORT, A64_MODEM_RESET_PIN, 1);
-	ModemPin(A64_MODEM_APREADY_PORT, A64_MODEM_APREADY_PIN, EFalse); PinFunction(A64_MODEM_APREADY_PORT, A64_MODEM_APREADY_PIN, 1);
-	ModemPin(A64_MODEM_DISABLE_PORT, A64_MODEM_DISABLE_PIN, EFalse); PinFunction(A64_MODEM_DISABLE_PORT, A64_MODEM_DISABLE_PIN, 1);
-	PinFunction(A64_MODEM_STATUS_PORT, A64_MODEM_STATUS_PIN, 0);
-	volatile TUint32& lcfg = R32(KHwBaseRPio, KRPio + (A64_MODEM_VBAT_PIN / 8) * 4);
-	lcfg = (lcfg & ~(0xFu << ((A64_MODEM_VBAT_PIN % 8) * 4))) | (1u << ((A64_MODEM_VBAT_PIN % 8) * 4));
-	// the UART pins to their UART function, bus clock + reset, a quiet state
-	PinFunction(A64_MODEM_UART_TX_PORT, A64_MODEM_UART_TX_PIN, A64_MODEM_UART_PIN_FUNC); PinFunction(A64_MODEM_UART_RX_PORT, A64_MODEM_UART_RX_PIN, A64_MODEM_UART_PIN_FUNC);
+	phe_modem_uart_pins();
 	R32(KHwBaseCcuPio, KCcuBusGate3) |= 1u << KUart3Bit;
 	R32(KHwBaseCcuPio, KCcuBusReset4) |= 1u << KUart3Bit;
 	aPort.R(KIer) = 0; aPort.iIer = 0;
@@ -642,9 +565,7 @@ static TInt A64ModemCreate(DA64Uart& aPort)
 	if (r < 0)
 		return r;
 	aPort.iIrq = KIntUart3;
-	ekseam_puts("[EKERN][uart3] Comm.A64 unit 3 (modem) created, iir="); ekseam_puthex(aPort.R(KIir));
-	ekseam_puts(" lsr="); ekseam_puthex(aPort.R(KLsr)); ekseam_puts("\n");
-	ModemLog("pins idle");
+	ekseam_puts("[EKERN][uart3] Comm.A64 unit 3 (modem) created\n");
 	if (ModemState == 0 || ModemState == 3)				// after a queued power-down: runs after it on ModemQ
 		{
 		ModemState = 1;
