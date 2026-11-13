@@ -57,6 +57,7 @@ extern "C" void A64UartInstall();			// bt/a64uart.cpp: the real serial LDD + the
 extern "C" void A64SdioInstall();			// wlan/a64sdio.cpp: the SMHC1 SDIO host (WiFi); A64_SDIO_TEST = the probe
 extern "C" void A64WlanInstall();			// wlan/a64wlan.cpp: the RTL8723CS WiFi chip core (rtw88); A64_WLAN_TEST = the beacon demo
 extern "C" void A64SensorsInstall();		// sensors/a64twi.cpp: the TWI1 sensor bus; A64_SENSOR_TEST = the identity probe
+extern "C" void A64CamHwInstall();		// camera/a64camhw.cpp: CamHw.A64, the camera server's hardware channel
 extern "C" void A64CameraInstall();		// camera/a64camera.cpp: the 2010 camera LDD + template PDD (C1); the C2 sensor chip-ID probe
 extern "C" void ekseam_load_nga_drivers() __attribute__((weak));
 
@@ -2445,5 +2446,6 @@ extern "C" void ekseam_load_media_drivers()
 	A64WlanInstall();
 	A64SensorsInstall();
 	A64CameraInstall();
+	A64CamHwInstall();
 	if (ekseam_load_nga_drivers) ekseam_load_nga_drivers();	// the NGA kernel side (surface manager, sg device): tools/kernel/ekern_nga_glue.cpp
 	}

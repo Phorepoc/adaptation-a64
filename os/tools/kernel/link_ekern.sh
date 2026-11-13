@@ -344,6 +344,10 @@ if [ "$BOARD" = a64 ]; then
   ccq -k src/phorepoc-arm/a64/camera/a64camera.cpp -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" \
     -I"$CAMD/kernel/eka/include" "${MED[@]}" -I"$CAMP" ${PH_CAM_BARS:+-DA64_CAMERA_BARS_HOLD} ${A64DEFS:-} -o .variant-build/a64camera.o
   VAROBJS+=(.variant-build/cameraldd.o .variant-build/camerasc_pdd.o .variant-build/camerasc_sensor.o .variant-build/a64camera.o)
+  # the camera server's hardware channel (the camera-a64 package runs the camera as a user-side server): the "CamHw.A64" LDD + the PMIC rail API
+  ccq -k src/phorepoc-arm/a64/power/a64_rail.cpp -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -o .variant-build/a64_rail.o
+  ccq -k src/phorepoc-arm/a64/camera/a64camhw.cpp -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -o .variant-build/a64camhw.o
+  VAROBJS+=(.variant-build/a64_rail.o .variant-build/a64camhw.o)
   # ... and the Symbian side of it: Syborg's REAL framebuffer driver on a register model (a64fb.cpp), the generic
   # RDisplayChannel LDD and the Syborg fb glue -- exactly as BOARD=virt below
   py tools/kernel/svpfb_patch.py "$QB/svpframebuffer/svpframebuffer.cpp" .variant-build/svpfb >/dev/null
