@@ -6,11 +6,11 @@
 // the x86 AC'97 PDD tools/phorepoc-x86/ekern/xk_ac97.cpp). The same user chain as Path C (mdasoundadapter -> the A3F
 // DevSound server -> MediaClientAudio) runs on top unchanged.
 //
-// The hardware (Allwinner A64; register documentation = the Linux drivers, read as a datasheet: sound/soc/sunxi/
-// sun4i-i2s.c "allwinner,sun50i-a64-codec-i2s", sun8i-codec.c "allwinner,sun50i-a64-codec", sun50i-codec-analog.c +
-// sun8i-adda-pr-regmap.c, drivers/dma/sun6i-dma.c "allwinner,sun50i-a64-dma"; routing = the phone device tree and
-// the distros' ALSA UCM):
-//   CPU --DMA (ch 7, DRQ 15)--> DAI 0x01C22C00 (an I2S controller in the sun4i register layout, TX FIFO at +0x20;
+// The hardware, written from the Allwinner "A64 User Manual" Revision 1.0 (2015; section numbers below are that manual's):
+// 3.3 CCU (PLL_AUDIO, AC_DIG clock, bus gating/reset), 3.11 DMA, 3.12 GIC (DMA = interrupt 82), 3.20 Audio Codec
+// (3.20.5.1-16 the I2S_AP DAI, 3.20.5.18+ the digital part, 3.20.5.188 the AC_PR access to the analog part, 3.20.5.189+
+// the analog registers; memory map 2.x: AC = 0x01C22C00, DMA = 0x01C02000, AC_PR_CFG = 0x01F015C0):
+//   CPU --DMA (ch 7, DRQ 15)--> DAI 0x01C22C00 (I2S_AP, TX FIFO at +0x20;
 //   master, I2S, 16-bit, BCLK = 32 fs, MCLK = 128 fs from PLL_AUDIO) --> digital codec 0x01C22E00 (AIF1 slot 0 ->
 //   DAC mixer -> DAC) --> analog codec (5-bit registers behind PRCM+0x1C0: DAC -> output mixers -> LINEOUT as a
 //   MONO DIFFERENTIAL pair, the speaker is mono) --> speaker amplifier (enable = PC7) -> the loudspeaker.
@@ -45,18 +45,24 @@ static const TPhysAddr KPhysDma = 0x01C02000, KPhysAudio = 0x01C22000, KPhysPrcm
 static const TUint KDai = 0xC00, KCodec = 0xE00, KAddaPr = 0x5C0;			// offsets in the audio / PRCM pages
 static const TInt KIntDma = 32 + 50;											// GIC SPI 50
 static const TUint KDmaChan = 7, KDrqCodec = 15, KDrqSdram = 1;
-// CCU (KHwBaseCcuPio + 0)
+// CCU (KHwBaseCcuPio + 0; 3.3.4): PLL_AUDIO_CTRL 0x008, PLL_AUDIO_PAT_CTRL 0x284, PLL_AUDIO_BIAS 0x224, BUS_CLK_GATING_REG0/2
+// 0x060/0x068 (DMA_GATING bit 6, AC_DIG_GATING bit 0), AC_DIG_CLK 0x140, BUS_SOFT_RST_REG0 0x2C0 (DMA_RST bit 6),
+// BUS_SOFT_RST_REG3 0x2D0 (AC_RST bit 0; named KCcuBusReset2 below)
 static const TUint KCcuPllAudio = 0x008, KCcuPllAudioPat = 0x284, KCcuPllAudioBias = 0x224, KCcuBusGate0 = 0x060, KCcuBusGate2 = 0x068,
 				   KCcuAcDig = 0x140, KCcuBusReset0 = 0x2C0, KCcuBusReset2 = 0x2D0;
-// DAI (sun4i layout; sun4i-i2s.c)
+// DAI = I2S_AP (3.20.5.1 DA_CTL, .2 DA_FAT0, .6 DA_FCTL, .7 DA_FSTA, .8 DA_INT, .9 DA_TXFIFO, .10 DA_CLKD, .11 DA_TXCNT,
+// .13-.16 TX/RX channel select + mapping)
 static const TUint KI2sCtrl = 0x00, KI2sFmt0 = 0x04, KI2sFifoCtrl = 0x14, KI2sFifoSta = 0x18,
 				   KI2sDmaIntCtrl = 0x1C, KI2sClkDiv = 0x24, KI2sTxCnt = 0x28,
 				   KI2sTxChanSel = 0x30, KI2sTxChanMap = 0x34, KI2sRxChanSel = 0x38, KI2sRxChanMap = 0x3C,
 				   KI2sFifoTx = 0x20;												// the A64 codec DAI's TX FIFO
-// digital codec (sun8i-codec.c)
+// digital codec, manual offset - 0x200 (3.20.5.18 SYSCLK_CTL 0x20C, .19 MOD_CLK_ENA, .20 MOD_RST_CTL, .21 SYS_SR_CTRL,
+// .24 AIF1CLK_CTRL 0x240, .26 AIF1_DACDAT_CTRL 0x248, .30 AIF1_VOL_CTRL3 0x258, .53 DAC_DIG_CTRL 0x320, .54 DAC_VOL_CTRL
+// 0x324, .56 DAC_MXR_SRC 0x330)
 static const TUint KCdSysClk = 0x00C, KCdModClkEna = 0x010, KCdModRst = 0x014, KCdSysSr = 0x018, KCdAif1Clk = 0x040,
 				   KCdAif1DacDat = 0x048, KCdAif1Vol3 = 0x058, KCdDacDig = 0x120, KCdDacVol = 0x124, KCdDacMxr = 0x130;
-// analog codec (sun50i-codec-analog.c, through the PR register)
+// analog codec, through AC_PR_CFG (3.20.5.189 HP_CTRL, .190/.191 OL/OR_MIX_CTRL, .194/.195 LINEOUT_CTRL0/1, .199
+// MIX_DAC_CTRL, .218 JACK_MIC_CTRL)
 static const TUint KAnHpCtrl = 0x00, KAnOlMix = 0x01, KAnOrMix = 0x02, KAnLineoutCtrl0 = 0x05, KAnLineoutCtrl1 = 0x06,
 				   KAnMixDac = 0x0A, KAnJackMic = 0x1D;
 #ifdef PHE_MODEM
@@ -65,7 +71,8 @@ static TDfc* VoiceDfc;
 static volatile TInt VoiceWanted, VoicePath;	// 0 off, 1 earpiece, 2 Bluetooth (AIF3)
 static void VoiceDfcFn(TAny*);
 #endif
-// DMA (sun6i-dma.c, A64 variant: H3 burst bits, A31 DRQ/mode bits)
+// DMA (3.11.3 register list: DMA_IRQ_EN_REG 0x00, DMA_IRQ_PEND_REG 0x10, DMA_AUTO_GATE_REG 0x28; per channel 0x100 + N * 0x40:
+// EN, PAU, DESC_ADDR, CFG, ..., BCNT_LEFT 0x18; 3.11.4.x)
 static const TUint KDmaIrqEn = 0x00, KDmaIrqStat = 0x10, KDmaAutoGate = 0x28, KDmaChanBase = 0x100 + KDmaChan * 0x40,
 				   KDmaEnable = 0x00, KDmaPause = 0x04, KDmaLliAddr = 0x08, KDmaCurCfg = 0x0C, KDmaCurCnt = 0x18;
 static const TUint32 KDmaIrqPkg = 2u;
@@ -163,7 +170,8 @@ public:
 
 static TA64Sound* TheSound;
 
-// --- the analog codec's indirect registers (sun8i-adda-pr-regmap.c) ---------------------------------------------
+// --- the analog codec's indirect registers: AC_PR_CFG (3.20.5.188, Figure 3-21: bit 28 RST (1 = out of reset), bit 24
+// WR (write enable), 20:16 ADDR, 15:8 data in, 7:0 data out) ------------------------------------------------------
 void TA64Sound::AnalogWrite(TUint aReg, TUint8 aVal)
 	{
 	volatile TUint32& pr = R32(iPrcm, KAddaPr);
@@ -183,64 +191,65 @@ TUint8 TA64Sound::AnalogRead(TUint aReg)
 	return (TUint8)(pr & 0xFF);
 	}
 
-// --- clocks: PLL_AUDIO (sigma-delta patterns as ccu-sun50i-a64.c) + the AC_DIG module clock ---------------------
+// --- clocks: PLL_AUDIO + the AC_DIG module clock -----------------------------------------------------------------
 void TA64Sound::Clocks(TBool a44k)
 	{
-	// PLL_AUDIO, the speaker hiss/whine fix (2026-10-15; Samuel Holland's "clk: sunxi-ng: a64: Increase PLL_AUDIO base
-	// frequency", smaeul/linux 7b51d5b09136, the phone kernels; noise found to leak VCC-PLL -> AVCC, megi's log 020):
-	// (1) the base at 3x (67.7376 / 73.728 MHz, SDM patterns from that commit) with the 1x post-divider (bits 19:16) at
-	// 2 = /3, so the codec still gets 22.5792 / 24.576 MHz but the PLL's harmonic leaves the audible band;
-	// (2) PLL_AUDIO_BIAS (CCU + 0x224) = 0x10040000, a lower bias current: "drastically decreases ... the white noise".
-	// Was: the base at 1x (patterns 0xC0010D84 n7 m8 / 0xC000AC02 n14 m14, post-divider 1) with the reset bias.
-	Ccu(KCcuPllAudioBias) = 0x10040000u;
-	const TUint32 pat = a44k ? 0xC000EF35u : 0xC000B852u;
-	const TUint n = a44k ? 8 : 15, m = a44k ? 3 : 5;
-	Ccu(KCcuPllAudioPat) = pat;
-	Ccu(KCcuPllAudio) = (1u << 31) | (1u << 24) | (2u << 16) | ((n - 1) << 8) | (m - 1);
-	for (TInt i = 0; i < 100000 && !(Ccu(KCcuPllAudio) & (1u << 28)); ++i) {}
-	Ccu(KCcuAcDig) |= 1u << 31;									// AC_DIG module clock = PLL_AUDIO
+	// PLL_AUDIO in integer mode (3.3.5.2 PLL_AUDIO_CTRL_REG: PLL_AUDIO = 24 MHz * N / (M * P); PLL_SDM_EN bit 24 off, so
+	// no sigma-delta pattern (3.3.5.75 PLL_AUDIO_PAT_CTRL_REG = 0) and no fractional modulation noise). Factors chosen
+	// inside the manual's limits ((24 MHz * N) / P in 72..504 MHz, 3 <= N / M <= 21):
+	//   48 kHz family:   N 43, M 6, P 7  -> 24.5714 MHz (the manual's own PLL_AUDIO default, "24.571MHz"), -186 ppm
+	//   44.1 kHz family: N 127, M 15, P 9 -> 22.5778 MHz, -63 ppm
+	// PLL_AUDIO_BIAS_REG (3.3.5.59) = its reset value 0x10100000.
+	// Replaces the earlier sigma-delta setup, whose patterns and lowered bias came from Linux (the speaker hiss fix of
+	// 2026-10-15): [verify] on the phone that the speaker is still free of hiss/whine.
+	Ccu(KCcuPllAudioBias) = 0x10100000u;
+	Ccu(KCcuPllAudioPat) = 0;
+	const TUint n = a44k ? 127 : 43, m = a44k ? 15 : 6, p = a44k ? 9 : 7;
+	Ccu(KCcuPllAudio) = (1u << 31) | ((p - 1) << 16) | ((n - 1) << 8) | (m - 1);
+	for (TInt i = 0; i < 100000 && !(Ccu(KCcuPllAudio) & (1u << 28)); ++i) {}	// LOCK, bit 28
+	Ccu(KCcuAcDig) |= 1u << 31;									// 3.3.5.48 AC_DIG_CLK_REG SCLK_1X_GATING
 	iIs44k = a44k;
 	}
 
-// --- the DAI (sun4i-i2s.c: runtime_resume + set_fmt(I2S, master) + the rate-independent part of hw_params) --------
+// --- the DAI (I2S_AP, 3.20.5.1-16): master I2S, 16-bit, the rate-independent part ------------------------------
 void TA64Sound::DaiInit()
 	{
 	Dai(KI2sCtrl) = 0;
-	Dai(KI2sCtrl) |= 1u << 0;									// GL_EN
-	Dai(KI2sCtrl) |= 1u << 8;									// SDO0 enable
-	// format: I2S (bits 1:0 = 0), 16-bit word select (bits 3:2 = 0), 16-bit samples (bits 5:4 = 0), normal clock
-	// polarities (bits 6, 7 = 0); master = CTRL bit 5 = 0
+	Dai(KI2sCtrl) |= 1u << 0;									// DA_CTL GEN
+	Dai(KI2sCtrl) |= 1u << 8;									// DA_CTL SDO_EN; MS bit 5 = 0 = master, PCM bit 4 = 0 = I2S
+	// DA_FAT0: FMT 00 standard I2S, WSS 00 = 16 BCLK per word (2 x 16 = the 32 fs BCLK), SR 00 = 16-bit, BCP/LRCP normal
 	Dai(KI2sFmt0) = 0;
 	Dai(KI2sTxChanMap) = 0x76543210u;
 	Dai(KI2sRxChanMap) = 0x00003210u;
-	Dai(KI2sTxChanSel) = (Dai(KI2sTxChanSel) & ~7u) | 1u;		// 2 channels
+	Dai(KI2sTxChanSel) = (Dai(KI2sTxChanSel) & ~7u) | 1u;		// DA_TXCHSEL 1 = 2-ch (mapping = the reset values)
 	Dai(KI2sRxChanSel) = (Dai(KI2sRxChanSel) & ~7u) | 1u;
-	// FIFOs: 16-bit samples, both directions (TX_MODE bit 2 = 1, RX_MODE bits 1:0 = 1)
+	// DA_FCTL: TXIM 1 = samples at the LSB of the TX FIFO word (the DMA writes 16-bit), RXOM 01 = sign-extended
 	Dai(KI2sFifoCtrl) = (Dai(KI2sFifoCtrl) & ~7u) | (1u << 2) | 1u;
 	}
 
-// --- the digital + analog codec: the AIF1-playback supply chain (sun8i-codec.c DAPM) and the speaker route from
-// the phone UCM ("Line Out Source = Mono Differential", "DAC Reversed Playback Switch" on) ------------------
+// --- the digital + analog codec: AIF1 playback -> DAC -> output mixers -> LINEOUT (the mono speaker) ------------
+// (manual Figure 3-20 data path; the speaker is mono, so LINEOUT is a differential pair of the L + R mix)
 void TA64Sound::CodecInit()
 	{
-	// AIF1CLK and AIF2CLK from PLL_AUDIO, SYSCLK from AIF1CLK; AIF1CLK + SYSCLK enabled
+	// SYSCLK_CTL (3.20.5.18): AIF1CLK_SRC [9:8] and AIF2CLK_SRC [5:4] = 1x pll2_1x, SYSCLK_SRC 0 = AIF1CLK; AIF1CLK_ENA
+	// bit 11, SYSCLK_ENA bit 3
 	Cd(KCdSysClk) = (Cd(KCdSysClk) & ~((3u << 8) | (3u << 4) | 1u)) | (2u << 8) | (2u << 4);
 	Cd(KCdSysClk) |= (1u << 11) | (1u << 3);
-	// module clocks + resets: AIF1 (bit 15), DAC (bit 2)
+	// MOD_CLK_ENA / MOD_RST_CTL (3.20.5.19/20): AIF1 bit 15, DAC digital bit 2
 	Cd(KCdModClkEna) |= (1u << 15) | (1u << 2);
 	Cd(KCdModRst) |= (1u << 15) | (1u << 2);
-	// AIF1: the codec is the clock slave (MSTR_MOD bit 15 = 1 = "DAI master"), I2S (bits 3:2 = 0), 16-bit words
-	// (bits 5:4 = 1), LRCK = 32 BCLK (bits 8:6 = order 5 - 4 = 1), no clock inversion (bits 14:13 = 0);
-	// BCLK_DIV (bits 12:9) per rate in SetRate
+	// AIF1CLK_CTRL (3.20.5.24): MSTR_MOD 1 = slave (the I2S_AP DAI is the master), DATA_FMT 00 I2S, WORD_SIZ 01 16-bit,
+	// LRCK_DIV 001 = 32 BCLK, no inversion; BCLK_DIV [12:9] per rate in SetRate
 	Cd(KCdAif1Clk) = (1u << 15) | (1u << 4) | (1u << 6);
-	// AIF1 slot 0 DA0 L/R in, stereo (SRC bits 11:10 / 9:8 = 0)
+	// AIF1_DACDAT_CTRL (3.20.5.26): DAC0L/DAC0R enable, sources 00 = own channel
 	Cd(KCdAif1DacDat) = (1u << 15) | (1u << 14);
-	Cd(KCdAif1Vol3) = 0xA0A0u;									// AIF1 DA0 volume 0 dB
-	Cd(KCdDacMxr) = (1u << 15) | (1u << 11);					// DAC mixer <- AIF1 DA0 L/R
-	Cd(KCdDacVol) = 0xA0A0u;									// DAC volume 0 dB (ApplyVolume refines it)
-	Cd(KCdDacDig) |= 1u << 15;									// DAC on
-	// analog: DACs + output mixers on; BOTH mixers take BOTH DACs (the mono mix L+R); LINEOUT L/R = "Mono
-	// Differential" (bits 5:4) from the mixers; both enabled (bits 7:6); 0 dB
+	Cd(KCdAif1Vol3) = 0xA0A0u;									// AIF1_VOL_CTRL3 (3.20.5.30) 0xA0 = 0 dB
+	Cd(KCdDacMxr) = (1u << 15) | (1u << 11);					// DAC_MXR_SRC (3.20.5.56): L <- AIF1 DAC0L, R <- DAC0R
+	Cd(KCdDacVol) = 0xA0A0u;									// DAC_VOL_CTRL (3.20.5.54) 0 dB (ApplyVolume refines it)
+	Cd(KCdDacDig) |= 1u << 15;									// DAC_DIG_CTRL (3.20.5.53) ENDA
+	// analog: MIX_DAC_CTRL (.199) DACAREN/DACALEN/RMIXEN/LMIXEN; OL/OR_MIX_CTRL (.190/.191) bits 1:0 = both DACs into
+	// both mixers (the mono L + R mix); LINEOUT_CTRL0 (.194) left + right enable, left source = L + R mixer, right
+	// source = left lineout (differential); LINEOUT_CTRL1 (.195) 0x1F = 0 dB
 	AnalogWrite(KAnMixDac, (1u << 7) | (1u << 6) | (1u << 5) | (1u << 4));
 	AnalogWrite(KAnOlMix, 0x03);
 	AnalogWrite(KAnOrMix, 0x03);
@@ -282,7 +291,8 @@ void TA64Sound::PowerOff()
 	iPowered = EFalse;
 	}
 
-// the speaker amplifier: PC7 (port C = PIO + 2 * 0x24; CFG0 bits 31:28 = pin 7; DAT bit 7)
+// the speaker amplifier: PC7 = PA-SHDN (PinePhone v1.2b schematic; LINEOUTP/N feed the speaker amplifier); port C =
+// PIO + 2 * 0x24, CFG0 bits 31:28 = pin 7 (manual 3.21.2 PC_CFG0), DAT bit 7
 void TA64Sound::AmpOn()
 	{
 	R32(KHwBaseCcuPio, 0x800 + 2 * 0x24 + 0x10) |= 1u << 7;
@@ -313,8 +323,8 @@ void TA64Sound::PowerDfcFn(TAny* aPtr)
 
 TInt TA64Sound::SetRate(TInt aHz)
 	{
-	// the DAI: MCLK = 128 fs from PLL_AUDIO (mclk div code), BCLK = MCLK / 4 = 32 fs (bclk div 4 = code 1);
-	// the codec: SYS_SR_CTRL AIF1_FS code, AIF1 BCLK_DIV code for (sysclk / fs) / 32 (sun8i_codec_get_bclk_div)
+	// the DAI, DA_CLKD (3.20.5.10): MCLKDIV code -> MCLK = PLL_AUDIO / div = 128 fs; BCLKDIV 001 = MCLK / 4 = 32 fs.
+	// the codec: SYS_SR_CTRL AIF1_FS (3.20.5.21), AIF1CLK_CTRL BCLK_DIV (3.20.5.24) code for AIF1CLK / (32 fs)
 	struct SRate { TInt iHz; TUint8 iMclkDiv; TUint8 iFs; TUint8 iBclkDiv; TBool i44k; };
 	static const SRate KRates[] = {
 		{ 8000, 7, 0x0, 11, EFalse }, { 11025, 6, 0x1, 10, ETrue }, { 12000, 6, 0x2, 10, EFalse },
@@ -419,9 +429,9 @@ TInt TA64Sound::Init()
 	Ccu(KCcuBusReset0) |= 1u << 6;
 	Ccu(KCcuBusGate2) |= 1u << 0;
 	Ccu(KCcuBusReset2) |= 1u << 0;
-	// the analog standby state (Linux idle): headphone PA clock ungated, jack detector on; everything else off
+	// the analog standby state: HP_CTRL (3.20.5.189) PA_CLK_GATE 0 = not gated (the manual: gate only when system VDD is
+	// off); everything else at its reset value (jack detection, JACK_MIC_CTRL 3.20.5.218, comes with the headset path)
 	AnalogWrite(KAnHpCtrl, (TUint8)(AnalogRead(KAnHpCtrl) & ~(1u << 7)));
-	AnalogWrite(KAnJackMic, (TUint8)(AnalogRead(KAnJackMic) | (1u << 7)));
 	// the speaker amplifier pin: PC7 output, LOW (port C CFG0 bits 31:28 = 1)
 	volatile TUint32& cfg0 = R32(KHwBaseCcuPio, 0x800 + 2 * 0x24 + 0x00);
 	cfg0 = (cfg0 & ~(0xFu << 28)) | (1u << 28);
@@ -430,7 +440,8 @@ TInt TA64Sound::Init()
 	iRxRate = 48000;
 	iVolume = 255;
 	SetRate(48000);
-	// the DMA controller: auto-gating on (sun6i_enable_clock_autogate_h3), our channel idle, its PKG IRQ enabled
+	// the DMA controller: DMA_AUTO_GATE_REG (3.11.4.x) bit 2 = 1 = MCLK interface auto gating disabled, the others on;
+	// our channel idle, its pending bits cleared (write 1), DMA7_PKG_IRQ_EN (bit 29 = chan * 4 + 1) on
 	Dma(KDmaAutoGate) = 0x4;
 	Ch(KDmaEnable) = 0;
 	Dma(KDmaIrqStat) = 0xFu << (KDmaChan * 4);
@@ -455,7 +466,7 @@ TInt TA64Sound::Init()
 
 TInt TA64Sound::DmaPeriod()
 	{
-	// LLI_ADDR holds the NEXT descriptor (the one the DMA will fetch; sun6i_get_chan_size reads it that way)
+	// DESC_ADDR read back = the next package's address (3.11.2.3 DMA Descriptor)
 	const TUint32 next = Ch(KDmaLliAddr);
 	const TUint32 lliPhys = iRingPhys + KRingMax;
 	if (next < lliPhys || next >= lliPhys + KPeriods * sizeof(SLli))
@@ -514,7 +525,7 @@ TInt TA64Sound::Queue(TLinAddr aLin, TInt aBytes, TUint aId)
 
 void TA64Sound::Run()
 	{
-	// the DAI: flush the TX FIFO, clear the counter, TX on, TX DRQ on (sun4i_i2s_start_playback)
+	// the DAI: DA_FCTL FTX flush, DA_TXCNT clear, DA_CTL TXEN, DA_INT TX_DRQ
 	Dai(KI2sFifoCtrl) |= 1u << 25;
 	Dai(KI2sTxCnt) = 0;
 	Dai(KI2sCtrl) |= 1u << 2;
@@ -560,7 +571,7 @@ void TA64Sound::Pause(TBool aPause)
 	if (aPause)
 		{
 		Ch(KDmaPause) = 2u;
-		Dai(KI2sDmaIntCtrl) &= ~(1u << 7);						// TX DRQ off, TX block off (as sun4i_i2s PAUSE_PUSH)
+		Dai(KI2sDmaIntCtrl) &= ~(1u << 7);						// DA_INT TX_DRQ off, DA_CTL TXEN off
 		Dai(KI2sCtrl) &= ~(1u << 2);
 		}
 	else
@@ -910,8 +921,8 @@ void TA64Sound::SelfTest()
 //   Uplink:   MIC1 -> MIC1 boost -> left ADC mixer -> ADCL -> AIF2 ADC left mixer -> AIF2 ADCL -> the modem
 //   BT:       AIF2 ADC left <- AIF3 input (AIF3_SGP_CTRL AIF2_DAC_SRC), AIF3 output <- AIF2 ADC left (AIF3_ADC_SRC)
 // Format: the codec is the PCM master, 8 kHz, 16-bit, DSP mode, mono, 32 BCLK per frame (256 kHz BCLK).
-// [verify] against the EG25-G Hardware Design PCM timing (BCLK polarity, frame sync length) and the PinePhone schematic
-// (earpiece on EAROUTP/N, main mic on MIC1, BT PCM on PG10-13).
+// Board wiring (PinePhone v1.2b schematic): PB4-7 = BB-PCM to the modem, PG10-13 = BT-PCM, EAROUTP/N = the receiver,
+// MICIN1P/N = MIC1. [verify] the PCM timing (BCLK polarity, frame sync) against the EG25-G Hardware Design.
 // digital (manual offset - 0x200)
 static const TUint KCdAif2Clk = 0x080,		// 3.20.5.34 0x280 AIF2_CLK_CTRL
 				   KCdAif2AdcDat = 0x084,	// 3.20.5.35 0x284 AIF2_ADCDAT_CTRL
