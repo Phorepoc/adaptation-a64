@@ -16,3 +16,19 @@ Cellular data: images built with the modem stack (modem-eg25) include FreeBSD if
 requires this acknowledgement:
 
     This product includes software developed by Bill Paul.
+
+Third-party code in this repository (each file keeps its own copyright and licence header; the licence texts are in
+LICENSES/):
+
+- Apache NuttX (Apache-2.0, LICENSES/Apache-2.0.txt): the A64 display drivers (os/src/phorepoc-arm/a64/display/nuttx).
+  Apache NuttX, Copyright 2019 The Apache Software Foundation. This product includes software developed at The Apache
+  Software Foundation (http://www.apache.org/).
+- rtw88, the Realtek WiFi driver from the Linux kernel (GPL-2.0 OR BSD-3-Clause, used under BSD-3-Clause,
+  LICENSES/BSD-3-Clause.txt): os/src/phorepoc-arm/a64/wlan/rtw88. Copyright (c) 2018-2025 Realtek Corporation;
+  Copyright (C) 2021 Jernej Skrabec; Copyright (C) 2021 Martin Blumenstingl; Copyright 2024 Fiona Klute.
+- FreeBSD USB host controller sources (BSD-2-Clause, LICENSES/BSD-2-Clause.txt): os/third_party/freebsd-usb.
+  Copyright (c) 2008 Hans Petter Selasky; Copyright (c) 2001, 2004 The NetBSD Foundation, Inc.; Copyright (c) 2004
+  Lennart Augustsson; Copyright (c) 2004 Charles M. Hannum; Copyright (c) 2012 Ganbold Tsagaankhuu; Copyright (c) 2016
+  Jared McNeill; Copyright (c) 2016 The FreeBSD Foundation; Copyright (c) 2019 Andrew Turner. All rights reserved.
+- The Mali GPU job scheduling in os/src/phorepoc-arm/mali/mali_ldd.cpp follows the Linux lima driver (GPL-2.0 OR MIT,
+  used under MIT, LICENSES/MIT.txt), Copyright 2017-2019 Qiang Yu.
