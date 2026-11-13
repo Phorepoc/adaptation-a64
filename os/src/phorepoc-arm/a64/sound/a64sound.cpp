@@ -60,9 +60,9 @@ static const TUint KCdSysClk = 0x00C, KCdModClkEna = 0x010, KCdModRst = 0x014, K
 static const TUint KAnHpCtrl = 0x00, KAnOlMix = 0x01, KAnOrMix = 0x02, KAnLineoutCtrl0 = 0x05, KAnLineoutCtrl1 = 0x06,
 				   KAnMixDac = 0x0A, KAnJackMic = 0x1D;
 #ifdef PHE_MODEM
-// modem rung M5: the voice call route state (VoiceRoute below); the codec stays powered while it is on
+// the voice call path state (VoiceRoute below); the codec stays powered while a path is on
 static TDfc* VoiceDfc;
-static volatile TBool VoiceWanted, VoiceOn;
+static volatile TInt VoiceWanted, VoicePath;	// 0 off, 1 earpiece, 2 Bluetooth (AIF3)
 static void VoiceDfcFn(TAny*);
 #endif
 // DMA (sun6i-dma.c, A64 variant: H3 burst bits, A31 DRQ/mode bits)
@@ -92,7 +92,7 @@ public:
 	TInt Init();
 	void PowerOn();
 #ifdef PHE_MODEM
-	void VoiceRoute(TBool aOn);
+	void VoiceRoute(TInt aPath);
 #endif
 	void PowerOff();
 	TInt SetRate(TInt aHz);
@@ -267,8 +267,8 @@ void TA64Sound::PowerOff()
 	iAmpTimer.Cancel();
 	AmpOff();
 #ifdef PHE_MODEM
-	if (VoiceOn)
-		return;													// a call holds the codec (VoiceRoute(EFalse) powers it off)
+	if (VoicePath)
+		return;													// a call holds the codec (VoiceRoute(0) powers it off)
 #endif
 	AnalogWrite(KAnLineoutCtrl0, 0x30);							// LINEOUT off (mute) first
 	AnalogWrite(KAnMixDac, 0);									// mixers + DACs off
@@ -327,7 +327,7 @@ TInt TA64Sound::SetRate(TInt aHz)
 	if (!r)
 		return KErrNotSupported;
 #ifdef PHE_MODEM
-	if (VoiceOn && r->i44k)
+	if (VoicePath && r->i44k)
 		return KErrNotSupported;								// the call's AIF2 clock needs the 24.576 MHz family
 #endif
 	iRate = aHz;
@@ -901,89 +901,141 @@ void TA64Sound::SelfTest()
 	}
 
 #ifdef PHE_MODEM
-// ---- Modem rung M5 (telephony-plan.md section 16): the VOICE CALL ROUTE, the EG25-G's PCM on AIF2 -----------------------
-// A codec-internal path, no CPU data (research/sound-linux.md 1.3-1.5 + 3.5 = sun8i-codec.c / sun50i-codec-analog.c / the
-// phone UCM VoiceCall verb): AIF2 = PB4-7 (function 2), the A64 codec is the PCM clock master (the modem is slave:
-// AT+QDAI=1,1,... mode 1), DSP_A, BCLK inverted, 16-bit, 1 x 32-bit slot, 8 kHz (BCLK 256 kHz = the QDAI clock 1).
-// Downlink: AIF2 DAC (Mix Mono) -> DAC mixer -> DAC -> left output mixer -> EARPIECE. Uplink: MIC1 (+24 dB boost, MBIAS)
-// -> ADC mixer -> ADC -> AIF2 ADC mixer -> AIF2 ADC (Mix Mono) -> the modem. Switched on the sound DFC thread (serialised
-// with PowerOn/PowerOff); the codec stays powered while the route is on even with no sound channel open.
-static const TUint KCdAif2Clk = 0x080, KCdAif2AdcDat = 0x084, KCdAif2DacDat = 0x088, KCdAif2Mxr = 0x08C,
-				   KCdAif2AdcVol = 0x090, KCdAif2DacVol = 0x098, KCdAdcDig = 0x100, KCdAdcVol = 0x104, KCdAif3Path = 0x0CC;
-static const TUint KAnEarCtrl0 = 0x03, KAnEarCtrl1 = 0x04, KAnMic1Ctrl = 0x07, KAnAdcMixL = 0x0B, KAnAdcMixR = 0x0C,
-				   KAnAdcCtrl = 0x0D, KAnMicBias = 0x0E;
-
-void TA64Sound::VoiceRoute(TBool aOn)
+// ---- The voice call path: the EG25-G's PCM on AIF2, optionally bridged to Bluetooth SCO on AIF3 ---------------------
+// Written from the Allwinner "A64 User Manual" Revision 1.0 (2015), section 3.20 Audio Codec (register numbers below are
+// that chapter's 3.20.5.x; the digital registers' manual offsets are 0x200 above our Cd() offsets, e.g. AIF2_CLK_CTRL
+// = manual 0x280 = Cd(0x080)) and section 3.21 Port Controller (pin functions). Data path (manual Figure 3-20): no CPU
+// data -- the codec's digital mixers bridge AIF2 with the DAC/ADC (earpiece + MIC1) or with AIF3.
+//   Downlink: AIF2 DACL -> DAC left mixer -> DACL -> earpiece (EARPIECE_CTRL0 ESPSR = DACL)
+//   Uplink:   MIC1 -> MIC1 boost -> left ADC mixer -> ADCL -> AIF2 ADC left mixer -> AIF2 ADCL -> the modem
+//   BT:       AIF2 ADC left <- AIF3 input (AIF3_SGP_CTRL AIF2_DAC_SRC), AIF3 output <- AIF2 ADC left (AIF3_ADC_SRC)
+// Format: the codec is the PCM master, 8 kHz, 16-bit, DSP mode, mono, 32 BCLK per frame (256 kHz BCLK).
+// [verify] against the EG25-G Hardware Design PCM timing (BCLK polarity, frame sync length) and the PinePhone schematic
+// (earpiece on EAROUTP/N, main mic on MIC1, BT PCM on PG10-13).
+// digital (manual offset - 0x200)
+static const TUint KCdAif2Clk = 0x080,		// 3.20.5.34 0x280 AIF2_CLK_CTRL
+				   KCdAif2AdcDat = 0x084,	// 3.20.5.35 0x284 AIF2_ADCDAT_CTRL
+				   KCdAif2DacDat = 0x088,	// 3.20.5.36 0x288 AIF2_DACDAT_CTRL
+				   KCdAif2Mxr = 0x08C,		// 3.20.5.37 0x28C AIF2_MXR_SRC
+				   KCdAif2AdcVol = 0x090,	// 3.20.5.38 0x290 AIF2_VOL_CTRL1
+				   KCdAif2DacVol = 0x098,	// 3.20.5.39 0x298 AIF2_VOL_CTRL2
+				   KCdAif3Clk = 0x0C0,		// 3.20.5.42 0x2C0 AIF3_CLK_CTRL
+				   KCdAif3Path = 0x0CC,		// 3.20.5.45 0x2CC AIF3_SGP_CTRL
+				   KCdAdcDig = 0x100,		// 3.20.5.47 0x300 ADC_DIG_CTRL
+				   KCdAdcVol = 0x104;		// 3.20.5.48 0x304 ADC_VOL_CTRL (DAC_DIG_CTRL 3.20.5.53 = KCdDacDig above)
+// analog (PRCM-bus registers)
+static const TUint KAnEarCtrl0 = 0x03,		// 3.20.5.192 EARPIECE_CTRL0
+				   KAnEarCtrl1 = 0x04,		// 3.20.5.193 EARPIECE_CTRL1
+				   KAnMic1Ctrl = 0x07,		// 3.20.5.196 MIC1_CTRL
+				   KAnAdcMixL = 0x0B,		// 3.20.5.200 L_ADCMIX_SRC
+				   KAnAdcCtrl = 0x0D,		// 3.20.5.202 ADC_CTRL
+				   KAnMicBias = 0x0E;		// 3.20.5.203 HS_MBIAS_CTRL
+// field values (manual tables)
+static const TUint KSysAif2ClkEna = 1u << 7, KSysAif2ClkSrcPll = 2u << 4;		// 3.20.5.18 SYSCLK_CTL: AIF2CLK_ENA, AIF2CLK_SRC 1x = pll2_1x
+static const TUint KModAif2 = 1u << 14, KModAif3 = 1u << 13, KModAdc = 1u << 3, KModDac = 1u << 2;	// 3.20.5.19/20 MOD_CLK_ENA / MOD_RST_CTL
+static const TUint KSrAif2FsMask = 0xFu << 8;									// 3.20.5.21 SYS_SR_CTRL AIF2_FS[11:8], 0000 = 8 kHz
+// 3.20.5.34 AIF2_CLK_CTRL: MSTR_MOD[15] 0 = master; BCLK_DIV[12:9] 1011 = AIF2CLK/96 (24.576 MHz / 96 = 256 kHz);
+// LRCK_DIV[8:6] 001 = 32 (256 kHz / 32 = 8 kHz); WORD_SIZ[5:4] 01 = 16 bit; DATA_FMT[3:2] 11 = DSP; MONO_PCM[1] 1 = mono
+static const TUint KAif2ClkVoice = (11u << 9) | (1u << 6) | (1u << 4) | (3u << 2) | (1u << 1);
+static const TUint KAif2AdcLEn = 1u << 15, KAif2DacLEn = 1u << 15;			// 3.20.5.35/36: ADCL_EN / DACL_ENA (sources 00 = own channel)
+static const TUint KAif2MxrAdcL = 1u << 12, KAif2MxrAdcR = 1u << 8;			// 3.20.5.37: AIF2 ADC L/R mixer <- ADCL / ADCR
+static const TUint KDacMxrAif2L = 1u << 13;									// 3.20.5.56 DAC_MXR_SRC: DAC left mixer <- AIF2 DACL
+static const TUint KVol0dB = 0xA0A0u;										// 3.20.5.38/39/48: 0xA0 = 0 dB per channel
+static const TUint KAdcEnad = 1u << 15, KDacEnda = 1u << 15;				// 3.20.5.47 ENAD / 3.20.5.53 ENDA
+// 3.20.5.45 AIF3_SGP_CTRL: AIF3_ADC_SRC[11:10] 01 = AIF2 ADC left; AIF2_DAC_SRC[9:8] 01 = left from AIF3
+static const TUint KAif3OutAif2AdcL = 1u << 10, KAif2DacLFromAif3 = 1u << 8, KAif3PathMask = 0xFu << 8;
+// 3.20.5.42 AIF3_CLK_CTRL: WORD_SIZ[5:4] 01 = 16 bit, CLOCK_SRC[1:0] 1 = BCLK/LRCK from AIF2
+static const TUint KAif3ClkFromAif2 = (1u << 4) | 1u;
+static const TUint8 KEarSrcDacL = 1u, KEarPaEn = 1u << 7, KEarPaOn = 1u << 6, KEarVolMax = 0x1F;	// 3.20.5.192/193
+static const TUint8 KMic1AmpEn = 1u << 3, KMic1Boost24dB = 1u;				// 3.20.5.196: MIC1AMPEN, MIC1BOOST 001 = 24 dB
+static const TUint8 KDacAnaL = 1u << 6;										// 3.20.5.199 MIX_DAC_CTRL (KAnMixDac) DACALEN
+static const TUint8 KAdcMixMic1 = 1u << 6, KAdcLEn = 1u << 6, KMicBiasEn = 1u << 7;	// 3.20.5.200 / 202 ADCLEN / 203 MMICBIASEN
+// 3.21.2.1 PB_CFG0 (port B at 0x24): PB4..PB7 function 010 = AIF2_SYNC/BCLK/DOUT/DIN (bits 18:16 .. 30:28)
+// 3.21.2.47 PG_CFG1 (port G CFG1 at 0xDC): PG10..PG13 function 010 = AIF3_SYNC/BCLK/DOUT/DIN (bits 10:8 .. 22:20)
+static void PinFunctions(TUint aCfgOff, TUint aFirstShift, TUint aCount, TUint aFn)
 	{
-	if (aOn == VoiceOn)
+	volatile TUint32& cfg = R32(KHwBaseCcuPio, 0x800 + aCfgOff);
+	TUint32 v = cfg;
+	for (TUint i = 0; i < aCount; ++i)
+		v = (v & ~(7u << (aFirstShift + 4 * i))) | (aFn << (aFirstShift + 4 * i));
+	cfg = v;
+	}
+
+void TA64Sound::VoiceRoute(TInt aPath)			// 0 off, 1 earpiece + MIC1, 2 Bluetooth (AIF3)
+	{
+	if (aPath == VoicePath)
 		return;
-	if (aOn)
+	if (VoicePath)								// tear the old path down first (path changes go through off)
+		{
+		AnalogWrite(KAnEarCtrl1, 0);															// earpiece PA off, muted
+		AnalogWrite(KAnAdcCtrl, (TUint8)(AnalogRead(KAnAdcCtrl) & ~KAdcLEn));
+		AnalogWrite(KAnAdcMixL, (TUint8)(AnalogRead(KAnAdcMixL) & ~KAdcMixMic1));
+		AnalogWrite(KAnMicBias, (TUint8)(AnalogRead(KAnMicBias) & ~KMicBiasEn));
+		AnalogWrite(KAnMic1Ctrl, (TUint8)(AnalogRead(KAnMic1Ctrl) & ~KMic1AmpEn));
+		Cd(KCdDacMxr) &= ~KDacMxrAif2L;
+		Cd(KCdAif3Path) &= ~KAif3PathMask;
+		Cd(KCdAif3Clk) = 0;
+		Cd(KCdAif2Mxr) = 0;
+		Cd(KCdAif2AdcDat) = 0;
+		Cd(KCdAif2DacDat) = 0;
+		Cd(KCdModClkEna) &= ~(KModAif2 | KModAif3);
+		Cd(KCdModRst) &= ~(KModAif2 | KModAif3);
+		Cd(KCdSysClk) &= ~KSysAif2ClkEna;
+		VoicePath = 0;
+		if (aPath == 0 && iUsers == 0)
+			PowerOff();
+		}
+	if (aPath)
 		{
 		if (!iPowered)
 			{
-			iIs44k = EFalse;										// the AIF2 divider below assumes the 24.576 MHz family
+			iIs44k = EFalse;										// AIF2CLK/96 = 256 kHz needs the 24.576 MHz family
 			PowerOn();
 			}
 		if (iIs44k)
 			Clocks(EFalse);
-		// pins PB4 SYNC, PB5 BCLK, PB6 DOUT, PB7 DIN = AIF2 (port B CFG0 bits 31:16, function 2)
-		volatile TUint32& pb = R32(KHwBaseCcuPio, 0x800 + 1 * 0x24 + 0x00);
-		pb = (pb & 0x0000FFFFu) | 0x22220000u;
-		Cd(KCdSysClk) |= 1u << 7;									// AIF2CLK_ENA
-		Cd(KCdModClkEna) |= (1u << 14) | (1u << 3);					// AIF2 + ADC module clocks
-		Cd(KCdModRst) |= (1u << 14) | (1u << 3);
-		Cd(KCdSysSr) &= ~(0xFu << 8);								// AIF2_FS = 0 = 8 kHz
-		// AIF2_CLK_CTRL: MSTR_MOD 0 (codec master), CLK_INV 0b10 (BCLK inverted: DSP_A), BCLK_DIV code 11 (/96: 24.576 MHz
-		// / 8000 >> 5), LRCK_DIV 1 (32 BCLK), 16-bit words, DATA_FMT 3 (DSP)
-		Cd(KCdAif2Clk) = (1u << 14) | (11u << 9) | (1u << 6) | (1u << 4) | (3u << 2);
-		Cd(KCdAif2AdcDat) = (1u << 15) | (1u << 14) | (3u << 10) | (3u << 8);	// AIF2 ADC L/R on, Mix Mono
-		Cd(KCdAif2DacDat) = (1u << 15) | (1u << 14) | (3u << 10) | (3u << 8);	// AIF2 DAC L/R on, Mix Mono
-		Cd(KCdAif2Mxr) = (1u << 12) | (1u << 8);					// AIF2 ADC mixer <- ADC L/R (the mic)
-		Cd(KCdAif2AdcVol) = 0xA0A0u;
-		Cd(KCdAif2DacVol) = 0xA0A0u;
-		Cd(KCdAif3Path) &= ~(3u << 8);								// AIF2 DAC source = AIF2
-		Cd(KCdAdcDig) |= 1u << 15;									// ADC on
-		Cd(KCdAdcVol) = 0xA0A0u;
-		Cd(KCdDacMxr) |= (1u << 13) | (1u << 9);					// DAC mixer <- AIF2 DAC L/R
-		// analog: MIC1 amp on, boost 1 (24 dB); master mic bias; ADC mixers <- MIC1; ADC L/R on; earpiece <- left mixer,
-		// PA on, unmuted, 0 dB (31)
-		AnalogWrite(KAnMic1Ctrl, (TUint8)((AnalogRead(KAnMic1Ctrl) & ~0x0Fu) | (1u << 3) | 1u));
-		AnalogWrite(KAnMicBias, (TUint8)(AnalogRead(KAnMicBias) | (1u << 7)));
-		AnalogWrite(KAnAdcMixL, (TUint8)(AnalogRead(KAnAdcMixL) | (1u << 6)));
-		AnalogWrite(KAnAdcMixR, (TUint8)(AnalogRead(KAnAdcMixR) | (1u << 6)));
-		AnalogWrite(KAnAdcCtrl, (TUint8)(AnalogRead(KAnAdcCtrl) | (1u << 7) | (1u << 6)));
-		AnalogWrite(KAnEarCtrl0, (TUint8)((AnalogRead(KAnEarCtrl0) & ~3u) | 3u));
-		AnalogWrite(KAnEarCtrl1, (TUint8)((1u << 7) | (1u << 6) | 31u));
-		VoiceOn = ETrue;
+		PinFunctions(0x24, 16, 4, 2);								// PB4..PB7 = AIF2
+		Cd(KCdSysClk) = (Cd(KCdSysClk) & ~(3u << 4)) | KSysAif2ClkSrcPll | KSysAif2ClkEna;
+		Cd(KCdModClkEna) |= KModAif2 | KModAdc | KModDac;
+		Cd(KCdModRst) |= KModAif2 | KModAdc | KModDac;
+		Cd(KCdSysSr) &= ~KSrAif2FsMask;								// AIF2_FS = 8 kHz
+		Cd(KCdAif2Clk) = KAif2ClkVoice;
+		Cd(KCdAif2AdcDat) = KAif2AdcLEn;
+		Cd(KCdAif2DacDat) = KAif2DacLEn;
+		Cd(KCdAif2AdcVol) = KVol0dB;
+		Cd(KCdAif2DacVol) = KVol0dB;
+		if (aPath == 1)
+			{
+			Cd(KCdAif2Mxr) = KAif2MxrAdcL;							// uplink: AIF2 ADC left <- ADCL (MIC1)
+			Cd(KCdAdcDig) |= KAdcEnad;
+			Cd(KCdAdcVol) = KVol0dB;
+			Cd(KCdDacDig) |= KDacEnda;
+			Cd(KCdDacMxr) |= KDacMxrAif2L;							// downlink: DAC left <- AIF2 DACL
+			AnalogWrite(KAnMic1Ctrl, (TUint8)((AnalogRead(KAnMic1Ctrl) & ~0x0Fu) | KMic1AmpEn | KMic1Boost24dB));
+			AnalogWrite(KAnMicBias, (TUint8)(AnalogRead(KAnMicBias) | KMicBiasEn));
+			AnalogWrite(KAnAdcMixL, (TUint8)(AnalogRead(KAnAdcMixL) | KAdcMixMic1));
+			AnalogWrite(KAnAdcCtrl, (TUint8)(AnalogRead(KAnAdcCtrl) | KAdcLEn));
+			AnalogWrite(KAnMixDac, (TUint8)(AnalogRead(KAnMixDac) | KDacAnaL));
+			AnalogWrite(KAnEarCtrl0, (TUint8)((AnalogRead(KAnEarCtrl0) & ~3u) | KEarSrcDacL));
+			AnalogWrite(KAnEarCtrl1, (TUint8)(KEarPaEn | KEarPaOn | KEarVolMax));
+			}
+		else
+			{
+			PinFunctions(0xDC, 8, 4, 2);							// PG10..PG13 = AIF3
+			Cd(KCdModClkEna) |= KModAif3;
+			Cd(KCdModRst) |= KModAif3;
+			Cd(KCdAif3Clk) = KAif3ClkFromAif2;
+			Cd(KCdAif2Mxr) = 0;										// the uplink comes from AIF3, not the mic
+			Cd(KCdAif3Path) = (Cd(KCdAif3Path) & ~KAif3PathMask) | KAif3OutAif2AdcL | KAif2DacLFromAif3;
+			}
+		VoicePath = aPath;
 		}
-	else
-		{
-		AnalogWrite(KAnEarCtrl1, 0);								// earpiece PA off + muted first
-		AnalogWrite(KAnAdcCtrl, (TUint8)(AnalogRead(KAnAdcCtrl) & ~((1u << 7) | (1u << 6))));
-		AnalogWrite(KAnAdcMixL, (TUint8)(AnalogRead(KAnAdcMixL) & ~(1u << 6)));
-		AnalogWrite(KAnAdcMixR, (TUint8)(AnalogRead(KAnAdcMixR) & ~(1u << 6)));
-		AnalogWrite(KAnMicBias, (TUint8)(AnalogRead(KAnMicBias) & ~(1u << 7)));
-		AnalogWrite(KAnMic1Ctrl, (TUint8)(AnalogRead(KAnMic1Ctrl) & ~(1u << 3)));
-		Cd(KCdDacMxr) &= ~((1u << 13) | (1u << 9));
-		Cd(KCdAif2Mxr) = 0;
-		Cd(KCdAif2AdcDat) = 0;
-		Cd(KCdAif2DacDat) = 0;
-		Cd(KCdAdcDig) &= ~(1u << 15);
-		Cd(KCdModClkEna) &= ~((1u << 14) | (1u << 3));
-		Cd(KCdModRst) &= ~((1u << 14) | (1u << 3));
-		Cd(KCdSysClk) &= ~(1u << 7);
-		VoiceOn = EFalse;
-		if (iUsers == 0)
-			PowerOff();
-		}
-	ekseam_puts("[EKERN][snd] voice route "); ekseam_puts(aOn ? "ON" : "OFF");
+	ekseam_puts("[EKERN][snd] voice path "); ekseam_puthex((unsigned)aPath);
 	ekseam_puts(": aif2clk="); ekseam_puthex(Cd(KCdAif2Clk));
-	ekseam_puts(" dacmxr="); ekseam_puthex(Cd(KCdDacMxr));
 	ekseam_puts(" aif2mxr="); ekseam_puthex(Cd(KCdAif2Mxr));
-	ekseam_puts(" sysclk="); ekseam_puthex(Cd(KCdSysClk));
-	ekseam_puts(" ear1="); ekseam_puthex(AnalogRead(KAnEarCtrl1));
-	ekseam_puts(" mic1="); ekseam_puthex(AnalogRead(KAnMic1Ctrl));
-	ekseam_puts(" adc="); ekseam_puthex(AnalogRead(KAnAdcCtrl)); ekseam_puts("\n");
+	ekseam_puts(" dacmxr="); ekseam_puthex(Cd(KCdDacMxr));
+	ekseam_puts(" aif3="); ekseam_puthex(Cd(KCdAif3Path));
+	ekseam_puts(" ear1="); ekseam_puthex(AnalogRead(KAnEarCtrl1)); ekseam_puts("\n");
 	}
 
 static void VoiceDfcFn(TAny*)
@@ -992,17 +1044,20 @@ static void VoiceDfcFn(TAny*)
 		TheSound->VoiceRoute(VoiceWanted);
 	}
 
-// the switch for the modem side (a64uart.cpp, unit 3 KSignalDTR): any context; the work runs on the sound DFC thread
-extern "C" void A64SoundVoiceRoute(TBool aOn)
+// the switch for the modem side: any context; the work runs on the sound DFC thread. aPath: 0 off, 1 earpiece, 2 BT.
+extern "C" void A64SoundVoicePath(TInt aPath)
 	{
 	if (!VoiceDfc)
 		return;
-	VoiceWanted = aOn;
+	VoiceWanted = aPath;
 	if (NKern::CurrentContext() == NKern::EThread)
 		VoiceDfc->Enque();
 	else
 		VoiceDfc->Add();
 	}
+
+// unit 3 DTR (a64uart.cpp): on = the earpiece path
+extern "C" void A64SoundVoiceRoute(TBool aOn)	{ A64SoundVoicePath(aOn ? 1 : 0); }
 #endif
 
 DLogicalDevice* CreateLogicalDevice_soundsc();				// soundldd.cpp (DECLARE_STANDARD_LDD, renamed)
