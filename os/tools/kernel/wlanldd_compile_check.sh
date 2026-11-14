@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, no py launcher
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # wlanldd_compile_check.sh -- compile the REAL 2010 (RCL_3) Symbian WLAN logical device driver (UMAC + OSA + LDD,
 # the five mmps of wlan_bearer/wlanldd/wlan_symbian/wlanldd_symbian/group) unmodified for the ARM kernel with the

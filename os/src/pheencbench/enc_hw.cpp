@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // enc_hw.cpp -- OURS (pheencbench): the A64 Video Engine H.264 encoder leg. The encoder itself is src/pherecenc/ve_enc.cpp
 // (also the screen recorder's plug-in)

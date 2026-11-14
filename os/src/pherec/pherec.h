@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // pherec.h -- OURS (2026-11-06, PhoneLab "record"): the screen recorder server pherec.exe and its client RPheRec. The
 // debug link's file service (phfs.exe) is the one client: PhoneLab's EPhRecStart / EPhRecRead / EPhRecStop requests

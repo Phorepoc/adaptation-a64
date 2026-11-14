@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // pherecenc.mmp -- OURS (2026-11-06): the screen recorder's H.264 encoder plug-in (pherecenc.cpp): the Video Engine's
 // hardware encoder. H.264 is patent-encumbered, so it is never in an image (registry: device-only) but this repository's

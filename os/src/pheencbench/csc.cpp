@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // csc.cpp -- OURS: RGB -> YUV 4:2:0 colour conversion (BT.601 limited range, scalar + NEON), shared by pheencbench and the
 // screen recorder in phfs (pherec.cpp). Plain C++03 without libc headers: memcpy comes from euser or libc alike.

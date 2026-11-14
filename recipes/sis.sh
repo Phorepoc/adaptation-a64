@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 #
 # sis.sh -- the pdk's package.yml runs it after the components (package.conf): the screen recorder package,
 # $PHOREPOC_BUILD/sis/screenrec-a64-arm.sis = sys/bin/pherecenc.dll (the H.264 encoder plug-in) with the Apache-2.0 text

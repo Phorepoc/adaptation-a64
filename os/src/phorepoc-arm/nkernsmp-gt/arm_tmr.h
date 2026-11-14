@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (phone SMP "generic-timer stand-in"): <arm_tmr.h> for an ARMv7
 // generic-timer CPU (Cortex-A7/A15, and the A53 in AArch32) in place of the ARM11MP/Cortex-A9 private timer.

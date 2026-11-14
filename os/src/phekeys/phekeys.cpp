@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // phekeys.cpp -- OURS: PhoneLab's type_chars (phfs op 14). Command line = 8 hex digits of modifiers, then the text.
 // Each character goes to the focused window group as a key event with its code and no scan code (the FEP passes a

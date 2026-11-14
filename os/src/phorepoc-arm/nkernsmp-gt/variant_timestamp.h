@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (phone SMP rung): the BSP timestamp for the SMP nanokernel built with
 // __NKERN_TIMESTAMP_USE_INLINE_BSP_CODE__ (nkernsmp/arm/ncutils.cpp + ncutilf.cia #include this; the NaviEngine BSP's

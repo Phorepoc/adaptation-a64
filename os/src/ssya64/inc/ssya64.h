@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // ssya64.h -- OURS (phone sensors rung S2): the SSY of
 // the "Sensors.A64" LDD. One class plays the three SSY roles the sensor server expects (CSsyControl = open/close a

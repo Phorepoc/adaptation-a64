@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 command -v py >/dev/null 2>&1 || py() { python3 "$@"; }   # Linux has python3, no py launcher
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # ekern_compile_check.sh -- compile the UNMODIFIED 2010 EKA2 kernel (ekern.exe)
 # from source with our modern toolchain (toolchain/symcc -k, arm-none-eabi-g++ 14.2), the

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // pherec.cpp -- OURS (2026-11-06, PhoneLab "record"): the screen recorder server (pherec.h). Started on demand by phfs.exe.
 // A recorder thread captures at the requested rate; the kernel copies only what changed since the last capture (the OS

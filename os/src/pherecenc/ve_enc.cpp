@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // ve_enc.cpp -- OURS: the A64 VE H.264 encoder, one picture per call (ve_enc.h). Moved out of pheencbench/enc_hw.cpp
 // (2026-11-05) unchanged in register order so the screen recorder runs what the benchmark measured.

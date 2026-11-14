@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # recipes/host/shim.sh <build dir or docker volume> -- the AArch64 entry shim (os/src/phorepoc-arm/a53shim/shim.S): the
 # A53 cores start in AArch64, the shim drops them to AArch32 at the kernel. Runs on the host, for a board's release

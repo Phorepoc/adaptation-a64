@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // pherecenc.cpp -- OURS (2026-11-06): the screen recorder's H.264 encoder plug-in (contract: src/pherec/pherecenc.h),
 // loaded by the image's pherec.exe when the screen recorder package is installed from Catalogue (package.conf; never in

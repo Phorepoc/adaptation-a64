@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // a64_board.h -- what the A64 display driver needs from the board it runs on: the panel behind the MIPI DSI port,
 // its backlight and the PMIC rails that power it. A board implements these in board/kernel/ (compiled into the kernel

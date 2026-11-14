@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // csc.h -- OURS: RGB -> YUV 4:2:0 colour conversion (csc.cpp), shared by pheencbench and the phfs screen recorder.
 #ifndef PHE_CSC_H

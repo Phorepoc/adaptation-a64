@@ -3,7 +3,7 @@ Copyright The Phorepoc Authors (see AUTHORS)
 
 Phorepoc was founded by Kyriakos Bompotis.
 
-Licences: our own code is Apache-2.0 (LICENSES/Apache-2.0.txt); the Nokia-derived files are our updated versions, distributed under EPL-2.0 with GNU General Public License, version 2 or later as a Secondary License (LICENSES/EPL-2.0.txt; relicensed from EPL-1.0 under its section 7); unmodified Symbian sources are fetched from upstream and remain EPL-1.0. (LICENSE holds the EPL-1.0 text.) Phorepoc builds on the Symbian platform source released by Nokia
+Licences: our own code is EPL-2.0 with GNU General Public License, version 2 or later as a Secondary License (EPL-2.0 OR GPL-2.0-or-later, LICENSES/EPL-2.0.txt); the Nokia-derived files are our updated versions, distributed under EPL-2.0 with GNU General Public License, version 2 or later as a Secondary License (LICENSES/EPL-2.0.txt; relicensed from EPL-1.0 under its section 7); unmodified Symbian sources are fetched from upstream and remain EPL-1.0. (LICENSE holds the EPL-1.0 text.) Phorepoc builds on the Symbian platform source released by Nokia
 Corporation and/or its subsidiary(-ies) and the Symbian Foundation. Files derived from it
 keep Nokia's copyright notice (or "Portions Copyright (c) Nokia Corporation") alongside ours. Third-party files keep
 their own copyright and licence, as their headers say.

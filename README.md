@@ -53,7 +53,7 @@ GPL-only. Without it, video at its own size looks right, and scaled video is a b
 
 ## License
 
-Code we wrote is Apache-2.0. Symbian files we've changed are EPL-2.0, with GPL-2.0-or-later as a Secondary License, and
+Code we wrote, and Symbian files we've changed, are EPL-2.0, with GPL-2.0-or-later as a Secondary License, and
 Symbian files we use unchanged stay EPL-1.0. The code from Linux keeps the license named above. The license texts are in
 `LICENSES/`.
 

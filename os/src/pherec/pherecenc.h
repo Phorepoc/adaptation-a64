@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // pherecenc.h -- OURS (2026-11-06): the screen recorder's encoder plug-in contract. pherec.exe (in the image) captures and
 // converts the pictures; the H.264 encoder is NOT in the image (H.264 is patent-encumbered): it comes with this repository's

@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (track): the touch panel (a Goodix GT9xx controller) ->
 // Symbian pointer events. Reference: the NuttX (Apache-2.0) gt9xx.c driver and Linux i2c-mv64xxx.c (the Allwinner TWI

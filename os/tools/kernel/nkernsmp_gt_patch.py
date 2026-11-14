@@ -1,5 +1,5 @@
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 """nkernsmp_gt_patch.py -- the generic-timer deltas of the 2010 ARM SMP nanokernel (phone SMP).
 

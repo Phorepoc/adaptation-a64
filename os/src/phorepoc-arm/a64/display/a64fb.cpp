@@ -1,5 +1,5 @@
 // Copyright The Phorepoc Authors
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 // OURS (track P4): the phone's framebuffer driver = Syborg's
 // REAL framebuffer driver (oss.FCL.sf.adapt.Qemu/baseport/syborg/svpframebuffer/svpframebuffer.cpp, compiled

@@ -1,5 +1,5 @@
 # Copyright The Phorepoc Authors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later
 
 # release.yml -- the screen recorder package (package.conf: the H.264 encoder plug-in, never in an image), built by the
 # pdk's package.yml on every push to main. When the

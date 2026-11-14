@@ -1,5 +1,5 @@
 /* Copyright The Phorepoc Authors
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0-or-later */
 
 // ve_enc.h -- OURS: the A64 Video Engine H.264 encoder, one picture per call. The register sequence is src/phevenctest2's
 // as pheencbench measured it (360x640 in 1.2 ms at 402 MHz): Bootlin
