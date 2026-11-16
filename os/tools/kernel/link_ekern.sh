@@ -247,7 +247,10 @@ if [ "$BOARD" = a64 ]; then
   # port/kernel_srcs.sh lists the sources; built in the display's NuttX environment ($DN: its a64_pio.c is the one called)
   MODEMDEFS=()
   if [ "${MODEM:-0}" = 1 ]; then
-    ME="${MODEM_EG25:-../modem-eg25}"
+    ME="${MODEM_EG25:-}"     # default: the modem-eg25 checkout among the board's repositories (PHOREPOC_ADAPTATIONS)
+    [ -n "$ME" ] || ME=$(echo "${PHOREPOC_ADAPTATIONS:-}" | tr : "
+" | grep "/modem-eg25$" | head -1)
+    [ -n "$ME" ] || ME=../modem-eg25
     [ -f "$ME/port/kernel_srcs.sh" ] || { echo "FAIL: MODEM=1 needs modem-eg25 at $ME (set MODEM_EG25)"; exit 1; }
     . "$ME/port/kernel_srcs.sh"
     MODEMDEFS=(-DPHE_MODEM -I"$ME/port")
