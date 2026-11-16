@@ -242,17 +242,19 @@ if [ "$BOARD" = a64 ]; then
   ccq -k .variant-build/d_comm_a64.cpp -I"$B/drivers/ecomm" -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -DCreateLogicalDevice=CreateLogicalDevice_ecomm \
     -DKernelModuleEntry=KernelModuleEntry_ecomm -o .variant-build/d_comm.o
-  # MODEM=1: + Comm.A64 unit 3 = UART3 to the EG25-G. Its power code = Apache NuttX pinephone_modem.c (unmodified) +
-  # phe_modem_power.c (the Zephyr power-off sequence), both from the modem-eg25 checkout (MODEM_EG25, default
-  # ../modem-eg25), built in the display's NuttX environment ($DN: its a64_pio.c is the one they call)
+  # MODEM=1: + Comm.A64 unit 3 = UART3 to the EG25-G. Its power code (NuttX's modem power driver, unmodified, + the
+  # Zephyr power-off sequence) comes from the modem-eg25 checkout (MODEM_EG25, default ../modem-eg25), whose
+  # port/kernel_srcs.sh lists the sources; built in the display's NuttX environment ($DN: its a64_pio.c is the one called)
   MODEMDEFS=()
   if [ "${MODEM:-0}" = 1 ]; then
     ME="${MODEM_EG25:-../modem-eg25}"
-    [ -f "$ME/port/phe_modem_power.c" ] || { echo "FAIL: MODEM=1 needs modem-eg25 at $ME (set MODEM_EG25)"; exit 1; }
+    [ -f "$ME/port/kernel_srcs.sh" ] || { echo "FAIL: MODEM=1 needs modem-eg25 at $ME (set MODEM_EG25)"; exit 1; }
+    . "$ME/port/kernel_srcs.sh"
     MODEMDEFS=(-DPHE_MODEM -I"$ME/port")
-    for c in "$ME/third_party/nuttx/boards/arm64/a64/pinephone/src/pinephone_modem.c" "$ME/port/phe_modem_power.c"; do
+    MINC=(); for d in $MODEM_KINC; do MINC+=(-I"$d"); done
+    for c in $MODEM_KSRC; do
       ccq --raw "$ARMGCC" -c -O2 -march=armv5te -marm -mthumb-interwork -fno-short-enums -ffreestanding -fno-strict-aliasing \
-        -I"$DN/compat" -I"$DN" -I"$ME/port" -I"$ME/port/kinc" -I"$ME/third_party/nuttx/boards/arm64/a64/pinephone/src" \
+        -I"$DN/compat" -I"$DN" "${MINC[@]}" \
         -include "$ME/port/phe_nuttx_kernel.h" "$c" -o ".variant-build/md_$(basename "$c" .c).o"
       VAROBJS+=(".variant-build/md_$(basename "$c" .c).o")
     done

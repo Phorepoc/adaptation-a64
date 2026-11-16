@@ -291,7 +291,7 @@ void TA64Sound::PowerOff()
 	iPowered = EFalse;
 	}
 
-// the speaker amplifier: PC7 = PA-SHDN (PinePhone v1.2b schematic; LINEOUTP/N feed the speaker amplifier); port C =
+// the speaker amplifier: PC7 = PA-SHDN (board schematic; LINEOUTP/N feed the speaker amplifier); port C =
 // PIO + 2 * 0x24, CFG0 bits 31:28 = pin 7 (manual 3.21.2 PC_CFG0), DAT bit 7
 void TA64Sound::AmpOn()
 	{
@@ -921,7 +921,7 @@ void TA64Sound::SelfTest()
 //   Uplink:   MIC1 -> MIC1 boost -> left ADC mixer -> ADCL -> AIF2 ADC left mixer -> AIF2 ADCL -> the modem
 //   BT:       AIF2 ADC left <- AIF3 input (AIF3_SGP_CTRL AIF2_DAC_SRC), AIF3 output <- AIF2 ADC left (AIF3_ADC_SRC)
 // Format: the codec is the PCM master, 8 kHz, 16-bit, DSP mode, mono, 32 BCLK per frame (256 kHz BCLK).
-// Board wiring (PinePhone v1.2b schematic): PB4-7 = BB-PCM to the modem, PG10-13 = BT-PCM, EAROUTP/N = the receiver,
+// Board wiring (the reference board schematic): PB4-7 = BB-PCM to the modem, PG10-13 = BT-PCM, EAROUTP/N = the receiver,
 // MICIN1P/N = MIC1. [verify] the PCM timing (BCLK polarity, frame sync) against the EG25-G Hardware Design.
 // digital (manual offset - 0x200)
 static const TUint KCdAif2Clk = 0x080,		// 3.20.5.34 0x280 AIF2_CLK_CTRL

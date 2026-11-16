@@ -18,7 +18,7 @@
 // device-wake PH6 asserted (low) together with it; the IO rail (AXP803 DLDO4, 1.8 V) is switched on at create. The
 // timing of the power sequence (enable low 100 ms, high 500 ms) is the client's: SetSignals runs in ISR paths too.
 // Modem (-DPHE_MODEM = the MODEM=1 kernel build only): unit 3 = UART3 at 0x01C28C00 (GIC SPI 3, CCU bit 19, no
-// hardware flow control) to the Quectel EG25-G. Opening unit 3 powers the modem with NuttX's pinephone_modem_init on its
+// hardware flow control) to the Quectel EG25-G. Opening unit 3 powers the modem through modem-eg25's power hook on its
 // own DFC thread; STATUS (low = on) reads as KSignalDSR; closing runs the Zephyr power-off sequence (block below).
 #include <kernel/kern_priv.h>
 #include <drivers/comm.h>
@@ -498,7 +498,7 @@ void DA64Uart::Isr(TAny* aPtr)
 
 #ifdef PHE_MODEM
 // ---- The EG25-G power + UART3 -------------------------------------------------------------------------------------
-// Power: modem-eg25/port/phe_modem_power.c = Apache NuttX's pinephone_modem_init() (unmodified) for on, the Zephyr
+// Power: modem-eg25/port/phe_modem_power.c = the board's NuttX modem init (unmodified) for on, the Zephyr
 // modem_cellular power-off sequence (EG2x-G timing) for off; both block, so they run on the modem's own DFC thread.
 static TDynamicDfcQue* ModemQ;
 static TDfc* ModemUpDfc;
@@ -517,7 +517,7 @@ static void ModemLog(const char* aStep)
 
 static void ModemUpFn(TAny*)
 	{
-	ModemLog("power-up (NuttX pinephone_modem_init)");
+	ModemLog("power-up (NuttX modem init)");
 	const int r = phe_modem_power_on();
 	ModemState = (r == 0) ? 2 : 0;
 	ModemLog(r == 0 ? "modem ready (STATUS low)" : "power-up failed");
