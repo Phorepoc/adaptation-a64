@@ -251,7 +251,7 @@ if [ "$BOARD" = a64 ]; then
     [ -n "$ME" ] || ME=$(echo "${PHOREPOC_ADAPTATIONS:-}" | tr : "
 " | grep "/modem-eg25$" | head -1)
     [ -n "$ME" ] || ME=../modem-eg25
-    [ -f "$ME/port/kernel_srcs.sh" ] || { echo "FAIL: MODEM=1 needs modem-eg25 at $ME (set MODEM_EG25)"; exit 1; }
+    [ -f "$ME/port/kernel_srcs.sh" ] || { echo "FAIL: MODEM=1 needs modem-eg25 at $ME (set MODEM_EG25)" >&2; exit 1; }
     . "$ME/port/kernel_srcs.sh"
     MODEMDEFS=(-DPHE_MODEM -I"$ME/port")
     MINC=(); for d in $MODEM_KINC; do MINC+=(-I"$d"); done

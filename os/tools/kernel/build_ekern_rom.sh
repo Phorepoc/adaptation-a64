@@ -48,7 +48,8 @@ if [ "${SMP:-0}" = 1 ] && [ "${MMODEL:-multiple}" = flexible ]; then
   bash tools/kernel/nkernsmp_compile_check.sh >"$O.nk.log" 2>&1 || { tail -20 "$O.nk.log"; echo "nkernsmp compile failed" >&2; exit 1; }
   SMP=1 MMODEL=flexible bash tools/kernel/ekern_compile_check.sh >"$O.ek.log" 2>&1 || { tail -20 "$O.ek.log"; echo "ekern compile failed" >&2; exit 1; }
 fi
-CODE_BASE="$CODE_BASE" KERN_DATA_BASE="$KERN_DATA_BASE" bash tools/kernel/link_ekern.sh >/dev/null
+CODE_BASE="$CODE_BASE" KERN_DATA_BASE="$KERN_DATA_BASE" bash tools/kernel/link_ekern.sh >"$O.link.log" 2>&1 \
+  || { tail -30 "$O.link.log"; echo "ekern link failed" >&2; exit 1; }
 sym() { "$NM" "$O/ekern.elf" | awk -v s="$1" '$3==s{print "0x"$1}'; }
 ENTRY=$(sym "${ENTRY_SYM:-_ekern_entry}"); CODE_SIZE=$(sym __code_size__); DATA_LMA=$(sym __data_lma__)
 DATA_SIZE=$(sym __data_size__); BSS_SIZE=$(sym __bss_size__)
