@@ -9,6 +9,7 @@
 #include <stddef.h>
 
 void ekseam_puts(const char *);
+void A64SdFlushNow(int) __attribute__((weak));
 
 static int
 fmt_num(char *o, size_t n, size_t at, unsigned long long v, int base, int width, int zero, int neg, int upper)
@@ -149,6 +150,10 @@ phe_usb_printf(const char *f, ...)
 	r = phe_usb_vsnprintf(b, sizeof(b), f, ap);
 	va_end(ap);
 	ekseam_puts(b);
+	/* a64_glue.cpp's SD-log flush (thread context only; the stack runs in the UsbHost DFC thread): the lines of a
+	 * bring-up that hangs the SoC reach slot A's replay. Weak: NULL on the bench */
+	if (A64SdFlushNow != 0)
+		A64SdFlushNow(0x500);
 	return r;
 }
 

@@ -186,6 +186,12 @@ static void AtSelfTest()
 #endif
 
 static NTimer* gDumpTimer;		// (the dump after the first enumeration window, below)
+#ifndef A64_H3TEST
+extern "C" void A64SdFlushNow(TInt aStage);		// a64_glue.cpp: the SD log, thread context only
+#define USBH_FLUSH(n) A64SdFlushNow(0x500 + (n))
+#else
+#define USBH_FLUSH(n) do { } while (0)
+#endif
 
 static void ServiceDfcFn(TAny*)
 	{
@@ -193,8 +199,10 @@ static void ServiceDfcFn(TAny*)
 		{
 		gStarted = ETrue;
 		ekseam_puts("[usbh] usb_init (FreeBSD USB, kshim) in the UsbHost DFC thread\n");
+		USBH_FLUSH(1);
 		usb_init();
 		ekseam_puts("[usbh] usb_init done\n");
+		USBH_FLUSH(2);
 		const TInt tick0 = NKern::TickCount();
 		Kern::NanoWait(20000000);
 #ifdef A64_H3TEST
@@ -251,6 +259,8 @@ static void ServiceDfcFn(TAny*)
 extern "C" void phe_usb_hotplug(void)
 	{
 	gExplore = ETrue;
+	ekseam_puts("[usbh] hotplug: the modem is up\n");
+	USBH_FLUSH(0);
 	if (gServiceDfc)
 		gServiceDfc->Enque();
 	}

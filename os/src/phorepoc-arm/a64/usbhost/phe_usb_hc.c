@@ -183,18 +183,25 @@ phe_usb_root_load(void *arg)
 	/* children find their driver by the parent's driver name (device_get_name), so the root needs one */
 	phe_usb_root->dev_module = &phe_usb_root_mod;
 	bus_alloc_resource_any_cb = phe_usb_resource_cb;
-	if (phe_usb_phy_attach != NULL)
+	if (phe_usb_phy_attach != NULL) {
+		printf("[usbh] hc: PHY attach\n");
 		phe_usb_phy_attach(phe_usb_root);	/* the PHY provider first, as FreeBSD's bus passes order it */
+		printf("[usbh] hc: PHY attach done\n");
+	}
 	callout_init_mtx(&phe_usb_irq_callout, NULL, 0);
 	callout_reset(&phe_usb_irq_callout, 1, phe_usb_irq_poll, NULL);
 	for (k = 0; k < 2; k++) {
 		for (n = 0; phe_usb_board_hc(kinds[k], n, &cfg) == 0; n++) {
 			device_t dev = device_add_child(phe_usb_root, kinds[k], DEVICE_UNIT_ANY);
-			phe_usb_irq_attach(cfg.irq);
+			printf("[usbh] hc: %s%d attach\n", kinds[k], n);
 			if (dev == NULL || device_probe_and_attach(dev) != 0)
 				printf("[usbh] %s%d at 0x%08lx: attach failed\n", kinds[k], n, (unsigned long)cfg.base);
-			else
+			else {
 				printf("[usbh] %s%d at 0x%08lx attached\n", kinds[k], n, (unsigned long)cfg.base);
+				/* the GIC line only once the controller is initialised: bound before, an interrupt the
+				 * stack has no handler for yet re-fires at once (ISR -> DFC -> unmask) and storms CPU 0 */
+				phe_usb_irq_attach(cfg.irq);
+			}
 		}
 	}
 }
