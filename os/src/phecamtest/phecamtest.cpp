@@ -12,8 +12,22 @@
 #include <f32file.h>
 #include <imageconversion.h>
 
-// the front GC2145 is parked (camera-plan.md): rear only. ETrue = switch to camera 1 after 200 frames (needs a front-enabled kernel + phecam)
-static const TBool KTryFront = EFalse;
+// which camera(s), from the command line: (none) / "rear" = camera 0, "front" = camera 1 only, "both" = rear frames 1-199,
+// then the front camera for frames 200-699. A still is taken at frame 100 of the first camera.
+static TInt TheFirstCamera = 0;
+static TBool KTryFront = EFalse;
+static void ParseArgs()
+	{
+	TBuf<64> cmd;
+	if (User::CommandLineLength() <= cmd.MaxLength())
+		User::CommandLine(cmd);
+	cmd.LowerCase();
+	if (cmd.Find(_L("front")) >= 0)
+		TheFirstCamera = 1;
+	else if (cmd.Find(_L("both")) >= 0)
+		KTryFront = ETrue;
+	RDebug::Printf("PH: camtest mode: first camera %d, then front %d", TheFirstCamera, KTryFront);
+	}
 
 // a still from ImageReady -> C:\Data\Images\phecam_<n>.jpg through ICL (imageconversion + the JPEG codec plug-in)
 class CJpegSaver : public CActive
@@ -71,7 +85,8 @@ public:
 	void StartL()
 		{
 		RDebug::Printf("PH: camtest cameras available %d", CCamera::CamerasAvailable());
-		iCam = CCamera::NewL(*this, 0);
+		iIndex = TheFirstCamera;
+		iCam = CCamera::NewL(*this, iIndex);
 		iSwitch = new (ELeave) CAsyncCallBack(TCallBack(SwitchCb, this), CActive::EPriorityStandard);
 		User::LeaveIfError(iScreen.CreateContext(iGc));
 		iCam->Reserve();
@@ -226,6 +241,7 @@ TInt E32Main()
 	{
 	CTrapCleanup* cleanup = CTrapCleanup::New();
 	RDebug::Printf("PH: camtest start");
+	ParseArgs();
 	TRAPD(r, RunL());
 	if (r != KErrNone)
 		RDebug::Printf("PH: camtest leave %d FAIL", r);
