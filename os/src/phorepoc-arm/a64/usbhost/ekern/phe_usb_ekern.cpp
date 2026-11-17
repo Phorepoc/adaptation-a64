@@ -195,6 +195,9 @@ static void ServiceDfcFn(TAny*)
 		ekseam_puts("[usbh] usb_init done\n");
 		const TInt tick0 = NKern::TickCount();
 		Kern::NanoWait(20000000);
+#ifdef A64_H3TEST
+		// (the bench only: on the phone this loop never ends and, polling at priority 24 on CPU 0 with no kernel tick,
+		// it starves the Supervisor thread that is still starting the extensions -- boot stops before stage 4)
 		if (NKern::TickCount() == tick0)
 			{
 			// no kernel tick yet (the QEMU H3 test ROM: the nanokernel tick stands still while the extensions start,
@@ -225,7 +228,11 @@ static void ServiceDfcFn(TAny*)
 				Kern::NanoWait(1000000);
 				}
 			}
+#endif
 		gTick->OneShot(1);
+#ifndef A64_H3TEST
+		gDumpTimer->OneShot(NKern::TimerTicks(25000));	// the modem enumerates 15-20 s after PWRKEY: dump what attached
+#endif
 		}
 	if (gExplore)
 		{
@@ -269,21 +276,37 @@ extern "C" void phe_usb_irq_attach(int aIrq)
 
 TInt UsbCommInstall();						// phe_usb_comm.cpp
 
+#ifndef A64_H3TEST
+// Boot-trial breadcrumbs: this runs in the Supervisor thread between SD-log stages 3 and 4. A hang here is a watchdog
+// reset back to slot A with nothing from slot B on the debug link, so each step is flushed to the SD log (the
+// replay of the died B trial in slot A's log); a64_glue.cpp's A64SdFlushNow is thread-context only.
+extern "C" void A64SdFlushNow(TInt aStage);
+#define USBH_STEP(n, s) do { ekseam_puts("[usbh] step " s "\n"); A64SdFlushNow(0x400 + (n)); } while (0)
+#else
+#define USBH_STEP(n, s) do { } while (0)
+#endif
+
 TInt InitExtension_usbhost()
 	{
+	USBH_STEP(1, "1: AllocPhysicalRam 2 MiB");
 	TInt r = Epoc::AllocPhysicalRam(KPoolSize, gPoolPhys, 12);
 	if (r != KErrNone)
 		return r;
+	USBH_STEP(2, "2: pool chunk");
 	DPlatChunkHw* ch = NULL;
 	r = DPlatChunkHw::New(ch, gPoolPhys, KPoolSize, EMapAttrSupRw | EMapAttrFullyBlocking);
 	if (r != KErrNone)
 		return r;
 	gPoolLin = ch->LinearAddress();
+	USBH_STEP(3, "3: board init (CCU gates, resets)");
 	r = phe_usb_board_init();				// the SoC: register mappings, clocks, resets, PHY
 	if (r != 0)
 		return r;
+	USBH_STEP(4, "4: DFC queue");
 	_LIT(KQName, "UsbHost");
-	r = Kern::DynamicDfcQCreate(gQ, 24, KQName);	// below the kernel DFC threads (27)
+	// priority 16: the stack busy-waits (pause/DELAY on the generic timer) for whole milliseconds while it enumerates;
+	// at 24 that outranked the Supervisor thread and the system servers on CPU 0
+	r = Kern::DynamicDfcQCreate(gQ, 16, KQName);
 	if (r != KErrNone)
 		return r;
 #ifdef __SMP__
@@ -295,9 +318,17 @@ TInt InitExtension_usbhost()
 	gDumpTimer = new NTimer(DumpTimerFn, NULL);
 	if (!gServiceDfc || !gTick || !gDumpDfc || !gDumpTimer)
 		return KErrNoMemory;
+	USBH_STEP(5, "5: Comm.USB PDD");
 	UsbCommInstall();						// phe_usb_comm.cpp: the "Comm.USB" PDD for the serial ports
+#ifdef A64_H3TEST
 	gServiceDfc->Enque();					// the first run calls usb_init()
 	gDumpTimer->OneShot(NKern::TimerTicks(8000));
+#else
+	// the phone: usb_init() runs when something asks for the host (phe_usb_hotplug(), called when the modem is powered
+	// up), not while the Supervisor thread is still starting the extensions with no kernel tick
+	ekseam_puts("[usbh] usb_init deferred until the first phe_usb_hotplug()\n");
+#endif
 	ekseam_puts("[usbh] host started: DFC thread UsbHost, 2 MiB uncached pool\n");
+	USBH_STEP(6, "6: done");
 	return KErrNone;
 	}
