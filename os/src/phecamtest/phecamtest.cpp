@@ -11,14 +11,21 @@
 #include <ecam.h>
 #include <f32file.h>
 #include <imageconversion.h>
+#include <ecamadvsettings.h>
+#include <ecam/ecamadvsettingsintf.h>
 
 // which camera(s), from the command line: (none) / "rear" = camera 0, "front" = camera 1 only, "both" = rear frames 1-199,
 // then the front camera for frames 200-699. A still is taken at frame 100 of the first camera.
+// More words test the camera-a64 plug-in's ECam features: "full" = the still in the largest capture size as EFormatExif
+// (the plug-in's JPEG, written as is); "af" = a single autofocus at the picture's centre (frame 50, its status polled);
+// "wb" = white balance daylight (frame 30); "ev" = exposure compensation +1 step (frame 30); "mirror" = a mirrored viewfinder.
 static TInt TheFirstCamera = 0;
 static TBool KTryFront = EFalse;
+static TBool TheFull, TheAf, TheWb, TheEv, TheMirror;
+static TInt TheSizeIndex;	// "sizeN": the capture-size index of the "full" still (0 = the largest)
 static void ParseArgs()
 	{
-	TBuf<64> cmd;
+	TBuf<128> cmd;
 	if (User::CommandLineLength() <= cmd.MaxLength())
 		User::CommandLine(cmd);
 	cmd.LowerCase();
@@ -26,7 +33,58 @@ static void ParseArgs()
 		TheFirstCamera = 1;
 	else if (cmd.Find(_L("both")) >= 0)
 		KTryFront = ETrue;
-	RDebug::Printf("PH: camtest mode: first camera %d, then front %d", TheFirstCamera, KTryFront);
+	TheFull = cmd.Find(_L("full")) >= 0;
+	{
+	const TInt at = cmd.Find(_L("size"));
+	if (at >= 0 && at + 4 < cmd.Length())
+		TheSizeIndex = cmd[at + 4] - '0';
+	}
+	TheAf = cmd.Find(_L("af")) >= 0;
+	TheWb = cmd.Find(_L("wb")) >= 0;
+	TheEv = cmd.Find(_L("ev")) >= 0;
+	TheMirror = cmd.Find(_L("mirror")) >= 0;
+	RDebug::Printf("PH: camtest mode: first camera %d, then front %d; full %d af %d wb %d ev %d mirror %d", TheFirstCamera, KTryFront,
+		TheFull, TheAf, TheWb, TheEv, TheMirror);
+	}
+
+// the camera-a64 plug-in's own interface (its TestCamera.h): the sensor's V4L2 controls
+const TUid KPheCameraControlsUid = { 0xE7015C66 };
+class MPheCameraControls
+	{
+public:
+	virtual TInt SetCtrl(TUint32 aId, TInt aValue) = 0;
+	virtual TInt GetCtrl(TUint32 aId, TInt& aValue) = 0;
+	virtual TInt QueryCtrl(TUint32 aId, TAny* aInfo) = 0;
+	virtual TInt FocusAt(const TPoint& aPoint, const TSize& aFrame) = 0;
+	};
+const TUint32 KV4l2CidAutoFocusStatus = 0x009a0900 + 30;	// V4L2_CID_AUTO_FOCUS_STATUS
+
+// writes encoded bytes (EFormatExif / EFormatJpeg) to the next C:\Data\Images\phecam_<n>.jpg
+static void SaveData(const TDesC8& aData)
+	{
+	RFs fs;
+	if (fs.Connect() != KErrNone)
+		return;
+	fs.MkDirAll(_L("C:\\Data\\Images\\"));
+	TFileName name;
+	for (TInt n = 1; n < 10000; ++n)
+		{
+		name.Format(_L("C:\\Data\\Images\\phecam_%04d.jpg"), n);
+		TEntry entry;
+		if (fs.Entry(name, entry) == KErrNotFound)
+			break;
+		}
+	RFile f;
+	TInt r = f.Replace(fs, name, EFileWrite);
+	if (r == KErrNone)
+		{
+		r = f.Write(aData);
+		f.Close();
+		}
+	TBuf8<KMaxFileName> name8;
+	name8.Copy(name);
+	RDebug::Printf("PH: camtest still saved %S %d bytes r=%d %s", &name8, aData.Length(), r, r == KErrNone ? "PASS" : "FAIL");
+	fs.Close();
 	}
 
 // a still from ImageReady -> C:\Data\Images\phecam_<n>.jpg through ICL (imageconversion + the JPEG codec plug-in)
@@ -111,6 +169,11 @@ public:
 		TCameraInfo info;
 		iCam->CameraInfo(info);
 		RDebug::Printf("PH: camtest info: hw %d options %x video fmts %x", info.iHardwareVersion.iMajor, info.iOptionsSupported, info.iVideoFrameFormatsSupported);
+		if (TheMirror)
+			{
+			TRAPD(m, iCam->SetViewFinderMirrorL(ETrue));
+			RDebug::Printf("PH: camtest mirror %d (now %d)", m, iCam->ViewFinderMirror());
+			}
 		TSize size = iScreen.SizeInPixels();
 		TRAPD(e, iCam->StartViewFinderBitmapsL(size));
 		RDebug::Printf("PH: camtest viewfinder start %d (size %dx%d)", e, size.iWidth, size.iHeight);
@@ -129,11 +192,22 @@ public:
 		iGc->Deactivate();
 		iWin.EndRedraw();
 		iWs.Flush();
-		if (iFrames == 100)
+		if (iFrames == 30 && (TheWb || TheEv))
+			Settings();
+		if (iFrames == 50 && TheAf)
+			Focus();
+		if (TheAf && iFrames > 50 && iFrames <= 100 && iFrames % 10 == 0)
+			FocusStatus();
+		if (iFrames == 100 && TheFull)
+			{
+			FullStill();
+			}
+		else if (iFrames == 100)
 			{
 			// camera-plan.md "stills": one 640x480 still through ECam (the plug-in's capture path), saved as a JPEG in
-			// C:\Data\Images (where the Photos/media gallery looks)
-			TRAPD(e, iCam->PrepareImageCaptureL(CCamera::EFormatFbsBitmapColor16M, 0));
+			// C:\Data\Images (where the Photos/media gallery looks); the capture sizes are the sensor's modes, largest
+			// first, so the viewfinder's size is looked up
+			TRAPD(e, iCam->PrepareImageCaptureL(CCamera::EFormatFbsBitmapColor16M, SizeIndex(CCamera::EFormatFbsBitmapColor16M, TSize(480, 640))));
 			RDebug::Printf("PH: camtest still prepare %d", e);
 			if (e == KErrNone)
 				iCam->CaptureImage();
@@ -147,7 +221,13 @@ public:
 		}
 	void ImageReady(CFbsBitmap* aBitmap, HBufC8* aData, TInt aError)
 		{
-		delete aData;
+		if (aData)
+			{
+			RDebug::Printf("PH: camtest still ready %d data %d bytes", aError, aData->Length());
+			if (aError == KErrNone)
+				SaveData(*aData);
+			delete aData;
+			}
 		RDebug::Printf("PH: camtest still ready %d bitmap %08x", aError, (TUint)aBitmap);
 		if (aError == KErrNone && aBitmap)
 			{
@@ -175,6 +255,73 @@ public:
 			delete aBitmap;
 		}
 	void FrameBufferReady(MFrameBuffer*, TInt) {}
+	// the capture size index of aSize (0 = the largest, or the only one, when absent)
+	TInt SizeIndex(CCamera::TFormat aFormat, const TSize& aSize)
+		{
+		TCameraInfo info;
+		iCam->CameraInfo(info);
+		for (TInt i = 0; i < info.iNumImageSizesSupported; ++i)
+			{
+			TSize s;
+			iCam->EnumerateCaptureSizes(s, i, aFormat);
+			if (s == aSize)
+				return i;
+			}
+		return 0;
+		}
+	void FullStill()
+		{
+		TCameraInfo info;
+		iCam->CameraInfo(info);
+		for (TInt i = 0; i < info.iNumImageSizesSupported; ++i)
+			{
+			TSize s;
+			iCam->EnumerateCaptureSizes(s, i, CCamera::EFormatExif);
+			RDebug::Printf("PH: camtest capture size %d: %dx%d", i, s.iWidth, s.iHeight);
+			}
+		TRAPD(e, iCam->PrepareImageCaptureL(CCamera::EFormatExif, TheSizeIndex));
+		RDebug::Printf("PH: camtest full still prepare (formats %x, size %d) %d", info.iImageFormatsSupported, TheSizeIndex, e);
+		if (e == KErrNone)
+			iCam->CaptureImage();
+		}
+	void Settings()
+		{
+		// the plug-in's advanced-settings interface itself (the image's ecam.dll does not export CCameraAdvancedSettings)
+		MCameraAdvancedSettings* adv = (MCameraAdvancedSettings*)iCam->CustomInterface(KECamMCameraAdvancedSettingsUid);
+		const TInt e = adv ? KErrNone : KErrNotSupported;
+		TCameraInfo info;
+		iCam->CameraInfo(info);
+		if (TheWb)
+			{
+			TRAPD(w, iCam->SetWhiteBalanceL(CCamera::EWBDaylight));
+			RDebug::Printf("PH: camtest white balance modes %x, daylight %d, now %x", info.iWhiteBalanceModesSupported, w, iCam->WhiteBalance());
+			}
+		if (TheEv && e == KErrNone)
+			{
+			TInt neg = 0, pos = 0;
+			adv->GetExposureCompensationRangeInSteps(neg, pos);
+			adv->SetExposureCompensation(1);
+			TInt now = 0;
+			TInt g = adv->GetExposureCompensation(now);
+			RDebug::Printf("PH: camtest EV step %d range %d..%d, set +1 -> read %d (%d)", adv->ExposureCompensationStep(), neg, pos, now, g);
+			}
+		if (adv)
+			adv->Release();
+		}
+	void Focus()
+		{
+		MPheCameraControls* c = (MPheCameraControls*)iCam->CustomInterface(KPheCameraControlsUid);
+		TSize s = iScreen.SizeInPixels();
+		TInt r = c ? c->FocusAt(TPoint(s.iWidth / 2, s.iHeight / 2), s) : KErrNotSupported;
+		RDebug::Printf("PH: camtest focus at the centre -> %d", r);
+		}
+	void FocusStatus()
+		{
+		MPheCameraControls* c = (MPheCameraControls*)iCam->CustomInterface(KPheCameraControlsUid);
+		TInt st = -1;
+		TInt r = c ? c->GetCtrl(KV4l2CidAutoFocusStatus, st) : KErrNotSupported;
+		RDebug::Printf("PH: camtest focus status frame %d: %d (%d)", iFrames, st, r);
+		}
 	static TInt SwitchCb(TAny* aSelf)
 		{
 		CCamTest* t = (CCamTest*)aSelf;
