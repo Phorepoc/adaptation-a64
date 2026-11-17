@@ -82,6 +82,13 @@ extern "C" int phe_usb_board_hc(const char* aKind, int aN, struct phe_usb_hc_cfg
 	if (aN != 0 || !gUsb1)
 		return -1;
 	TBool ehci = aKind[0] == 'e';
+#ifndef A64_H3TEST
+	// no OHCI companion on the phone: the first OHCI1 register access (ohci_init) hangs the SoC (boot 2731: the log
+	// ends at "[usbh] ohci: ohci_init", no fault), while every EHCI1 access works. The modem is a high-speed device
+	// and runs on EHCI alone; a full/low-speed device on the port would need the companion.
+	if (!ehci)
+		return -1;
+#endif
 	aCfg->base = gUsb1 + (ehci ? 0 : 0x400);
 	aCfg->size = ehci ? 0x400 : 0x100;
 	aCfg->irq = ehci ? KIntIdEhci1 : KIntIdOhci1;
