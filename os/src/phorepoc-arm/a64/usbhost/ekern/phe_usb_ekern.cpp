@@ -276,6 +276,14 @@ static void DumpDfcFn(TAny*)
 
 extern "C" void phe_usb_irq_attach(int aIrq)
 	{
+#ifndef A64_H3TEST
+	// the phone polls the controllers (the service DFC runs every tick, the kshim callout every tick): the GIC lines
+	// stay unbound. Boot 2728: the hang came right after the EHCI1 line was enabled (ISR -> mask -> DFC -> unmask
+	// re-fires without end, the storm of boot 2682, and CPU 0 -- the debug link, the watchdog feed -- stops).
+	ekseam_puts("[usbh] irq line left unbound: polled\n");
+	(void)aIrq;
+	return;
+#endif
 	if (aIrq < 0 || gIrqCount >= 4)
 		return;
 	if (Interrupt::Bind(aIrq, Isr, (TAny*)aIrq) == KErrNone)

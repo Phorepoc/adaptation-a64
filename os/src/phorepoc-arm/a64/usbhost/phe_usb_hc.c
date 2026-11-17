@@ -113,6 +113,7 @@ phe_ohci_attach(device_t self)
 	sc->sc_bus.devices = sc->sc_devices;
 	sc->sc_bus.devices_max = OHCI_MAX_DEVICES;
 	sc->sc_bus.dma_bits = 32;
+	printf("[usbh] ohci: bus mem alloc\n");
 	if (usb_bus_mem_alloc_all(&sc->sc_bus, USB_GET_DMA_TAG(self), &ohci_iterate_hw_softc))
 		return (ENOMEM);
 	sc->sc_io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid, RF_ACTIVE);
@@ -130,8 +131,10 @@ phe_ohci_attach(device_t self)
 	if (bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE, NULL,
 	    (driver_intr_t *)ohci_interrupt, sc, &sc->sc_intr_hdl) != 0)
 		return (ENXIO);
+	printf("[usbh] ohci: ohci_init\n");
 	if (ohci_init(sc) != 0)
 		return (ENXIO);
+	printf("[usbh] ohci: usbus attach\n");
 	return (device_probe_and_attach(sc->sc_bus.bdev));
 }
 
