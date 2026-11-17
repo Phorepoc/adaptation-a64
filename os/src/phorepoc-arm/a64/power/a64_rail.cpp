@@ -13,7 +13,10 @@ struct TRailDef { TUint8 iVReg, iVMask, iVSel, iEnReg, iEnBit; TBool iShared; };
 static const TRailDef KRails[EA64RailCount] =
 	{
 	{ 0x28, 0x1F, 11, 0x13, 5, ETrue },	// ALDO1: 0.7 V + 11 x 0.1 V = 1.8 V
-	{ 0x17, 0x1F, 21, 0x12, 5, ETrue },	// DLDO3: 0.7 V + 21 x 0.1 V = 2.8 V
+	// DLDO3: 0.7 V + 21 x 0.1 V = 2.8 V. Not shared: the board DT gives it no consumer but the two sensors' AVDD, so Linux
+	// switches it off when both are off. Kept on, the OV5640 sat with AVDD + DOVDD up, DVDD (ELDO3) off and PWDN floating
+	// low (no pull-up on PC0), and no longer answered on I2C after its next power-up (camera-a64 streamon -6).
+	{ 0x17, 0x1F, 21, 0x12, 5, EFalse },
 	{ 0x1B, 0x1F, 22, 0x12, 2, EFalse },	// ELDO3: 0.7 V + 22 x 0.05 V = 1.8 V
 	};
 static TInt Users[EA64RailCount];

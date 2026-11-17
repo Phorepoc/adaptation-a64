@@ -13,7 +13,7 @@
 enum TA64Rail
 	{
 	EA64RailAldo1 = 0,	// 1.8 V: the PE pin bank + camera DOVDD (shared: never switched off)
-	EA64RailDldo3 = 1,	// 2.8 V: camera AVDD (shared: never switched off)
+	EA64RailDldo3 = 1,	// 2.8 V: camera AVDD (only the two sensors use it: off with the last user, as Linux)
 	EA64RailEldo3 = 2,	// 1.8 V: camera DVDD
 	EA64RailCount
 	};
