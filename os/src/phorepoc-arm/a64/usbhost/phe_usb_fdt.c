@@ -156,6 +156,14 @@ static const struct driver sb_driver = { .name = "simplebus", .methods = sb_meth
 static struct module_data sb_mod = {
 	.bus_name = "", .mod_name = "simplebus", .long_name = "/simplebus", .driver = &sb_driver };
 
+/* the kshim's ofw_bus_status_okay() answers 0 while this callback is NULL, and awusbphy_probe() then returns ENXIO:
+ * "awusbphy attach failed" (boot 2726). The one static node is always "okay". */
+static int
+phe_usb_status_ok(device_t dev)
+{
+	return (1);
+}
+
 int
 phe_usb_phy_attach(device_t root)
 {
@@ -165,6 +173,7 @@ phe_usb_phy_attach(device_t root)
 	if (phe_usb_board_phy(&phy_cfg) != 0)
 		return (0);		/* no PHY to set up (the QEMU bench, the H3 model) */
 	phy_have = 1;
+	ofw_bus_status_ok_cb = phe_usb_status_ok;
 	sb = device_add_child(root, "simplebus", DEVICE_UNIT_ANY);
 	if (sb == NULL)
 		return (ENOMEM);

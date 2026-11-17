@@ -62,7 +62,11 @@ extern "C" int phe_usb_board_phy(struct phe_usb_phy_cfg* aCfg)
 #else
 	memclr(aCfg, sizeof(*aCfg));
 	aCfg->compatible = "allwinner,sun50i-a64-usb-phy";
-	aCfg->reg_name[0] = "phy_ctrl"; aCfg->reg_base[0] = gPhyCtl;
+	// phy_ctrl (0x01C19400) is PHY0's = the OTG controller's of the USB-C port (the phlink debug link): aw_usbphy's attach
+	// writes PHY_CSR there to force the OTG PHY to host (ID low, VBUS valid), which would take the device-mode link away.
+	// PHY1 (the modem) needs nothing in it, so aw_usbphy gets a RAM shadow of the window instead of the register page.
+	static TUint32 sPhyCtlShadow[64];
+	aCfg->reg_name[0] = "phy_ctrl"; aCfg->reg_base[0] = (TLinAddr)sPhyCtlShadow;
 	aCfg->reg_name[1] = "pmu0";     aCfg->reg_base[1] = gUsb0 + 0x800;
 	aCfg->reg_name[2] = "pmu1";     aCfg->reg_base[2] = gUsb1 + 0x800;
 	aCfg->clk[0].base = gCcu; aCfg->clk[0].reg = KCcuUsbPhyCfg; aCfg->clk[0].mask = 1u << 9;
