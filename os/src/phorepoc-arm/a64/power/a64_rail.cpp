@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // a64_rail.cpp -- the PMIC rail API of a64_rail.h over A64PmicUpdateReg (display/a64_display.cpp, RSB to the AXP803).
-// Voltages: the PinePhone device tree's regulator values; registers: the AXP803 datasheet (voltage register, enable
+// Voltages: the board device tree's regulator values; registers: the AXP803 datasheet (voltage register, enable
 // bit in the output-control register).
 #include <kernel/kernel.h>
 #include "a64_rail.h"
