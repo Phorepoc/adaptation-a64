@@ -56,7 +56,11 @@ private:
 	TInt Gpio(TAny* aPckg);
 	void Pinmux();
 	volatile TUint32* Ccu(TUint aOff) { return (volatile TUint32*)(iCcu->LinearAddress() + aOff); }
-	volatile TUint32* Pio(TUint aBank, TUint aOff) { return (volatile TUint32*)(iPio->LinearAddress() + aBank * 0x24 + aOff); }
+	// DPlatChunkHw maps whole pages and LinearAddress() is the page's start (the flexible model rounds the physical
+	// address down), so the PIO's 0x800 offset inside the CCU's page is added here. Without it every GPIO access went to
+	// the CCU (PE cfg0 "0x90" = SDMMC2_CLK_REG): no pin was ever driven, every SCL read returned 0.
+	volatile TUint32* Pio(TUint aBank, TUint aOff)
+		{ return (volatile TUint32*)(iPio->LinearAddress() + (KPhysPio & 0xFFF) + aBank * 0x24 + aOff); }
 	void PioFunc(TUint aBank, TUint aPin, TUint aFunc);
 private:
 	DA64CamHwDevice* iDev;
@@ -107,7 +111,7 @@ TInt DA64CamHwChannel::DoCreate(TInt, const TDesC8*, const TVersion& aVer)
 	if (r == KErrNone)
 		r = DPlatChunkHw::New(iCcu, KPhysCcu, 0x1000, EMapAttrSupRw | EMapAttrFullyBlocking);
 	if (r == KErrNone)
-		r = DPlatChunkHw::New(iPio, KPhysPio, 0x400, EMapAttrSupRw | EMapAttrFullyBlocking);
+		r = DPlatChunkHw::New(iPio, KPhysPio & ~0xFFFu, 0x1000, EMapAttrSupRw | EMapAttrFullyBlocking);	// the page (see Pio())
 	if (r == KErrNone && (r = Interrupt::Bind(KIntCsi, Isr, this)) >= 0)
 		{
 		iBound = ETrue;
