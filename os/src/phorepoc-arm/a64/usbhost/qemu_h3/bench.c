@@ -67,10 +67,16 @@ static uint64_t cntpct(void)
 	__asm__ volatile("isb; mrrc p15, 0, %0, %1, c14" : "=r"(lo), "=r"(hi));
 	return ((uint64_t)hi << 32) | lo;
 }
-uint32_t phe_usb_time_us(void)
+unsigned int phe_usb_time_us(void)
 {
-	return (uint32_t)(cntpct() / (cntfrq / 1000000u));
+	return (unsigned int)(cntpct() / (cntfrq / 1000000u));
 }
+
+/* flat memory, MMU off: bus address = CPU address; the interrupts are polled */
+unsigned int phe_usb_v2p(unsigned long va) { return (unsigned int)va; }
+void phe_usb_irq_attach(int irq) { (void)irq; }
+int phe_usb_board_init(void) { return 0; }
+int phe_usb_board_phy(struct phe_usb_phy_cfg *cfg) { (void)cfg; return -1; }
 
 void DELAY(unsigned int us)
 {

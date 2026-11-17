@@ -37,6 +37,14 @@ DPhysicalDevice* CreatePhysicalDevice_mednvme();
 TInt InitExtension_mednvmeE();
 DPhysicalDevice* CreatePhysicalDevice_mednvmeE();
 TInt InitExtension_usbcc();
+#ifdef A64_H3TEST
+// the QEMU orangepi-pc test ROM: the H3 model has no R_RSB / PMIC, an access aborts (link_ekern.sh wraps the calls)
+extern "C" int __wrap_a64_rsb_read(TUint8, TUint8) { return -1; }
+extern "C" int __wrap_a64_rsb_write(TUint8, TUint8, TUint8) { return -1; }
+#endif
+#ifdef A64_USBHOST
+TInt InitExtension_usbhost();	// usbhost/ekern/phe_usb_ekern.cpp: the FreeBSD USB host stack
+#endif
 extern "C" TInt PhLinkStart();
 extern "C" void A64DisplayStart();
 extern "C" void A64DisplayFlipStats();		// a64_display.cpp: the NGA flip counters for the [mon] line
@@ -2239,6 +2247,10 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 extern "C" void A64CpuFreqReport();		// power/a64_cpufreq.cpp
 static void A64CpuProbe(const char* aWhen)
 	{
+#ifdef A64_H3TEST
+	(void)aWhen;
+	return;	// the H3 model is a Cortex-A7: no CPUECTLR (undefined instruction)
+#endif
 	TUint32 pmcr, lo, hi, ectlrLo, ectlrHi, l2ctlr, actlr, sctlr, c0, c1;
 	asm volatile("mrc p15, 0, %0, c9, c12, 0" : "=r"(pmcr));
 	asm volatile("mcr p15, 0, %0, c9, c12, 0" :: "r"((pmcr & ~8u) | 5u));	// E, reset PMCCNTR, D = 0 (every cycle)
@@ -2403,6 +2415,10 @@ extern "C" void ekseam_load_media_drivers()
 	r = InitExtension_mednvmeE();
 	ekseam_puts("[EKERN][med] mednvmemory InitExtension (SD P4 = local drive 2 = E:) r="); ekseam_puthex((unsigned)r);
 	// USB (step 2): the A64 device controller under the real USB client PIL, then the phlink CDC ACM function
+#ifdef A64_USBHOST
+	r = InitExtension_usbhost();
+	ekseam_puts("[EKERN][usb] usbhost (FreeBSD EHCI/OHCI on USB1) InitExtension r="); ekseam_puthex((unsigned)r);
+#endif
 	r = InitExtension_usbcc();
 	ekseam_puts("[EKERN][usb] usbcc (A64 MUSB PSL + PIL) InitExtension r="); ekseam_puthex((unsigned)r);
 	if (r == KErrNone)

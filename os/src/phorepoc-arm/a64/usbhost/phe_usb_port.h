@@ -11,21 +11,49 @@
 #ifndef PHE_USB_PORT_H
 #define PHE_USB_PORT_H
 
-#ifndef _STANDALONE
-#include <stdint.h>	/* FreeBSD-side files get the types from the kshim instead */
-#endif
+/* plain C types only: included by the kshim side (its own typedefs), newlib (the bench) and the Symbian kernel */
 
 struct phe_usb_hc_cfg {
-	uintptr_t base;		/* controller registers (physical = virtual in the kshim model) */
-	uint32_t size;		/* register window */
+	unsigned long base;		/* controller registers (physical = virtual in the kshim model) */
+	unsigned int size;		/* register window */
 	int irq;		/* GIC interrupt id, -1 = polled only */
 };
 
 /* Board layer: the n-th controller of a kind ("ehci" / "ohci") to attach (0, or -1 when n is past the last one). */
 int phe_usb_board_hc(const char *kind, int n, struct phe_usb_hc_cfg *cfg);
 
+/* Board layer: the SoC's USB PHY provider for aw_usbphy.c (phe_usb_fdt.c), or -1 when there is none to set up.
+ * reg_name/reg_base = the node's "reg-names" and their mapped windows; clk/rst = the gates and resets the node lists
+ * (bit masks set in a CCU register); host_phy = the PHYs to enable in host mode (-1 ends the list). */
+#define PHE_USB_MAX_REGS 4
+#define PHE_USB_MAX_GATES 4
+#define PHE_USB_MAX_PHYS 2
+struct phe_usb_gate {
+	unsigned long base;
+	unsigned int reg;
+	unsigned int mask;
+};
+struct phe_usb_phy_cfg {
+	const char *compatible;
+	const char *reg_name[PHE_USB_MAX_REGS];
+	unsigned long reg_base[PHE_USB_MAX_REGS];
+	struct phe_usb_gate clk[PHE_USB_MAX_GATES];
+	struct phe_usb_gate rst[PHE_USB_MAX_GATES];
+	int host_phy[PHE_USB_MAX_PHYS];
+};
+int phe_usb_board_phy(struct phe_usb_phy_cfg *cfg);
+
+/* Board layer: bring the controllers up (map registers, clocks, resets, PHY) before usb_init(); 0 = OK. */
+int phe_usb_board_init(void);
+
+/* Host: a controller's interrupt (cfg.irq >= 0), bound and serviced by the host's USB thread. */
+void phe_usb_irq_attach(int irq);
+
+/* Host: the bus address the controller must see for a CPU address of the stack's memory (identity on the bench). */
+unsigned int phe_usb_v2p(unsigned long va);
+
 /* Host: free-running microsecond clock (wraps). */
-uint32_t phe_usb_time_us(void);
+unsigned int phe_usb_time_us(void);
 
 /* One service pass: run the kshim's USB processes and the 1 ms callout tick when due.
  * The host calls it from its USB thread (bare metal: the main loop). */

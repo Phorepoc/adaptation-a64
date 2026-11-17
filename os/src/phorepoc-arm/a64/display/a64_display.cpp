@@ -136,6 +136,9 @@ static TBool RsbWait(volatile TUint32& aReg, TUint32 aMask)
 
 static TInt RsbInit()
 	{
+#ifdef A64_H3TEST
+	return KErrNotSupported;	// the H3 model has no R_RSB (an access aborts)
+#endif
 	R(KRPrcm + 0x28) |= 1u << 3;							// APB0 clock gate: R_RSB
 	R(KRPrcm + 0xb0) |= 1u << 3;							// APB0 reset deassert: R_RSB
 	R(KRPio + 0x00) = (R(KRPio + 0x00) & ~0xFFu) | 0x22u;	// PL0, PL1 = function 2

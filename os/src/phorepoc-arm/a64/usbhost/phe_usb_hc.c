@@ -14,6 +14,18 @@
 
 #include "phe_usb_port.h"
 
+/* The kshim's busdma (stand/usb/usb_busdma_loader.c) takes bus address = CPU address. Every controller driver gets its
+ * descriptor and buffer addresses from usbd_get_page(), so the link wraps it (--wrap=usbd_get_page) and the host
+ * translates here: phe_usb_v2p() (the kernel: the uncached pool's offset; the bench: identity). */
+void __real_usbd_get_page(struct usb_page_cache *pc, usb_frlength_t offset, struct usb_page_search *res);
+void
+__wrap_usbd_get_page(struct usb_page_cache *pc, usb_frlength_t offset, struct usb_page_search *res)
+{
+	__real_usbd_get_page(pc, offset, res);
+	if (res->physaddr != 0)
+		res->physaddr = phe_usb_v2p((unsigned long)res->physaddr);
+}
+
 /* declared by the kshim (bsd_kernel.h) but not implemented there; ohci.c uses it */
 void
 bus_space_barrier(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t offset, bus_size_t length, int flags)
@@ -21,11 +33,18 @@ bus_space_barrier(bus_space_tag_t space, bus_space_handle_t handle, bus_size_t o
 	__asm__ volatile("dsb" ::: "memory");
 }
 
+/* phe_usb_fdt.c (the aw_usbphy stand-ins); weak: the bench and boards without a PHY to set up leave it out */
+int phe_usb_phy_attach(device_t root) __attribute__((weak));
+int phe_usb_phy_resource(struct resource *res, int rid) __attribute__((weak));
+int phe_usb_phy_resource(struct resource *res, int rid) { return (ENXIO); }
+
 static int
 phe_usb_resource_cb(struct resource *res, device_t dev, int type, int *rid, unsigned int flags)
 {
 	struct phe_usb_hc_cfg cfg;
 
+	if (strcmp(device_get_name(dev), "awusbphy") == 0)
+		return (phe_usb_phy_resource(res, *rid));
 	if (phe_usb_board_hc(device_get_name(dev), device_get_unit(dev), &cfg) != 0)
 		return (ENXIO);
 	switch (type) {
@@ -163,11 +182,15 @@ phe_usb_root_load(void *arg)
 		return;
 	/* children find their driver by the parent's driver name (device_get_name), so the root needs one */
 	phe_usb_root->dev_module = &phe_usb_root_mod;
+	bus_alloc_resource_any_cb = phe_usb_resource_cb;
+	if (phe_usb_phy_attach != NULL)
+		phe_usb_phy_attach(phe_usb_root);	/* the PHY provider first, as FreeBSD's bus passes order it */
 	callout_init_mtx(&phe_usb_irq_callout, NULL, 0);
 	callout_reset(&phe_usb_irq_callout, 1, phe_usb_irq_poll, NULL);
 	for (k = 0; k < 2; k++) {
 		for (n = 0; phe_usb_board_hc(kinds[k], n, &cfg) == 0; n++) {
 			device_t dev = device_add_child(phe_usb_root, kinds[k], DEVICE_UNIT_ANY);
+			phe_usb_irq_attach(cfg.irq);
 			if (dev == NULL || device_probe_and_attach(dev) != 0)
 				printf("[usbh] %s%d at 0x%08lx: attach failed\n", kinds[k], n, (unsigned long)cfg.base);
 			else

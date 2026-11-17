@@ -62,5 +62,5 @@ for s in "$HERE/bench.c" ${EXTRA_SRCS:-}; do
 done
 "${CROSS}gcc" -mcpu=cortex-a7 -marm -c "$HERE/start.S" -o "$O/start.o"
 "${CROSS}gcc" -mcpu=cortex-a7 -marm -mfloat-abi=soft -nostartfiles -specs=nano.specs -T "$HERE/bench.ld" \
-  -Wl,--gc-sections -o "$O/bench.elf" "$O/start.o" "${objs[@]}" -lc -lgcc
+  -Wl,--gc-sections -Wl,--wrap=usbd_get_page -o "$O/bench.elf" "$O/start.o" "${objs[@]}" -lc -lgcc
 "${CROSS}size" "$O/bench.elf"

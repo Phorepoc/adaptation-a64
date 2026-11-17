@@ -93,6 +93,11 @@ for tu in $VTUS; do
 done
 
 if [ "$BOARD" = a64 ]; then
+  # BOOT_DEFS=-D CFG_H3TEST (the QEMU orangepi-pc test ROM): A64_H3TEST = skip the blocks the H3 model lacks
+  # (the PMIC's RSB bus: NuttX's a64_rsb.c stays unmodified, its two calls are wrapped to fail in a64_glue.cpp)
+  case "${BOOT_DEFS:-}" in *CFG_H3TEST*) EXTRA+=(-DA64_H3TEST); BOARD_WRAPS+=(--wrap a64_rsb_read --wrap a64_rsb_write) ;; esac
+  # A64_USBHOST=1: the USB host (src/phorepoc-arm/a64/usbhost, the FreeBSD USB stack, unmodified, on its kshim)
+  [ "${A64_USBHOST:-0}" = 1 ] && . "${USBHOST_DIR:-src/phorepoc-arm/a64/usbhost}/ekern/link_block.sh"
   echo "[2/3] a64: ELOCD + the internal RAM drive (C:), USB link, the phone display; touch (GT917S), no keys/storage yet"
   MED=(-I"$B/drivers/locmedia" -I"$B/drivers/locmedia/traces" -I"$B/include/drivers" -I"$B/include")
   ccq -k "$B/drivers/locmedia/locmedia.cpp" -O2 -fno-function-sections \
