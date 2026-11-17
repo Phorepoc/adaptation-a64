@@ -349,10 +349,12 @@ TInt DA64CamHwChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 			return r;
 		if (iIrqThread != &Kern::CurrentThread())
 			{
+			NKern::ThreadEnterCS();
 			if (iIrqThread)
 				Kern::SafeClose((DObject*&)iIrqThread, NULL);
 			iIrqThread = &Kern::CurrentThread();
 			iIrqThread->Open();
+			NKern::ThreadLeaveCS();
 			}
 		if (iLatched)
 			{
