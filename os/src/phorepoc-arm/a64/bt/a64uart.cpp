@@ -515,19 +515,16 @@ static void ModemLog(const char* aStep)
 	ekseam_puts(" on="); ekseam_puthex(ModemStatusOn()); ekseam_puts("\n");
 	}
 
-#ifdef A64_USBHOST
-extern "C" void phe_usb_hotplug(void);	// usbhost/ekern/phe_usb_ekern.cpp: the modem's USB comes up on USB1 now
-#endif
+// usbhost/ekern/phe_usb_ekern.cpp: the modem's USB comes up on USB1 now. Weak: NULL when the USB host is not linked
+extern "C" void phe_usb_hotplug(void) __attribute__((weak));
 static void ModemUpFn(TAny*)
 	{
 	ModemLog("power-up (NuttX modem init)");
 	const int r = phe_modem_power_on();
 	ModemState = (r == 0) ? 2 : 0;
 	ModemLog(r == 0 ? "modem ready (STATUS low)" : "power-up failed");
-#ifdef A64_USBHOST
-	if (r == 0)
+	if (r == 0 && phe_usb_hotplug)
 		phe_usb_hotplug();
-#endif
 	}
 
 static void ModemDownFn(TAny*)
