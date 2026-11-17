@@ -34,6 +34,11 @@ static inline volatile TUint32& Reg(TUint32 aBase, TUint32 aOffset)
 }
 
 const TInt KFirstSpi = 32;
+const TInt KStormCpus = 8;
+const TInt KStormHits = 20000;	// per SPI per 1 ms tick: far above any real device (a storm here is ~10^5-10^6 entries/ms)
+struct SStorm { TUint32 iVector; TUint32 iTick; TInt iHits; };
+static SStorm Storm[KStormCpus];
+static TUint32 StormSaid[KNumSyborgInts / 32];
 
 TUint32 SyborgInterrupt::IrqDispatch(TUint32 aVector)
 {
@@ -48,6 +53,34 @@ TUint32 SyborgInterrupt::IrqDispatch(TUint32 aVector)
 	{
 		Reg(KHwBaseGicCpu, KGiccEoir) = aVector;	// not ours: complete it so the GIC is not wedged
 		return aVector;
+	}
+	// storm guard (Linux's "nobody cared", note_interrupt()): a level line that nothing clears re-enters here back to back
+	// and starves everything routed to this CPU (boot 2682: the CSI line unmasked behind the nanokernel's back, CPU 0 at
+	// 100 %, USB_DFC never ran again, the debug link died while the watchdog and the UI heartbeat -- other cores -- went
+	// on). More than KStormHits entries of one SPI within one millisecond tick = mask it at the distributor, say so once.
+	const TInt cpu = NKern::CurrentCpu();
+	if (cpu >= 0 && cpu < KStormCpus)
+	{
+		SStorm& st = Storm[cpu];
+		const TUint32 now = NKern::TickCount();
+		if (st.iVector != aVector || st.iTick != now)
+		{
+			st.iVector = aVector;
+			st.iTick = now;
+			st.iHits = 0;
+		}
+		else if (++st.iHits > KStormHits)
+		{
+			TSyborg::DisableInt(aVector);
+			Reg(KHwBaseGicCpu, KGiccEoir) = aVector;
+			if (!(StormSaid[aVector >> 5] & (1u << (aVector & 31))))
+			{
+				StormSaid[aVector >> 5] |= 1u << (aVector & 31);
+				Kern::Printf("[EKERN][irq] storm: GIC id %d fired %d times in one tick on CPU %d; line masked", aVector, KStormHits, cpu);
+			}
+			st.iHits = 0;
+			return aVector;
+		}
 	}
 	NKern::Interrupt(aVector - KFirstSpi);
 	return aVector;
