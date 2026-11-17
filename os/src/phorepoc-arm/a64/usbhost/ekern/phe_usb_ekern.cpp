@@ -185,6 +185,8 @@ static void AtSelfTest()
 	}
 #endif
 
+static NTimer* gDumpTimer;		// (the dump after the first enumeration window, below)
+
 static void ServiceDfcFn(TAny*)
 	{
 	if (!gStarted)
@@ -255,7 +257,6 @@ extern "C" void phe_usb_hotplug(void)
 
 // the dump after the first enumeration window, as the bench does
 static TDfc* gDumpDfc;
-static NTimer* gDumpTimer;
 static void DumpTimerFn(TAny*) { gDumpDfc->Add(); }
 static void DumpDfcFn(TAny*)
 	{
