@@ -124,6 +124,67 @@ static void Isr(TAny* aIrq)
 	gServiceDfc->Add();
 	}
 
+// phe_usb_tty.c asks for a service run (data to send, a port to open)
+extern "C" void phe_usb_kick(void)
+	{
+	if (gServiceDfc)
+		gServiceDfc->Enque();
+	}
+
+#ifdef A64_H3TEST
+// the QEMU test: AT out through the first USB serial port (QEMU's FTDI usb-serial, its chardev an echo server), and
+// what comes back. Runs on the USB thread, from the service loop.
+static void AtSelfTest()
+	{
+	static int state;
+	static unsigned int t0;
+	static char rx[64];
+	static int got;
+	const unsigned int now = phe_usb_time_us();
+	switch (state)
+		{
+	case 0:
+		if (phe_usb_tty_name(0))
+			{
+			phe_usb_tty_open(0);
+			t0 = now;
+			state = 1;
+			}
+		break;
+	case 1:
+		if (now - t0 > 500000u)
+			{
+			phe_usb_tty_write(0, "AT\r", 3);
+			ekseam_puts("[usbh] tty0 tx: AT\n");
+			t0 = now;
+			state = 2;
+			}
+		break;
+	case 2:
+		{
+		const int n = phe_usb_tty_read(0, rx + got, (int)sizeof(rx) - 1 - got);
+		if (n > 0)
+			got += n;
+		if (got >= 3 || now - t0 > 3000000u)
+			{
+			rx[got] = 0;
+			for (int i = 0; i < got; i++)
+				if (rx[i] == '\r' || rx[i] == '\n')
+					rx[i] = '.';
+			ekseam_puts(got >= 3 && rx[0] == 'A' && rx[1] == 'T' ? "[usbh] tty0 AT echo PASS rx: "
+																   : "[usbh] tty0 AT echo FAIL rx: ");
+			ekseam_puts(rx);
+			ekseam_puts("\n");
+			state = 3;
+			}
+		break;
+		}
+	default:
+		break;
+		}
+	}
+#endif
+
 static void ServiceDfcFn(TAny*)
 	{
 	if (!gStarted)
@@ -143,9 +204,18 @@ static void ServiceDfcFn(TAny*)
 			TBool dumped = EFalse;
 			for (;;)
 				{
+				if (gExplore)
+					{
+					gExplore = EFalse;
+					usb_needs_explore_all();
+					}
 				phe_usb_service();
 				for (TInt i = 0; i < gIrqCount; i++)
 					Interrupt::Enable(gIrq[i]);
+#ifdef A64_H3TEST
+				if (dumped)
+					AtSelfTest();
+#endif
 				if (!dumped && (unsigned int)(phe_usb_time_us() - t0) > 8000000u)
 					{
 					dumped = ETrue;
@@ -197,6 +267,8 @@ extern "C" void phe_usb_irq_attach(int aIrq)
 		}
 	}
 
+TInt UsbCommInstall();						// phe_usb_comm.cpp
+
 TInt InitExtension_usbhost()
 	{
 	TInt r = Epoc::AllocPhysicalRam(KPoolSize, gPoolPhys, 12);
@@ -223,6 +295,7 @@ TInt InitExtension_usbhost()
 	gDumpTimer = new NTimer(DumpTimerFn, NULL);
 	if (!gServiceDfc || !gTick || !gDumpDfc || !gDumpTimer)
 		return KErrNoMemory;
+	UsbCommInstall();						// phe_usb_comm.cpp: the "Comm.USB" PDD for the serial ports
 	gServiceDfc->Enque();					// the first run calls usb_init()
 	gDumpTimer->OneShot(NKern::TimerTicks(8000));
 	ekseam_puts("[usbh] host started: DFC thread UsbHost, 2 MiB uncached pool\n");

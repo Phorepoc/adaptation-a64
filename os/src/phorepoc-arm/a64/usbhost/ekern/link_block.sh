@@ -17,4 +17,5 @@ ccq -k "$UH/ekern/phe_usb_ekern.cpp" -O2 -fno-function-sections -fno-data-sectio
   -o .variant-build/phe_usb_ekern.o
 ccq -k "$UH/ekern/a64_usbhost.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} \
   -o .variant-build/a64_usbhost.o
-VAROBJS+=("$USBHOST_OBJ" .variant-build/phe_usb_ekern.o .variant-build/a64_usbhost.o)
+ccq -k "$UH/ekern/phe_usb_comm.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-}   -o .variant-build/phe_usb_comm.o
+VAROBJS+=("$USBHOST_OBJ" .variant-build/phe_usb_ekern.o .variant-build/a64_usbhost.o .variant-build/phe_usb_comm.o)

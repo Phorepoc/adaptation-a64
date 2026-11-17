@@ -15,7 +15,9 @@ Pin: https://github.com/freebsd/freebsd-src commit 043d6753ca7c1c1e3ffa09a9f953f
 | sys/dev/hid/hid.h, sys/sys/{cdefs,_decls,_visible,errno,gpio,ioccom,queue}.h | same | headers the core includes |
 | stand/kshim/bsd_kernel.c, bsd_kernel.h, bsd_busspace.c, bsd_global.h, sysinit.h | same | the kernel shim |
 | stand/usb/usb_busdma_loader.c, stand/usb/tools/sysinit.c | same | busdma on flat memory; the SYSINIT table tool |
-| sys/arm/allwinner/aw_usbphy.c | same | A64 USB PHY (not built yet) |
+| sys/arm/allwinner/aw_usbphy.c | same | A64 USB PHY (built on the A64, on the stand-ins of phe_usb_fdt.c) |
+| sys/dev/usb/serial/usb_serial.c, usb_serial.h, uftdi.c, uftdi_reg.h, u3g.c, sys/dev/usb/uftdiio.h | same | ucom + the FTDI (QEMU usb-serial) and 3G-modem (u3g) drivers, on phe_usb_tty.c |
+| sys/dev/usb/usbdevs, sys/tools/usbdevs2h.awk | same | the vendor/product list and its generator (usbdevs.h is made at build time) |
 
 The file set is what the build really includes (compiler dependency lists). Our glue is separate:
 `os/src/phorepoc-arm/a64/usbhost` (README there). These files stay byte-identical to upstream (check: `sh check.sh`,

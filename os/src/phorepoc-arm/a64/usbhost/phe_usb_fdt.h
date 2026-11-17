@@ -15,7 +15,9 @@
 typedef long intptr_t;
 typedef long intmax_t;
 typedef unsigned int phandle_t;
+#ifndef bootverbose
 #define bootverbose 0
+#endif
 #define bzero(p, n) memset((p), 0, (n))
 #define MODULE_VERSION(...)
 #define BUS_PASS_SUPPORTDEV 0

@@ -62,4 +62,22 @@ void phe_usb_service(void);
 /* Debug: print the device and configuration descriptors of every device attached to every bus. */
 void phe_usb_dump_devices(void);
 
+/* Serial ports (phe_usb_tty.c): the ttys FreeBSD's ucom drivers (uftdi, u3g) create, index 0.. in attach order.
+ * Safe from any thread: they touch only the port's rings and ask for a service run (phe_usb_kick). The host
+ * provides phe_usb_kick (run phe_usb_service soon) and may provide phe_usb_tty_notify, called on the USB thread. */
+#define PHE_USB_TTY_ATTACHED 1
+#define PHE_USB_TTY_GONE 2
+#define PHE_USB_TTY_RX 4	/* data to read */
+#define PHE_USB_TTY_TX 8	/* room to write */
+const char *phe_usb_tty_name(int idx);	/* NULL = no such port */
+int phe_usb_tty_open(int idx);
+void phe_usb_tty_close(int idx);
+int phe_usb_tty_write(int idx, const void *buf, int len);	/* bytes queued, < 0 = error */
+int phe_usb_tty_read(int idx, void *buf, int len);
+int phe_usb_tty_rx_avail(int idx);
+int phe_usb_tty_tx_free(int idx);
+void phe_usb_tty_service(void);
+void phe_usb_kick(void);
+void phe_usb_tty_notify(int idx, int events);
+
 #endif

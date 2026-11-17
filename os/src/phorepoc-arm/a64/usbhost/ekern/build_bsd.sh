@@ -26,8 +26,15 @@ KSRCS=(
 )
 # USBHOST_PHY=1 (the A64): the Allwinner USB PHY driver (aw_usbphy.c, unmodified) on our FDT/clk/reset/PHY stand-ins
 [ "${USBHOST_PHY:-0}" = 1 ] && KSRCS+=( "$FB/sys/arm/allwinner/aw_usbphy.c" "$HERE/../phe_usb_fdt.c" )
-KSRCS+=(
-)
+# USBHOST_SERIAL=1 (default): ucom + uftdi + u3g (unmodified) on our tty layer (phe_usb_tty.c); usbdevs.h is generated
+# from FreeBSD's usbdevs list by its own awk script, as the FreeBSD build does
+GEN=()
+if [ "${USBHOST_SERIAL:-1}" = 1 ]; then
+  mkdir -p "$O/gen"
+  ( cd "$O/gen" && awk -f "$FB/sys/tools/usbdevs2h.awk" "$U/usbdevs" -h )
+  GEN=( -I"$O/gen" )
+  KSRCS+=( "$U/serial/usb_serial.c" "$U/serial/uftdi.c" "$U/serial/u3g.c" "$HERE/../phe_usb_tty.c" )
+fi
 SRCS=( "$FB/stand/usb/usb_busdma_loader.c" )
 # the kernel's ABI: ARMv7-A, ARM state, soft float, 32-bit enums, no unaligned accesses, no libc headers
 ARCH=( -march=armv7-a -marm -mfloat-abi=soft -fno-short-enums -mno-unaligned-access -ffreestanding -fno-strict-aliasing
@@ -37,10 +44,14 @@ CFLAGS=( "${ARCH[@]}" -nostdinc -isystem "$("$GCC" -print-file-name=include)" -D
   -Wall -Wno-unused -Wno-pointer-sign -Wno-unused-but-set-variable
   -I"$FB/stand/kshim" -I"$FB/sys" -I"$HERE/../kinc"
   -DUSB_GLOBAL_INCLUDE_FILE='"bsd_global.h"' -D'__uintptr_t=unsigned long' -DUSB_MSCTEST_BULK_SIZE=65536
-  ${USBHOST_DEFS:-} )
+  "${GEN[@]}" ${USBHOST_DEFS:-} )
 objs=(); sysobjs=()
 for s in "${KSRCS[@]}" "${SRCS[@]}"; do
   o="$O/$(basename "${s%.c}").o"; "$GCC" "${CFLAGS[@]}" -c "$s" -o "$o"; objs+=("$o")
+  # UCOM_UNLOAD_DRAIN (usb_serial.h) names its record sysuninit_var in every driver: unique per file in FreeBSD's
+  # kernel (UNIQ_NAME adds the line), not with the kshim's UNIQ_NAME. The records are the same (ucom_drain_all at
+  # unload, which never happens here): weak, so the copies merge
+  case "$s" in */serial/*) "$OBJCOPY" --weaken-symbol=sysuninit_var "$o" ;; esac
 done
 for s in "${KSRCS[@]}"; do
   o="$O/$(basename "${s%.c}").o"; "$OBJCOPY" -j .debug.sysinit -O binary "$o" "${o%.o}.osys"; sysobjs+=("${o%.o}.osys")
