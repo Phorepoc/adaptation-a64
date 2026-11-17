@@ -47,7 +47,10 @@ extern "C" int phe_usb_board_init(void)
 	// the controllers' own gates and resets (what generic_ehci_fdt/generic_ohci take from their DT nodes)
 	*(volatile TUint32*)(gCcu + KCcuBusGate0) |= (1u << 25) | (1u << 29);
 	*(volatile TUint32*)(gCcu + KCcuBusRst0) |= (1u << 25) | (1u << 29);
-	*(volatile TUint32*)(gCcu + KCcuUsbPhyCfg) |= 1u << 17;	// OHCI1 12 MHz
+	// OHCI1's 12 MHz gate (bit 17) is a CHILD of OHCI0's (bit 16): Linux ccu-sun50i-a64.c has
+	// usb_ohci1_clk = SUNXI_CCU_GATE("usb-ohci1", parent "usb-ohci0", 0x0cc, BIT(17)); setting bit 17 alone leaves
+	// OHCI1 unclocked and its first register access hangs the bus (boot 2731). Both bits.
+	*(volatile TUint32*)(gCcu + KCcuUsbPhyCfg) |= (1u << 16) | (1u << 17);	// OHCI0 + OHCI1 12 MHz
 #endif
 	return r;
 	}
