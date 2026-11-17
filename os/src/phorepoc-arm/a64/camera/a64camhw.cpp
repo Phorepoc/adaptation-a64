@@ -65,6 +65,7 @@ private:
 private:
 	DA64CamHwDevice* iDev;
 	DThread* iClient;
+	DThread* iIrqThread;	// the thread whose ERequestIrq is pending (any thread of iClient's process)
 	DPlatChunkHw* iCcu;
 	DPlatChunkHw* iPio;
 	TClientRequest* iIrqReq;
@@ -90,7 +91,7 @@ TInt DA64CamHwDevice::Create(DLogicalChannelBase*& aChannel)
 	}
 
 DA64CamHwChannel::DA64CamHwChannel(DA64CamHwDevice* aDev)
-	: iDev(aDev), iClient(NULL), iCcu(NULL), iPio(NULL), iIrqReq(NULL), iDfc(IrqDfc, this, aDev->iDfcQ, 1),
+	: iDev(aDev), iClient(NULL), iIrqThread(NULL), iCcu(NULL), iPio(NULL), iIrqReq(NULL), iDfc(IrqDfc, this, aDev->iDfcQ, 1),
 	  iBound(EFalse), iLatched(EFalse)
 	{
 	memclr(iRails, sizeof(iRails));
@@ -145,9 +146,11 @@ DA64CamHwChannel::~DA64CamHwChannel()
 	if (iIrqReq)
 		{
 		if (iIrqReq->IsReady())
-			Kern::QueueRequestComplete(iClient, iIrqReq, KErrCancel);
+			Kern::QueueRequestComplete(iIrqThread, iIrqReq, KErrCancel);
 		Kern::DestroyClientRequest(iIrqReq);
 		}
+	if (iIrqThread)
+		Kern::SafeClose((DObject*&)iIrqThread, NULL);
 	if (iClient)
 		Kern::SafeClose((DObject*&)iClient, NULL);
 	iDev->iOpen = EFalse;
@@ -164,7 +167,7 @@ void DA64CamHwChannel::IrqDfc(TAny* aPtr)
 	{
 	DA64CamHwChannel* c = (DA64CamHwChannel*)aPtr;
 	if (c->iIrqReq->IsReady())
-		Kern::QueueRequestComplete(c->iClient, c->iIrqReq, KErrNone);
+		Kern::QueueRequestComplete(c->iIrqThread, c->iIrqReq, KErrNone);
 	else
 		c->iLatched = ETrue;
 	}
@@ -333,7 +336,9 @@ TInt DA64CamHwChannel::Gpio(TAny* aPckg)
 
 TInt DA64CamHwChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 	{
-	if (&Kern::CurrentThread() != iClient)
+	// any thread of the opening process (the channel handle is process-owned): the server waits for the interrupt in
+	// its own thread, so ERequestIrq / EControlIrqEnable come from there (a thread check made that thread exit at once)
+	if (Kern::CurrentThread().iOwningProcess != iClient->iOwningProcess)
 		return KErrAccessDenied;
 	if (aReqNo < 0 && aReqNo != ~RA64CamHw::ERequestIrq && aReqNo != KMaxTInt)
 		return KErrNotSupported;
@@ -342,17 +347,24 @@ TInt DA64CamHwChannel::Request(TInt aReqNo, TAny* a1, TAny* a2)
 		TInt r = iIrqReq->SetStatus((TRequestStatus*)a1);
 		if (r != KErrNone)
 			return r;
+		if (iIrqThread != &Kern::CurrentThread())
+			{
+			if (iIrqThread)
+				Kern::SafeClose((DObject*&)iIrqThread, NULL);
+			iIrqThread = &Kern::CurrentThread();
+			iIrqThread->Open();
+			}
 		if (iLatched)
 			{
 			iLatched = EFalse;
-			Kern::QueueRequestComplete(iClient, iIrqReq, KErrNone);
+			Kern::QueueRequestComplete(iIrqThread, iIrqReq, KErrNone);
 			}
 		return KErrNone;
 		}
 	if (aReqNo == KMaxTInt)				// DoCancel
 		{
 		if (((TUint)a1 & (1u << RA64CamHw::ERequestIrq)) && iIrqReq->IsReady())
-			Kern::QueueRequestComplete(iClient, iIrqReq, KErrCancel);
+			Kern::QueueRequestComplete(iIrqThread, iIrqReq, KErrCancel);
 		return KErrNone;
 		}
 	switch (aReqNo)
