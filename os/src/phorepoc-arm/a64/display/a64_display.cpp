@@ -190,6 +190,17 @@ extern "C" int a64_rsb_write(TUint8 rt_addr, TUint8 reg_addr, TUint8 value);
 // POWER-OFF (2026-10-06): SSM's shutdown ends in Power::PowerDown (the variant's power controller, a64_glue.cpp).
 // A64PmicMap (thread context, at registration) maps the R_ block; A64PmicPowerOff (any context) brings the RSB
 // bus up if the display has not, then sets the AXP803's power-off bit: REG 32H bit 7, as Linux's axp20x poweroff.
+// A64IoMap (thread context, at boot): the SoC's I/O block (0x01C00000: sysctl, CCU, PIO, TCON0) that the NuttX-derived
+// PIO code (a64_pio.c: the modem power pins, the panel pins) reaches through ph_a64_io. It used to be mapped only when the
+// display bring-up started, which is later than the telephony server's first modem power-up (a data abort in
+// a64_pio_config with ph_a64_io == 0, far 0x2086c). The bring-up keeps its `if (!ph_a64_io)` guard.
+extern "C" TInt A64IoMap()
+	{
+	NKern::ThreadEnterCS();
+	if (!ph_a64_io) ph_a64_io = Map(1, 0x01C00000, 0x22000);
+	NKern::ThreadLeaveCS();
+	return ph_a64_io ? KErrNone : KErrNoMemory;
+	}
 extern "C" TInt A64PmicMap()
 	{
 	NKern::ThreadEnterCS();

@@ -2051,8 +2051,10 @@ class DA64PowerHal : public DPowerHal
 public:
 	TInt PowerHalFunction(TInt aFunction, TAny* a1, TAny* /*a2*/);
 	};
+extern "C" TInt A64IoMap();		// display/a64_display.cpp: ph_a64_io, for the PIO code (the modem power pins)
 static void A64PowerInit()
 	{
+	A64IoMap();		// before any user thread can open the modem power unit (the telephony server does, early in the boot)
 #ifdef A64_NO_POWERCTL
 	return;		// A64DEFS=-DA64_NO_POWERCTL: no controller/HAL (an experiment switch)
 #endif
