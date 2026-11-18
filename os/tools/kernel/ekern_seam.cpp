@@ -663,7 +663,9 @@ extern "C" void __wrap__ZN11ExecHandler10DebugPrintEPvi(void* aDes, int aMode)
 			// Qt's GL warnings (QGLContext / QEglContext: why a Qt app has no GL context)
 			"[libEGL]", "[phewlantest]", "[phewhere]", "QGL", "QEgl",
 			// (2026-11-18) the telephony TSY's AT engine (core pheltsy): why the modem path printed nothing in PhoneLab (not in this list)
-			"[pheltsy]" };
+			"[pheltsy]",
+			// (2026-11-18) BLE (core pheble): the HCI router, the NimBLE host + its server, the Pebble service, the H5 HCTL
+			"pheblerouter:", "pheblehost:", "pheblesrv:", "nimble[", "[phepebble]", "phebletest:", "[hctl_h5]" };
 		for (unsigned i = 0; i < sizeof(KPass) / sizeof(KPass[0]); ++i)
 			{
 			const char* p = KPass[i];
