@@ -19,7 +19,11 @@ void ekseam_puthex(unsigned);
 // breadcrumbs of the write path (the first 60 only): the LDD hop of the chain LDD -> Pump -> tty ring -> service ->
 // ucom_outwakeup -> u3g -> ucom_get_data -> ttydisc_getc; see usb-host-plan.md
 static TInt gTrcLeft = 60;
+#ifdef PHE_USBHOST_TRACE
 #define TRC(s, v) do { if (gTrcLeft > 0) { --gTrcLeft; ekseam_puts("[usbh] comm: " s " = "); ekseam_puthex((unsigned)(v)); } } while (0)
+#else
+#define TRC(s, v) do { } while (0)
+#endif
 
 _LIT(KPddName, "Comm.USB");
 _LIT(KDfcName, "UsbComm");

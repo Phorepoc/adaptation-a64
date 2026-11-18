@@ -14,6 +14,13 @@
 
 #include "phe_usb_port.h"
 
+/* bring-up breadcrumbs (the step before a hang names it in slot A's SD-log replay): only in a PHE_USBHOST_TRACE build */
+#ifdef PHE_USBHOST_TRACE
+#define HCTRC(...) printf(__VA_ARGS__)
+#else
+#define HCTRC(...) ((void)0)
+#endif
+
 /* The kshim's busdma (stand/usb/usb_busdma_loader.c) takes bus address = CPU address. Every controller driver gets its
  * descriptor and buffer addresses from usbd_get_page(), so the link wraps it (--wrap=usbd_get_page) and the host
  * translates here: phe_usb_v2p() (the kernel: the uncached pool's offset; the bench: identity). */
@@ -113,7 +120,7 @@ phe_ohci_attach(device_t self)
 	sc->sc_bus.devices = sc->sc_devices;
 	sc->sc_bus.devices_max = OHCI_MAX_DEVICES;
 	sc->sc_bus.dma_bits = 32;
-	printf("[usbh] ohci: bus mem alloc\n");
+	HCTRC("[usbh] ohci: bus mem alloc\n");
 	if (usb_bus_mem_alloc_all(&sc->sc_bus, USB_GET_DMA_TAG(self), &ohci_iterate_hw_softc))
 		return (ENOMEM);
 	sc->sc_io_res = bus_alloc_resource_any(self, SYS_RES_MEMORY, &rid, RF_ACTIVE);
@@ -131,10 +138,10 @@ phe_ohci_attach(device_t self)
 	if (bus_setup_intr(self, sc->sc_irq_res, INTR_TYPE_BIO | INTR_MPSAFE, NULL,
 	    (driver_intr_t *)ohci_interrupt, sc, &sc->sc_intr_hdl) != 0)
 		return (ENXIO);
-	printf("[usbh] ohci: ohci_init\n");
+	HCTRC("[usbh] ohci: ohci_init\n");
 	if (ohci_init(sc) != 0)
 		return (ENXIO);
-	printf("[usbh] ohci: usbus attach\n");
+	HCTRC("[usbh] ohci: usbus attach\n");
 	return (device_probe_and_attach(sc->sc_bus.bdev));
 }
 
@@ -187,16 +194,16 @@ phe_usb_root_load(void *arg)
 	phe_usb_root->dev_module = &phe_usb_root_mod;
 	bus_alloc_resource_any_cb = phe_usb_resource_cb;
 	if (phe_usb_phy_attach != NULL) {
-		printf("[usbh] hc: PHY attach\n");
+		HCTRC("[usbh] hc: PHY attach\n");
 		phe_usb_phy_attach(phe_usb_root);	/* the PHY provider first, as FreeBSD's bus passes order it */
-		printf("[usbh] hc: PHY attach done\n");
+		HCTRC("[usbh] hc: PHY attach done\n");
 	}
 	callout_init_mtx(&phe_usb_irq_callout, NULL, 0);
 	callout_reset(&phe_usb_irq_callout, 1, phe_usb_irq_poll, NULL);
 	for (k = 0; k < 2; k++) {
 		for (n = 0; phe_usb_board_hc(kinds[k], n, &cfg) == 0; n++) {
 			device_t dev = device_add_child(phe_usb_root, kinds[k], DEVICE_UNIT_ANY);
-			printf("[usbh] hc: %s%d attach\n", kinds[k], n);
+			HCTRC("[usbh] hc: %s%d attach\n", kinds[k], n);
 			if (dev == NULL || device_probe_and_attach(dev) != 0)
 				printf("[usbh] %s%d at 0x%08lx: attach failed\n", kinds[k], n, (unsigned long)cfg.base);
 			else {

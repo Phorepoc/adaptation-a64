@@ -6,6 +6,12 @@
 # VAROBJS, BOARD_WRAPS and A64DEFS. USBHOST_OBJ = a prebuilt usbhost_bsd.o (build_bsd.sh elsewhere, e.g. in a
 # container when the link runs on a host without a native cc for the SYSINIT tool).
 UH="${USBHOST_DIR:-src/phorepoc-arm/a64/usbhost}"
+# A64_USBHOST_TRACE=1: the bring-up and write-path breadcrumbs (SD-log flushed: a hang shows in slot A's replay).
+# Default off; the kernel part and the BSD part (usbhost_bsd.o) get the same -DPHE_USBHOST_TRACE.
+if [ "${A64_USBHOST_TRACE:-0}" = 1 ]; then
+  USBHOST_DEFS="${USBHOST_DEFS:-} -DPHE_USBHOST_TRACE"
+  A64DEFS="${A64DEFS:-} -DPHE_USBHOST_TRACE"
+fi
 if [ -z "${USBHOST_OBJ:-}" ]; then
   # the H3 model (A64_H3TEST) has no USB PHY to program; the A64 builds aw_usbphy.c
   case " ${EXTRA[*]} " in *" -DA64_H3TEST "*) UPHY=0 ;; *) UPHY=1 ;; esac

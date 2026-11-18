@@ -186,7 +186,7 @@ static void AtSelfTest()
 #endif
 
 static NTimer* gDumpTimer;		// (the dump after the first enumeration window, below)
-#ifndef A64_H3TEST
+#if defined(PHE_USBHOST_TRACE) && !defined(A64_H3TEST)
 extern "C" void A64SdFlushNow(TInt aStage);		// a64_glue.cpp: the SD log, thread context only
 #define USBH_FLUSH(n) A64SdFlushNow(0x500 + (n))
 #else
@@ -295,7 +295,7 @@ extern "C" void phe_usb_irq_attach(int aIrq)
 
 TInt UsbCommInstall();						// phe_usb_comm.cpp
 
-#ifndef A64_H3TEST
+#if defined(PHE_USBHOST_TRACE) && !defined(A64_H3TEST)
 // Boot-trial breadcrumbs: this runs in the Supervisor thread between SD-log stages 3 and 4. A hang here is a watchdog
 // reset back to slot A with nothing from slot B on the debug link, so each step is flushed to the SD log (the
 // replay of the died B trial in slot A's log); a64_glue.cpp's A64SdFlushNow is thread-context only.

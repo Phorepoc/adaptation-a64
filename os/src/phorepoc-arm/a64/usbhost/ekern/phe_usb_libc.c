@@ -152,8 +152,10 @@ phe_usb_printf(const char *f, ...)
 	ekseam_puts(b);
 	/* a64_glue.cpp's SD-log flush (thread context only; the stack runs in the UsbHost DFC thread): the lines of a
 	 * bring-up that hangs the SoC reach slot A's replay. Weak: NULL on the bench */
+#ifdef PHE_USBHOST_TRACE
 	if (A64SdFlushNow != 0)
 		A64SdFlushNow(0x500);
+#endif
 	return r;
 }
 

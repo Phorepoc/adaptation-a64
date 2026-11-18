@@ -63,7 +63,7 @@ cat "${sysobjs[@]}" > "$O/sysinit.bin"
 for s in "$O/sysinit_data.c" "$O/sysuninit_data.c"; do
   o="${s%.c}.o"; "$GCC" "${CFLAGS[@]}" -c "$s" -o "$o"; objs+=("$o")
 done
-"$GCC" "${ARCH[@]}" -Wall -c "$HERE/phe_usb_libc.c" -o "$O/phe_usb_libc.o"; objs+=("$O/phe_usb_libc.o")
+"$GCC" "${ARCH[@]}" ${USBHOST_DEFS:-} -Wall -c "$HERE/phe_usb_libc.c" -o "$O/phe_usb_libc.o"; objs+=("$O/phe_usb_libc.o")
 # one object; the .debug.sysinit records stay out of the kernel image
 "$LD" -r --wrap=usbd_get_page -o "$O/usbhost_bsd.o" "${objs[@]}"
 "$OBJCOPY" --remove-section=.debug.sysinit "$O/usbhost_bsd.o"

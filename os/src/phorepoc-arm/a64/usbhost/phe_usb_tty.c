@@ -17,7 +17,11 @@ int phe_usb_vsnprintf(char *buf, size_t size, const char *fmt, va_list ap);
 static struct tty *ttys[PHE_USB_MAX_TTYS];
 /* breadcrumbs of the write path (first 60): tty ring put, service outwakeup, ucom_get_data -> ttydisc_getc */
 static int trc_left = 60;
+#ifdef PHE_USBHOST_TRACE
 #define TRC(...) do { if (trc_left > 0) { --trc_left; printf(__VA_ARGS__); } } while (0)
+#else
+#define TRC(...) do { } while (0)
+#endif
 static volatile unsigned char want_open[PHE_USB_MAX_TTYS], want_close[PHE_USB_MAX_TTYS], want_out[PHE_USB_MAX_TTYS],
     want_in[PHE_USB_MAX_TTYS];
 
