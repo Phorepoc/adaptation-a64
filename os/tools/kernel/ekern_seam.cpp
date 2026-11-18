@@ -663,7 +663,10 @@ extern "C" void __wrap__ZN11ExecHandler10DebugPrintEPvi(void* aDes, int aMode)
 			// Qt's GL warnings (QGLContext / QEglContext: why a Qt app has no GL context)
 			"[libEGL]", "[phewlantest]", "[phewhere]", "QGL", "QEgl",
 			// (2026-11-18) the telephony TSY's AT engine (core pheltsy): why the modem path printed nothing in PhoneLab (not in this list)
-			"[pheltsy]" };
+			"[pheltsy]",
+			// (2026-11-18) the scripted modem's own lines (boot, registration, network, call states: a handful per boot): a start-up that
+			// stalls in the Phone application's chain shows there whether the modem answered
+			"[fakemodem]" };
 		for (unsigned i = 0; i < sizeof(KPass) / sizeof(KPass[0]); ++i)
 			{
 			const char* p = KPass[i];
@@ -2063,6 +2066,10 @@ static void ekseam_seg(const char* tag, DCodeSeg* s)
 	nm[i] = 0;
 	ekseam_puts(tag); ekseam_puthex((unsigned)(unsigned long)s); ekseam_puts(" "); ekseam_puts(nm);
 	ekseam_puts(" acc="); ekseam_puthex(s ? (unsigned)s->iAccessCount : 0);
+	// Where the segment runs: an EUSRNIMP panic reason is the caller's return address, so the module that holds
+	// it is the segment whose [run, run+size) contains it.
+	ekseam_puts(" run="); ekseam_puthex(s ? (unsigned)s->iRunAddress : 0);
+	ekseam_puts(" size="); ekseam_puthex(s ? (unsigned)s->iSize : 0);
 	}
 extern "C" TInt __real__ZN11ExecHandler20CodeSegAddDependencyEPvS0_(TAny*, TAny*);
 extern "C" TInt __wrap__ZN11ExecHandler20CodeSegAddDependencyEPvS0_(TAny* aImp, TAny* aExp)

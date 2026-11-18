@@ -193,7 +193,8 @@ DA64Uart::DA64Uart() : iIrq(-1), iUnit(KUnit), iBase(KUart1) {}
 #ifdef PHE_MODEM
 static void A64ModemRelease();
 static TBool ModemDsr();
-extern "C" void A64SoundVoiceRoute(TBool aOn);			// a64sound.cpp (MODEM=1): the EG25-G PCM <-> codec route
+extern "C" void A64SoundVoiceRoute(TBool aOn);
+extern "C" void A64PowerTraceBurst();				// specific/a64_glue.cpp			// a64sound.cpp (MODEM=1): the EG25-G PCM <-> codec route
 static TInt A64ModemCreate(DA64Uart& aPort);
 #endif
 
@@ -314,6 +315,7 @@ void DA64Uart::SetSignals(TUint aSetMask, TUint aClearMask)
 #ifdef PHE_MODEM
 	if (iUnit == KModemUnit)									// M5: unit 3 DTR = the voice call route (a64sound.cpp)
 		{
+		if (aSetMask & KSignalRTS) A64PowerTraceBurst();	// pheltsy: a registration change or a RING (a64_glue.cpp: 8 s of power-path samples)
 		if (aSetMask & KSignalDTR) A64SoundVoiceRoute(ETrue);
 		else if (aClearMask & KSignalDTR) A64SoundVoiceRoute(EFalse);
 		return;

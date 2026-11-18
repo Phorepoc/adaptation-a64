@@ -165,7 +165,10 @@ private:
 	virtual TDfcQue* DfcQ(TInt aUnit);
 	virtual TBool CurrentlyUsingHighSpeed();
 	virtual TBool DeviceHighSpeedCaps() const;
+public:
+	void VbusChanged(TBool aPresent);				// the power input came or went (a64_glue.cpp PowerSample, via A64UsbccVbus)
 private:
+	void ResetCore();
 	inline volatile TUint8& R8(TUint aOff) const { return *(volatile TUint8*)(iBase + aOff); }
 	inline volatile TUint16& R16(TUint aOff) const { return *(volatile TUint16*)(iBase + aOff); }
 	inline volatile TUint32& R32(TUint aOff) const { return *(volatile TUint32*)(iBase + aOff); }
@@ -400,6 +403,47 @@ TInt DA64Usbcc::UdcDisconnect()
 	R8(KMuPower) &= ~KPowerSoftConn;
 	Unlock(irq);
 	return KErrNone;
+	}
+
+// VBUS (2026-11-18): the PHY's VBUS-valid is forced (see PowerUpHardware), so the controller never saw the cable go: after a
+// pull or a collapse of the supply it kept its session, and a new cable could not enumerate it until a reboot (the debug
+// link's old "only a reboot fixes it"). The AXP803's power-input state now drives it: gone = soft-disconnect and the PIL
+// to Powered; back = reset the OTG core (bus reset line of the CCU), reload the registers, reset the endpoint state and
+// connect again, so the host sees a device attach cleanly.
+void DA64Usbcc::ResetCore()
+	{
+	const TInt irq = Lock();
+	Ccu(KCcuBusRst0) &= ~(1u << 23);				// USB-OTG into reset
+	Kern::NanoWait(50000);
+	Ccu(KCcuBusRst0) |= 1u << 23;					// and out of it
+	Kern::NanoWait(100000);
+	iHwPowered = EFalse;
+	PowerUpHardware();								// the PHY tuning, the ISCR forcing
+	InitialiseUdcRegisters();
+	Unlock(irq);
+	}
+
+void DA64Usbcc::VbusChanged(TBool aPresent)
+	{
+	if (!iInitialized)
+		return;
+	UTr2("usbc: VBUS ", aPresent ? 1 : 0);
+	(void)UsbDisconnect();							// off the bus, the PIL's device state -> Powered
+	Reset();										// our endpoint / ep0 bookkeeping
+	if (aPresent)
+		{
+		ResetCore();
+		Kern::NanoWait(200000);
+		(void)UsbConnect();
+		UTr("usbc: VBUS back: core reset, reconnected\n");
+		}
+	}
+
+static DA64Usbcc* TheUsbcc;
+extern "C" void A64UsbccVbus(TBool aPresent)
+	{
+	if (TheUsbcc)
+		TheUsbcc->VbusChanged(aPresent);
 	}
 
 TBool DA64Usbcc::UsbConnectionStatus() const { return ETrue; }		// no cable detect yet: VBUS is forced
@@ -1064,6 +1108,7 @@ DECLARE_STANDARD_EXTENSION()
 		UTr("usbc: RegisterUdc failed\n");
 		return KErrGeneral;
 		}
+	TheUsbcc = usbcc;
 	UTr("usbc: A64 USB device controller registered\n");
 	return KErrNone;
 	}

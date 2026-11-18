@@ -272,8 +272,8 @@ extern "C" TInt A64PmicChargeAssert()
 	if (!RsbTryLock())
 		return KErrInUse;
 	const int r30 = a64_rsb_read(0x2d, 0x30), r2c = a64_rsb_read(0x2d, 0x2c), r2f = a64_rsb_read(0x2d, 0x2f);
-	if (r30 >= 0 && (r30 & 3) != 3)
-		a64_rsb_write(0x2d, 0x30, (TUint8)((r30 & ~3) | 3));		// 2.5 A: the charger itself limits below that
+	if (r30 >= 0 && ((r30 & 3) != 3 || !(r30 & 0x40)))
+		a64_rsb_write(0x2d, 0x30, (TUint8)((r30 & ~3) | 3 | 0x40));	// 2.5 A: the charger itself limits below that; bit 6 = VHOLD on (below)
 	const int r33 = a64_rsb_read(0x2d, 0x33);
 	if (r33 >= 0 && !(r33 & 0x80))
 		a64_rsb_write(0x2d, 0x33, (TUint8)(r33 | 0x80));
@@ -286,6 +286,12 @@ extern "C" TInt A64PmicChargeAssert()
 	// default the phone took ~0.5 A from any charger: enough to run it, nothing left to charge (charged only when
 	// off). 5 = 2.5 A; the charger limits below that.
 	const int r35 = a64_rsb_read(0x2d, 0x35);
+	// 2026-11-18 (boot 2790): the input limit stays forced to 2.5 A (at the PMIC's 500 mA the phone never charged and boot-looped
+	// on a flat cell, 2026-10-07), but REG30 bit 6 -- the VBUS VHOLD limit enable -- is set. The AXP20x family's reset value is
+	// 0x60 (bit 6 on, VHOLD [5:3] = 4 = 4.4 V; Linux axp20x_usb_power only changes [5:3], AXP20X_VBUS_VHOLD_uV = 4.0 V + n x 0.1 V,
+	// and relies on bit 6): when VBUS sags to VHOLD the PMIC throttles the input current and the battery makes up the rest. Here
+	// REG30 read 0x2b = bit 6 CLEAR (something at boot cleared it): no hold, so a burst (the modem's GSM transmit on a USB
+	// port) pulled VBUS down until the PMIC dropped the input. The VHOLD voltage field is left as found (0x2b: 4.5 V).
 	if (r35 >= 0 && (r35 >> 4) != 5)
 		a64_rsb_write(0x2d, 0x35, (TUint8)((r35 & 0x0F) | 0x50));
 	const int r84 = a64_rsb_read(0x2d, 0x84);
@@ -313,6 +319,53 @@ extern "C" TInt A64PmicReadBatt(TInt* aOut)
 	aOut[5] = Pmic12(0x7C);
 	RsbUnlock();
 	return (aOut[0] < 0 || aOut[1] < 0 || mv < 0) ? KErrGeneral : KErrNone;
+	}
+
+// Linux's axp20x_usb_power re-arms the PMIC's BC1.2 detection (AXP288_BC_GLOBAL = REG2C bit 0) whenever VBUS comes or goes.
+extern "C" void A64PmicBcRedetect()
+	{
+	if (!ph_a64_r || !RsbTryLock())
+		return;
+	const int v = a64_rsb_read(0x2d, 0x2c);
+	if (v >= 0 && !(v & 1))
+		a64_rsb_write(0x2d, 0x2c, (TUint8)(v | 1));
+	RsbUnlock();
+	}
+
+// POWER PATH TRACE (2026-11-18): one snapshot of what decides whether the phone keeps its USB power, for the sampler in
+// a64_glue.cpp (a call attempt took the USB-C VBUS down on the bench, the debug link with it). aOut[13]:
+//  0 REG00 (power input status: b7/6 ACIN present/usable, b5/4 VBUS present/usable, b2 charging) 1 REG01
+//  2 REG30 (VBUS-IPSOUT path) 3 REG35 (input current limit b7:4) 4 REG2F 5 IRQ1 (0x48: ACIN/VBUS plug-in, remove, < VHOLD)
+//  6 IRQ2 (0x49: battery, charge) 7 IRQ3 (0x4A) 8 IRQ4 (0x4B)  9 VBUS voltage (12 bit, 1.7 mV/LSB) 10 VBUS current (12 bit,
+//  0.375 mA/LSB) 11 battery discharge 12 battery voltage (1.1 mV/LSB). IRQ1..4 are written back (write 1 clears) so the
+//  next event shows again; the power key's register (0x4C) is not touched. Returns KErrInUse while the bus is busy.
+extern "C" TInt A64PmicPowerSnap(TInt* aOut)
+	{
+	if (!ph_a64_r)
+		return KErrNotReady;
+	if (!RsbTryLock())
+		return KErrInUse;
+	static TBool armed;
+	if (!armed)
+		{
+		const int e = a64_rsb_read(0x2d, 0x40);					// IRQ1 enable: ACIN/VBUS events latch only when enabled
+		if (e >= 0 && (e & 0x7E) != 0x7E) a64_rsb_write(0x2d, 0x40, (TUint8)(e | 0x7E));
+		const int a = a64_rsb_read(0x2d, 0x82);					// ADC enable: bit5 VBUS voltage, bit4 VBUS current
+		if (a >= 0 && (a & 0x30) != 0x30) a64_rsb_write(0x2d, 0x82, (TUint8)(a | 0x30));
+		armed = ETrue;
+		}
+	static const TUint8 KRegs[] = { 0x00, 0x01, 0x30, 0x35, 0x2F, 0x48, 0x49, 0x4A, 0x4B };
+	for (TInt i = 0; i < 9; ++i)
+		aOut[i] = a64_rsb_read(0x2d, KRegs[i]);
+	for (TInt i = 5; i < 9; ++i)
+		if (aOut[i] > 0)
+			a64_rsb_write(0x2d, KRegs[i], (TUint8)aOut[i]);
+	aOut[9] = Pmic12(0x5A);
+	aOut[10] = Pmic12(0x5C);
+	aOut[11] = Pmic12(0x7C);
+	aOut[12] = Pmic12(0x78);
+	RsbUnlock();
+	return aOut[0] < 0 ? KErrGeneral : KErrNone;
 	}
 
 // 0 = the touch supply is up, 1 = the display init has it off (no I2C to an unpowered GT9xx: it back-powers through

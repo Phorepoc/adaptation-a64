@@ -1873,8 +1873,94 @@ static void PowerKeyEvent(TBool aDown)
 // window server's key repeat lets SysAp time a long press; a key never stays down past 12 s on its own.
 static TInt PowerKeyHeld;		// polls since the press; < 0 = a long press (polls left)
 static TInt PowerKeyUpIn;		// polls until the pending release is posted (0 = none)
+// POWER PATH TRACE (2026-11-18): every 200 ms (from the power-key poll) one AXP803 snapshot (a64_display.cpp
+// A64PmicPowerSnap: input status, input limit, VBUS volts/amps, IRQ1..4, battery). The last 16 samples are kept; any
+// change of the power input, an ACIN/VBUS IRQ, an input-limit reset, a VBUS under 4.5 V or a discharge step of 250 mA
+// prints the ring (the lead-up) and the next 4 s of samples; otherwise one sample every 2 s. A user-side request
+// (A64PowerTraceBurst, the modem unit's RTS: pheltsy asks on a registration change or a RING) prints 8 s of samples.
+// A change of the power input also tells the USB device controller (A64UsbccVbus): cable out = off the bus, back = a
+// controller reset and a new attach.
+extern "C" TInt A64PmicPowerSnap(TInt* aOut);
+extern "C" void A64PmicBcRedetect();
+extern "C" void A64UsbccVbus(TBool aPresent) __attribute__((weak));
+static volatile TInt PsBurst;
+extern "C" void A64PowerTraceBurst() { PsBurst = 40; }
+static TInt PsRing[16][13];
+static TInt PsFill, PsHead;
+static void PsPrint(const char* aTag, const TInt* v)
+	{
+	ekseam_puts("[EKERN][vbus] "); ekseam_puts(aTag); ekseam_puts(" tick="); ekseam_puthex((unsigned)NKern::TickCount());
+	ekseam_puts("[EKERN][vbus]   reg00/01/30/35="); ekseam_puthex((unsigned)(((v[0] & 0xFF) << 24) | ((v[1] & 0xFF) << 16) | ((v[2] & 0xFF) << 8) | (v[3] & 0xFF)));
+	ekseam_puts("[EKERN][vbus]   reg2f/irq1/2/3="); ekseam_puthex((unsigned)(((v[4] & 0xFF) << 24) | ((v[5] & 0xFF) << 16) | ((v[6] & 0xFF) << 8) | (v[7] & 0xFF)));
+	ekseam_puts("[EKERN][vbus]   vbusV/vbusI raw="); ekseam_puthex((unsigned)(((v[9] & 0xFFF) << 16) | (v[10] & 0xFFF)));
+	ekseam_puts("[EKERN][vbus]   dis mA/bat mV raw="); ekseam_puthex((unsigned)(((v[11] & 0xFFF) << 16) | (v[12] & 0xFFF)));
+	}
+static void PowerSample()
+	{
+	static TInt n, vbus = -1, lastLim = -1, lastDis = -1, lastBeat;
+	if (++n % 4)
+		return;
+	TInt s[13];
+	if (A64PmicPowerSnap(s) != KErrNone)
+		return;
+	memcpy(PsRing[PsHead], s, sizeof(s));
+	PsHead = (PsHead + 1) & 15;
+	if (PsFill < 16) ++PsFill;
+	const TBool present = (s[0] & 0xF0) != 0;
+	TBool trig = EFalse;
+	// The input is acted on only once it has been stable: gone for 5 samples (1 s), back for 10 (2 s). A supply that flickers
+	// (the modem's GSM bursts on a weak port, boot 2790: ~100 ms cycles) must not reset the USB core each time; the trace
+	// still prints every change below.
+	static TInt acted = -1, seen = -1, stable;
+	if (present != (seen != 0))
+		{
+		seen = present ? 1 : 0;
+		stable = 0;
+		trig = ETrue;
+		}
+	else
+		++stable;
+	if (acted < 0)
+		acted = seen;							// the state at start-up: nothing to do
+	else if (seen != acted && stable >= (seen ? 10 : 5))
+		{
+		acted = seen;
+		A64PmicBcRedetect();					// Linux: re-arm the BC1.2 detection when VBUS comes or goes
+		if (A64UsbccVbus)
+			A64UsbccVbus(seen != 0);
+		}
+	vbus = present ? 1 : 0;
+	const TInt lim = (s[3] >> 4) & 0xF;
+	if (lastLim >= 0 && lim != lastLim) trig = ETrue;
+	lastLim = lim;
+	if ((s[5] | s[6] | s[7] | s[8]) & 0x7E) trig = ETrue;
+	if (present && s[9] > 0 && s[9] < 2650) trig = ETrue;		// VBUS < 4.5 V
+	if (lastDis >= 0 && s[11] >= 0 && (s[11] - lastDis > 250 || lastDis - s[11] > 250)) trig = ETrue;
+	lastDis = s[11];
+	if (trig && PsBurst < 20)
+		{
+		for (TInt i = 0; i < PsFill - 1; ++i)					// the lead-up, oldest first (the newest is printed below)
+			PsPrint("before", PsRing[(PsHead + 16 - PsFill + i) & 15]);
+		PsBurst = 20;
+		PsPrint("EVENT", s);
+		return;
+		}
+	if (PsBurst > 0)
+		{
+		--PsBurst;
+		PsPrint("burst", s);
+		return;
+		}
+	if (++lastBeat >= 10)
+		{
+		lastBeat = 0;
+		PsPrint("beat", s);
+		}
+	}
+
 static void PowerKeyDfcFn(TAny*)
 	{
+	PowerSample();
 	const TInt s = A64PmicKeyPoll();
 	if (s > 0)
 		{

@@ -946,8 +946,11 @@ static const TUint KSysAif2ClkEna = 1u << 7, KSysAif2ClkSrcPll = 2u << 4;		// 3.
 static const TUint KModAif2 = 1u << 14, KModAif3 = 1u << 13, KModAdc = 1u << 3, KModDac = 1u << 2;	// 3.20.5.19/20 MOD_CLK_ENA / MOD_RST_CTL
 static const TUint KSrAif2FsMask = 0xFu << 8;									// 3.20.5.21 SYS_SR_CTRL AIF2_FS[11:8], 0000 = 8 kHz
 // 3.20.5.34 AIF2_CLK_CTRL: MSTR_MOD[15] 0 = master; BCLK_DIV[12:9] 1011 = AIF2CLK/96 (24.576 MHz / 96 = 256 kHz);
-// LRCK_DIV[8:6] 001 = 32 (256 kHz / 32 = 8 kHz); WORD_SIZ[5:4] 01 = 16 bit; DATA_FMT[3:2] 11 = DSP; MONO_PCM[1] 1 = mono
-static const TUint KAif2ClkVoice = (11u << 9) | (1u << 6) | (1u << 4) | (3u << 2) | (1u << 1);
+// LRCK_DIV[8:6] 001 = 32 (256 kHz / 32 = 8 kHz); WORD_SIZ[5:4] 01 = 16 bit; DATA_FMT[3:2] 11 = DSP; BCLK_INV[14]
+// 2026-11-18 (the first incoming call came through badly distorted): + BCLK_INV[14] and no MONO_PCM -- the Linux modem link
+// (megi's DTS: dsp_a, codec bit/frame master, bitclock-inversion, 1 slot x 32 bit) = 0x565c, the value this code had before the
+// manual-derived rewrite, which dropped the inversion: the modem sampled the data on the wrong BCLK edge.
+static const TUint KAif2ClkVoice = (1u << 14) | (11u << 9) | (1u << 6) | (1u << 4) | (3u << 2);
 static const TUint KAif2AdcLEn = 1u << 15, KAif2DacLEn = 1u << 15;			// 3.20.5.35/36: ADCL_EN / DACL_ENA (sources 00 = own channel)
 static const TUint KAif2MxrAdcL = 1u << 12, KAif2MxrAdcR = 1u << 8;			// 3.20.5.37: AIF2 ADC L/R mixer <- ADCL / ADCR
 static const TUint KDacMxrAif2L = 1u << 13;									// 3.20.5.56 DAC_MXR_SRC: DAC left mixer <- AIF2 DACL
