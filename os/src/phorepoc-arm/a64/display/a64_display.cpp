@@ -315,6 +315,42 @@ extern "C" TInt A64PmicReadBatt(TInt* aOut)
 	return (aOut[0] < 0 || aOut[1] < 0 || mv < 0) ? KErrGeneral : KErrNone;
 	}
 
+// POWER PATH TRACE (2026-11-18): one snapshot of what decides whether the phone keeps its USB power, for the sampler in
+// a64_glue.cpp (a call attempt took the USB-C VBUS down on the bench, the debug link with it). aOut[13]:
+//  0 REG00 (power input status: b7/6 ACIN present/usable, b5/4 VBUS present/usable, b2 charging) 1 REG01
+//  2 REG30 (VBUS-IPSOUT path) 3 REG35 (input current limit b7:4) 4 REG2F 5 IRQ1 (0x48: ACIN/VBUS plug-in, remove, < VHOLD)
+//  6 IRQ2 (0x49: battery, charge) 7 IRQ3 (0x4A) 8 IRQ4 (0x4B)  9 VBUS voltage (12 bit, 1.7 mV/LSB) 10 VBUS current (12 bit,
+//  0.375 mA/LSB) 11 battery discharge 12 battery voltage (1.1 mV/LSB). IRQ1..4 are written back (write 1 clears) so the
+//  next event shows again; the power key's register (0x4C) is not touched. Returns KErrInUse while the bus is busy.
+extern "C" TInt A64PmicPowerSnap(TInt* aOut)
+	{
+	if (!ph_a64_r)
+		return KErrNotReady;
+	if (!RsbTryLock())
+		return KErrInUse;
+	static TBool armed;
+	if (!armed)
+		{
+		const int e = a64_rsb_read(0x2d, 0x40);					// IRQ1 enable: ACIN/VBUS events latch only when enabled
+		if (e >= 0 && (e & 0x7E) != 0x7E) a64_rsb_write(0x2d, 0x40, (TUint8)(e | 0x7E));
+		const int a = a64_rsb_read(0x2d, 0x82);					// ADC enable: bit5 VBUS voltage, bit4 VBUS current
+		if (a >= 0 && (a & 0x30) != 0x30) a64_rsb_write(0x2d, 0x82, (TUint8)(a | 0x30));
+		armed = ETrue;
+		}
+	static const TUint8 KRegs[] = { 0x00, 0x01, 0x30, 0x35, 0x2F, 0x48, 0x49, 0x4A, 0x4B };
+	for (TInt i = 0; i < 9; ++i)
+		aOut[i] = a64_rsb_read(0x2d, KRegs[i]);
+	for (TInt i = 5; i < 9; ++i)
+		if (aOut[i] > 0)
+			a64_rsb_write(0x2d, KRegs[i], (TUint8)aOut[i]);
+	aOut[9] = Pmic12(0x5A);
+	aOut[10] = Pmic12(0x5C);
+	aOut[11] = Pmic12(0x7C);
+	aOut[12] = Pmic12(0x78);
+	RsbUnlock();
+	return aOut[0] < 0 ? KErrGeneral : KErrNone;
+	}
+
 // 0 = the touch supply is up, 1 = the display init has it off (no I2C to an unpowered GT9xx: it back-powers through
 // its pins and misses its power-on reset), 2 = back on (the touch driver sets 0; a64touch.cpp)
 extern "C" { volatile TInt A64TouchSupplyState = 0; }
