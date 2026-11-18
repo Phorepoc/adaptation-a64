@@ -15,6 +15,9 @@ int phe_usb_vsnprintf(char *buf, size_t size, const char *fmt, va_list ap);
 
 #define PHE_USB_MAX_TTYS 8
 static struct tty *ttys[PHE_USB_MAX_TTYS];
+/* breadcrumbs of the write path (first 60): tty ring put, service outwakeup, ucom_get_data -> ttydisc_getc */
+static int trc_left = 60;
+#define TRC(...) do { if (trc_left > 0) { --trc_left; printf(__VA_ARGS__); } } while (0)
 static volatile unsigned char want_open[PHE_USB_MAX_TTYS], want_close[PHE_USB_MAX_TTYS], want_out[PHE_USB_MAX_TTYS],
     want_in[PHE_USB_MAX_TTYS];
 
@@ -169,6 +172,7 @@ size_t
 ttydisc_getc(struct tty *tp, void *buf, size_t len)
 {
 	size_t n = ring_get(&tp->t_tx, buf, len);
+	TRC("[usbh] tty%d: ttydisc_getc (ucom_get_data) len %d -> %d\n", tp->t_index, (int)len, (int)n);
 
 	if (n != 0 && tp->t_index >= 0)
 		phe_usb_tty_notify(tp->t_index, PHE_USB_TTY_TX);
@@ -265,6 +269,7 @@ phe_usb_tty_write(int idx, const void *buf, int len)
 	if (tp == NULL || tp->t_gone)
 		return (-ENXIO);
 	n = ring_put(&tp->t_tx, buf, len);
+	TRC("[usbh] tty%d: write ring put %d of %d\n", idx, (int)n, len);
 	if (n != 0) {
 		want_out[idx] = 1;
 		phe_usb_kick();
@@ -415,6 +420,7 @@ phe_usb_tty_service(void)
 		if (want_out[i] && tp->t_open) {
 			want_out[i] = 0;
 			tty_lock(tp);
+			TRC("[usbh] tty%d: service -> tsw_outwakeup (ucom_outwakeup)\n", i);
 			tp->t_devsw->tsw_outwakeup(tp);
 			tty_unlock(tp);
 		}

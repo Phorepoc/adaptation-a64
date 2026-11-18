@@ -13,7 +13,13 @@
 extern "C" {
 #include "../phe_usb_port.h"
 void ekseam_puts(const char*);
+void ekseam_puthex(unsigned);
 }
+
+// breadcrumbs of the write path (the first 60 only): the LDD hop of the chain LDD -> Pump -> tty ring -> service ->
+// ucom_outwakeup -> u3g -> ucom_get_data -> ttydisc_getc; see usb-host-plan.md
+static TInt gTrcLeft = 60;
+#define TRC(s, v) do { if (gTrcLeft > 0) { --gTrcLeft; ekseam_puts("[usbh] comm: " s " = "); ekseam_puthex((unsigned)(v)); } } while (0)
 
 _LIT(KPddName, "Comm.USB");
 _LIT(KDfcName, "UsbComm");
@@ -155,6 +161,7 @@ void DUsbComm::Break(TBool)	{ }
 // tx, in the LDD's DFC thread (EnableTransmit) and on "room to write" (EventDfcFn): move bytes until the ring is full
 void DUsbComm::Pump()
 	{
+	TInt sent = 0;
 	for (;;)
 		{
 		TInt c = iPending;
@@ -168,19 +175,26 @@ void DUsbComm::Pump()
 		if (c < 0)
 			{
 			iTransmitting = EFalse;
-			return;
+			break;
 			}
 		const TUint8 b = (TUint8)c;
 		if (phe_usb_tty_write(iPort, &b, 1) != 1)
 			{
 			iPending = c;			// the ring is full: the next "room" event goes on from here
-			return;
+			break;
 			}
+		++sent;
 		}
+	TRC("Pump: bytes to the ring", sent);
+	// The PDD contract (uart16550.cpp, a64uart.cpp): after every transmit burst the PDD calls CheckTxBuffer(): the LDD
+	// refills its buffer from the client's descriptor (the fill DFC) and, once the buffer is empty, COMPLETES the write
+	// request. Without this call the first Write() never completes (boot 2737: ssmtest stuck after "tty0 open r=0").
+	CheckTxBuffer();
 	}
 
 void DUsbComm::EnableTransmit()
 	{
+	TRC("EnableTransmit", iTransmitting);
 	if (__e32_atomic_swp_ord32(&iTransmitting, 1))
 		return;
 	Pump();
