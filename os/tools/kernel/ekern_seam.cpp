@@ -661,7 +661,9 @@ extern "C" void __wrap__ZN11ExecHandler10DebugPrintEPvi(void* aDes, int aMode)
 			"[SWI]",
 			// (2026-11-01) libEGL's own lines (failed config / context choices), the WLAN bench, the crash-pc placer, and
 			// Qt's GL warnings (QGLContext / QEglContext: why a Qt app has no GL context)
-			"[libEGL]", "[phewlantest]", "[phewhere]", "QGL", "QEgl" };
+			"[libEGL]", "[phewlantest]", "[phewhere]", "QGL", "QEgl",
+			// (2026-11-18) the telephony TSY's AT engine (core pheltsy): why the modem path printed nothing in PhoneLab (not in this list)
+			"[pheltsy]" };
 		for (unsigned i = 0; i < sizeof(KPass) / sizeof(KPass[0]); ++i)
 			{
 			const char* p = KPass[i];
