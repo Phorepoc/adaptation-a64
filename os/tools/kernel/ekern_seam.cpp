@@ -2061,6 +2061,10 @@ static void ekseam_seg(const char* tag, DCodeSeg* s)
 	nm[i] = 0;
 	ekseam_puts(tag); ekseam_puthex((unsigned)(unsigned long)s); ekseam_puts(" "); ekseam_puts(nm);
 	ekseam_puts(" acc="); ekseam_puthex(s ? (unsigned)s->iAccessCount : 0);
+	// Where the segment runs: an EUSRNIMP panic reason is the caller's return address, so the module that holds
+	// it is the segment whose [run, run+size) contains it.
+	ekseam_puts(" run="); ekseam_puthex(s ? (unsigned)s->iRunAddress : 0);
+	ekseam_puts(" size="); ekseam_puthex(s ? (unsigned)s->iSize : 0);
 	}
 extern "C" TInt __real__ZN11ExecHandler20CodeSegAddDependencyEPvS0_(TAny*, TAny*);
 extern "C" TInt __wrap__ZN11ExecHandler20CodeSegAddDependencyEPvS0_(TAny* aImp, TAny* aExp)
