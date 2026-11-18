@@ -165,6 +165,7 @@ private:
 	virtual TDfcQue* DfcQ(TInt aUnit);
 	virtual TBool CurrentlyUsingHighSpeed();
 	virtual TBool DeviceHighSpeedCaps() const;
+public:
 	void VbusChanged(TBool aPresent);				// the power input came or went (a64_glue.cpp PowerSample, via A64UsbccVbus)
 private:
 	void ResetCore();
