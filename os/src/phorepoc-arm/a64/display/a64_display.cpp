@@ -272,8 +272,8 @@ extern "C" TInt A64PmicChargeAssert()
 	if (!RsbTryLock())
 		return KErrInUse;
 	const int r30 = a64_rsb_read(0x2d, 0x30), r2c = a64_rsb_read(0x2d, 0x2c), r2f = a64_rsb_read(0x2d, 0x2f);
-	if (r30 >= 0 && (r30 & 3) != 3)
-		a64_rsb_write(0x2d, 0x30, (TUint8)((r30 & ~3) | 3));		// 2.5 A: the charger itself limits below that
+	if (r30 >= 0 && ((r30 & 3) != 3 || !(r30 & 0x40)))
+		a64_rsb_write(0x2d, 0x30, (TUint8)((r30 & ~3) | 3 | 0x40));	// 2.5 A: the charger itself limits below that; bit 6 = VHOLD on (below)
 	const int r33 = a64_rsb_read(0x2d, 0x33);
 	if (r33 >= 0 && !(r33 & 0x80))
 		a64_rsb_write(0x2d, 0x33, (TUint8)(r33 | 0x80));
@@ -286,16 +286,13 @@ extern "C" TInt A64PmicChargeAssert()
 	// default the phone took ~0.5 A from any charger: enough to run it, nothing left to charge (charged only when
 	// off). 5 = 2.5 A; the charger limits below that.
 	const int r35 = a64_rsb_read(0x2d, 0x35);
-	// 2026-11-18: no longer forced on a port that identified itself. Linux (axp20x_usb_power.c, the AXP813 data the PinePhone's
-	// AXP803 uses) never writes the limit: the PMIC's BC1.2 detection sets it (REG35 [7:4]: 100/500/900/1500/2000/2500 mA) and
-	// the driver only re-arms the detection (REG2C bit 0) when VBUS comes or goes; the detected type is REG2F [7:5] (1 SDP, 2 CDP,
-	// 3 DCP). Forcing 2.5 A on a laptop's SDP port made the modem's GSM transmit bursts collapse VBUS (boot 2790). Only a source
-	// that never identifies itself (a USB-C charger: no D+/D- short, which Linux covers with the type-C chip's advertisement,
-	// not available here) is still raised, after three polls (15 s) without a type.
-	static TInt noType;
-	const TInt bcType = r2f >= 0 ? ((r2f >> 5) & 7) : -1;
-	noType = (bcType == 0) ? noType + 1 : 0;
-	if (r35 >= 0 && (r35 >> 4) != 5 && noType >= 3)
+	// 2026-11-18 (boot 2790): the input limit stays forced to 2.5 A (at the PMIC's 500 mA the phone never charged and boot-looped
+	// on a flat cell, 2026-10-07), but REG30 bit 6 -- the VBUS VHOLD limit enable -- is set. The AXP20x family's reset value is
+	// 0x60 (bit 6 on, VHOLD [5:3] = 4 = 4.4 V; Linux axp20x_usb_power only changes [5:3], AXP20X_VBUS_VHOLD_uV = 4.0 V + n x 0.1 V,
+	// and relies on bit 6): when VBUS sags to VHOLD the PMIC throttles the input current and the battery makes up the rest. Here
+	// REG30 read 0x2b = bit 6 CLEAR (something at boot cleared it): no hold, so a burst (the modem's GSM transmit on a USB
+	// port) pulled VBUS down until the PMIC dropped the input. The VHOLD voltage field is left as found (0x2b: 4.5 V).
+	if (r35 >= 0 && (r35 >> 4) != 5)
 		a64_rsb_write(0x2d, 0x35, (TUint8)((r35 & 0x0F) | 0x50));
 	const int r84 = a64_rsb_read(0x2d, 0x84);
 	if (r84 >= 0 && (r84 & 7) != 4)
