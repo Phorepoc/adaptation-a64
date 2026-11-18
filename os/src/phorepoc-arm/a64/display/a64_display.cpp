@@ -286,7 +286,16 @@ extern "C" TInt A64PmicChargeAssert()
 	// default the phone took ~0.5 A from any charger: enough to run it, nothing left to charge (charged only when
 	// off). 5 = 2.5 A; the charger limits below that.
 	const int r35 = a64_rsb_read(0x2d, 0x35);
-	if (r35 >= 0 && (r35 >> 4) != 5)
+	// 2026-11-18: no longer forced on a port that identified itself. Linux (axp20x_usb_power.c, the AXP813 data the PinePhone's
+	// AXP803 uses) never writes the limit: the PMIC's BC1.2 detection sets it (REG35 [7:4]: 100/500/900/1500/2000/2500 mA) and
+	// the driver only re-arms the detection (REG2C bit 0) when VBUS comes or goes; the detected type is REG2F [7:5] (1 SDP, 2 CDP,
+	// 3 DCP). Forcing 2.5 A on a laptop's SDP port made the modem's GSM transmit bursts collapse VBUS (boot 2790). Only a source
+	// that never identifies itself (a USB-C charger: no D+/D- short, which Linux covers with the type-C chip's advertisement,
+	// not available here) is still raised, after three polls (15 s) without a type.
+	static TInt noType;
+	const TInt bcType = r2f >= 0 ? ((r2f >> 5) & 7) : -1;
+	noType = (bcType == 0) ? noType + 1 : 0;
+	if (r35 >= 0 && (r35 >> 4) != 5 && noType >= 3)
 		a64_rsb_write(0x2d, 0x35, (TUint8)((r35 & 0x0F) | 0x50));
 	const int r84 = a64_rsb_read(0x2d, 0x84);
 	if (r84 >= 0 && (r84 & 7) != 4)
@@ -313,6 +322,17 @@ extern "C" TInt A64PmicReadBatt(TInt* aOut)
 	aOut[5] = Pmic12(0x7C);
 	RsbUnlock();
 	return (aOut[0] < 0 || aOut[1] < 0 || mv < 0) ? KErrGeneral : KErrNone;
+	}
+
+// Linux's axp20x_usb_power re-arms the PMIC's BC1.2 detection (AXP288_BC_GLOBAL = REG2C bit 0) whenever VBUS comes or goes.
+extern "C" void A64PmicBcRedetect()
+	{
+	if (!ph_a64_r || !RsbTryLock())
+		return;
+	const int v = a64_rsb_read(0x2d, 0x2c);
+	if (v >= 0 && !(v & 1))
+		a64_rsb_write(0x2d, 0x2c, (TUint8)(v | 1));
+	RsbUnlock();
 	}
 
 // POWER PATH TRACE (2026-11-18): one snapshot of what decides whether the phone keeps its USB power, for the sampler in

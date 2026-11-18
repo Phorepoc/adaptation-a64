@@ -1881,6 +1881,7 @@ static TInt PowerKeyUpIn;		// polls until the pending release is posted (0 = non
 // A change of the power input also tells the USB device controller (A64UsbccVbus): cable out = off the bus, back = a
 // controller reset and a new attach.
 extern "C" TInt A64PmicPowerSnap(TInt* aOut);
+extern "C" void A64PmicBcRedetect();
 extern "C" void A64UsbccVbus(TBool aPresent) __attribute__((weak));
 static volatile TInt PsBurst;
 extern "C" void A64PowerTraceBurst() { PsBurst = 40; }
@@ -1907,11 +1908,26 @@ static void PowerSample()
 	if (PsFill < 16) ++PsFill;
 	const TBool present = (s[0] & 0xF0) != 0;
 	TBool trig = EFalse;
-	if (vbus >= 0 && present != (vbus != 0))
+	// The input is acted on only once it has been stable: gone for 5 samples (1 s), back for 10 (2 s). A supply that flickers
+	// (the modem's GSM bursts on a weak port, boot 2790: ~100 ms cycles) must not reset the USB core each time; the trace
+	// still prints every change below.
+	static TInt acted = -1, seen = -1, stable;
+	if (present != (seen != 0))
 		{
+		seen = present ? 1 : 0;
+		stable = 0;
 		trig = ETrue;
+		}
+	else
+		++stable;
+	if (acted < 0)
+		acted = seen;							// the state at start-up: nothing to do
+	else if (seen != acted && stable >= (seen ? 10 : 5))
+		{
+		acted = seen;
+		A64PmicBcRedetect();					// Linux: re-arm the BC1.2 detection when VBUS comes or goes
 		if (A64UsbccVbus)
-			A64UsbccVbus(present);
+			A64UsbccVbus(seen != 0);
 		}
 	vbus = present ? 1 : 0;
 	const TInt lim = (s[3] >> 4) & 0xF;
