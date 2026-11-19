@@ -60,6 +60,7 @@ extern "C" TInt A64CpuGovernorStart();			// power/a64_cpufreq.cpp (maps the CCU;
 extern "C" TInt A64IdleStart();				// power/a64_idle.cpp (power plan P5: idle tick suppression + core retirement)
 #endif
 extern "C" void A64SoundInstall();			// sound/a64sound.cpp: the codec PDD under the real sound LDD
+extern "C" void A64PipeInstall();			// specific/a64_pipe.cpp: the real pipe LDD ("SymbianPipe") for Open C pipe()
 extern "C" void A64KeysInstall();			// input/a64keys.cpp: the volume buttons (LRADC)
 extern "C" void A64UartInstall();			// bt/a64uart.cpp: the real serial LDD + the UART1 PDD (Bluetooth)
 extern "C" void A64SdioInstall();			// wlan/a64sdio.cpp: the SMHC1 SDIO host (WiFi); A64_SDIO_TEST = the probe
@@ -2544,6 +2545,7 @@ extern "C" void ekseam_load_media_drivers()
 	}
 	// sound: the A64 codec + DMA PDD "SoundSc.A64" under the real ESOUNDSC LDD (sound/a64sound.cpp)
 	A64SoundInstall();
+	A64PipeInstall();
 	A64KeysInstall();
 	A64UartInstall();
 	A64SdioInstall();

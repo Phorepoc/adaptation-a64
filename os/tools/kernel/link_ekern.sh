@@ -235,6 +235,10 @@ if [ "$BOARD" = a64 ]; then
     -fno-data-sections "${EXTRA[@]}" "${MED[@]}" ${A64DEFS:-} $([ "${MODEM:-0}" = 1 ] && echo -DPHE_MODEM) -o .variant-build/a64sound.o
   # (MODEM=1: + the voice call route, EG25-G PCM on AIF2 <-> earpiece/MIC1, switched by Comm.A64 unit 3 DTR -- telephony-plan.md 16)
   VAROBJS+=(.variant-build/soundldd.o .variant-build/a64sound.o)
+  # Open C pipe(): the REAL pipe LDD (entry points renamed, as the x86 build) installed by specific/a64_pipe.cpp
+  ccq -k "$B/drivers/pipe/dpipe.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" "${MED[@]}" -I"$B/drivers/pipe"     -DCreateLogicalDevice=CreateLogicalDevice_pipe -DKernelModuleEntry=KernelModuleEntry_pipe -o .variant-build/dpipe.o
+  ccq -k src/phorepoc-arm/a64/specific/a64_pipe.cpp -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" "${MED[@]}"     -o .variant-build/a64_pipe.o
+  VAROBJS+=(.variant-build/dpipe.o .variant-build/a64_pipe.o)
   # the volume buttons on the LRADC (src/phorepoc-arm/a64/input/a64keys.cpp)
   ccq -k src/phorepoc-arm/a64/input/a64keys.cpp -O2 -fno-function-sections \
     -fno-data-sections "${EXTRA[@]}" -o .variant-build/a64keys.o
