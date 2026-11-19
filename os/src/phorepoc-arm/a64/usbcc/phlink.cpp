@@ -378,8 +378,7 @@ void DPhLink::Kick()
 			iUpState = EUpIdle;						// half a command is lost; the host sends it again
 			iUpHdrFill = 0;
 			iSeenEpoch = PhLinkBusEpoch;
-			PTr("phlink: bus lost, requests re-armed on the next configuration
-");
+			PTr("phlink: bus lost, requests re-armed on the next configuration"); PTr("\n");
 			}
 		iBusUp = EFalse;
 		if (!configured)
