@@ -29,6 +29,15 @@ extern "C" TInt A64SlotUploadBegin(TUint aLen, TUint aSum);
 extern "C" TInt A64SlotUploadData(const TUint8* aData, TInt aLen);
 extern "C" TInt A64SlotUploadEnd(TUint* aSum);
 extern "C" void A64UsbLinkUp();
+
+// Bus epoch (2026-11-19): the USB PIL cancels a request on an endpoint teardown (bus reset, disconnect, interface teardown) and
+// the cancelled request's callback is NEVER run ("the callback function won't be executed", ps_usbc.cpp CancelWriteBuffer) -- so
+// iRxBusy / iTxBusy stayed set for a request that no longer existed, the bulk-OUT endpoint was never read again and the host's
+// writes stalled for good ("the phone stopped reading"; the log, a still-armed IN request, kept flowing). Anything that takes the
+// device off the bus (a64_usbcc.cpp VbusChanged) bumps the epoch; Kick also sees a device that is not Configured. Either one
+// means every request in flight is gone: the flags are cleared and the command parser restarts.
+static volatile TInt PhLinkBusEpoch;
+extern "C" void A64PhLinkBusLost() { ++PhLinkBusEpoch; }
 // the delta upload (a64_glue.cpp "DELTA UPLOAD"): 'Y' block hashes, 'X' patch a run, 'Z' commit
 extern "C" TInt A64SlotHashBlocks(TUint aLen, TUint32* aOut, TInt aMax);
 extern "C" TInt A64SlotPatchBegin(TUint aOff, TUint aLen);
@@ -169,6 +178,8 @@ private:
 	TUint8 iRxBuf[512] __attribute__((aligned(4)));			// one bulk OUT packet: 64 B at full speed, 512 B at high speed
 	TUsbcPacketArray iRxIndex[2], iRxSize[2];
 	TBool iTxBusy, iRxBusy;
+	TInt iSeenEpoch;
+	TBool iBusUp;						// the last Kick found the device Configured
 	TUint iSent;
 	TInt iTxLen;
 	NTimer iPollTimer;
@@ -197,7 +208,7 @@ private:
 
 DPhLink::DPhLink()
 	: iUpState(EUpIdle), iCmd(0), iUpHdrFill(0), iUpLen(0), iUpLeft(0), iUpOk(EFalse), iUpPatch(EFalse), iUpOff(0), iFsOp(0), iFsLen(0), iFsFill(0), iFsOver(EFalse), iFsDfc(FsDfcFn, this, 1), iDeltaTotal(0), iDeltaDone(0), iCtrl(NULL), iThread(NULL), iEp0Read(NULL), iEp0Write(NULL), iTx(NULL), iRx(NULL), iEp0ExpectData(EFalse),
-	  iTxBusy(EFalse), iRxBusy(EFalse), iSent(0), iTxLen(0), iPollTimer(PollTimerFn, this),
+	  iTxBusy(EFalse), iRxBusy(EFalse), iSeenEpoch(0), iBusUp(EFalse), iSent(0), iTxLen(0), iPollTimer(PollTimerFn, this),
 	  iPollDfc(PollDfcFn, this, 1), iTxIsLog(EFalse), iShotStage(0), iShotId(0), iShotW(0), iShotH(0), iShotRow(0),
 	  iShotNextStage(0), iShotNextRow(0), iShotPix(NULL), iShotPanel(NULL), iLive(EFalse), iLiveKey(EFalse), iLiveWhich(0), iLiveNtx(0), iLiveTiles(0), iLiveBandTy(-1), iLiveLo(0), iLiveHi(0), iLiveSentTiles(0), iFrameSeq(0), iTxIsBlob(EFalse), iBlobStage(0), iBlobNextStage(0), iBlobLen(0), iBlobOff(0), iBlobNextOff(0), iBlobKind(0)
 	{
@@ -356,8 +367,25 @@ void DPhLink::Ep0WriteDfc(TAny*)
 // stream the log: one chunk in flight at a time
 void DPhLink::Kick()
 	{
-	if (iCtrl->GetDeviceStatus() != EUsbcDeviceStateConfigured)
-		return;
+	const TBool configured = iCtrl->GetDeviceStatus() == EUsbcDeviceStateConfigured;
+	if (!configured || iSeenEpoch != PhLinkBusEpoch)
+		{
+		// off the bus: the PIL dropped the requests in flight without running their callbacks
+		if (iBusUp || iSeenEpoch != PhLinkBusEpoch || iRxBusy)
+			{
+			iRxBusy = EFalse;
+			iTxBusy = EFalse;
+			iUpState = EUpIdle;						// half a command is lost; the host sends it again
+			iUpHdrFill = 0;
+			iSeenEpoch = PhLinkBusEpoch;
+			PTr("phlink: bus lost, requests re-armed on the next configuration
+");
+			}
+		iBusUp = EFalse;
+		if (!configured)
+			return;
+		}
+	iBusUp = ETrue;
 	A64UsbLinkUp();			// the host configured us (a64_glue.cpp: the A64_USB_GUARD's "link seen")
 	if (!iRxBusy)
 		{

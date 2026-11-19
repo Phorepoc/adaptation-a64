@@ -32,6 +32,7 @@
 #endif
 
 extern "C" void ekseam_board_log(unsigned c);
+extern "C" void A64PhLinkBusLost();		// phlink.cpp: the requests in flight are gone
 
 // ---- a tiny ISR-safe trace into the board log (the SD log; later the USB link itself) ----
 static void UTr(const char* aText)
@@ -428,6 +429,7 @@ void DA64Usbcc::VbusChanged(TBool aPresent)
 	if (!iInitialized)
 		return;
 	UTr2("usbc: VBUS ", aPresent ? 1 : 0);
+	A64PhLinkBusLost();							// phlink: the requests in flight are gone (the PIL does not complete them)
 	(void)UsbDisconnect();							// off the bus, the PIL's device state -> Powered
 	Reset();										// our endpoint / ep0 bookkeeping
 	if (aPresent)
