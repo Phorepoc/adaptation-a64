@@ -5,6 +5,18 @@
 # stack on its kshim + our host and SoC glue) linked into ekern. Uses the link script's ccq, EXTRA, ARMGCC/GCC,
 # VAROBJS, BOARD_WRAPS and A64DEFS. USBHOST_OBJ = a prebuilt usbhost_bsd.o (build_bsd.sh elsewhere, e.g. in a
 # container when the link runs on a host without a native cc for the SYSINIT tool).
+# USBHOST_NET=1 needs the modem-eg25 checkout (if_cdce.c) and the MODEM=1 image; any other build of the same tree (e.g. the
+# golden fallback ROM, which runs with MODEM=0 and no modem-eg25 in its view) quietly builds without it
+if [ "${USBHOST_NET:-0}" = 1 ]; then
+  ME_NET="${MODEM_EG25:-}"
+  [ -n "$ME_NET" ] || ME_NET=$(echo "${PHOREPOC_ADAPTATIONS:-}" | tr ':' '\n' | grep '/modem-eg25$' | head -1)
+  if [ "${MODEM:-0}" = 1 ] && [ -f "$ME_NET/third_party/freebsd/sys/dev/usb/net/if_cdce.c" ]; then
+    MODEM_EG25="$ME_NET"
+  else
+    echo "link_block: USBHOST_NET ignored (needs MODEM=1 and modem-eg25's if_cdce.c)" >&2
+    USBHOST_NET=0
+  fi
+fi
 UH="${USBHOST_DIR:-src/phorepoc-arm/a64/usbhost}"
 # A64_USBHOST_TRACE=1: the bring-up and write-path breadcrumbs (SD-log flushed: a hang shows in slot A's replay).
 # Default off; the kernel part and the BSD part (usbhost_bsd.o) get the same -DPHE_USBHOST_TRACE.
@@ -15,7 +27,7 @@ fi
 if [ -z "${USBHOST_OBJ:-}" ]; then
   # the H3 model (A64_H3TEST) has no USB PHY to program; the A64 builds aw_usbphy.c
   case " ${EXTRA[*]} " in *" -DA64_H3TEST "*) UPHY=0 ;; *) UPHY=1 ;; esac
-  USBHOST_NET="${USBHOST_NET:-0}" MODEM_EG25="${MODEM_EG25:-../modem-eg25}" USBHOST_PHY="$UPHY" GCC="${ARMGCC:-$GCC}" USBHOST_DEFS="${USBHOST_DEFS:-}" bash "$UH/ekern/build_bsd.sh" .variant-build/usbhost >&2
+  USBHOST_NET="${USBHOST_NET:-0}" MODEM_EG25="${MODEM_EG25:-}" USBHOST_PHY="$UPHY" GCC="${ARMGCC:-$GCC}" USBHOST_DEFS="${USBHOST_DEFS:-}" bash "$UH/ekern/build_bsd.sh" .variant-build/usbhost >&2
   USBHOST_OBJ=.variant-build/usbhost/usbhost_bsd.o
 fi
 A64DEFS="${A64DEFS:-} -DA64_USBHOST"
