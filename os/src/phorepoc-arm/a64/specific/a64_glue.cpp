@@ -1758,6 +1758,7 @@ static void A64RtcToKernelTime()
 	}
 
 static void A64BatteryTick();
+static void A64BatteryRefresh();
 #ifdef A64_SDLOG_FAST
 // A64DEFS=-DA64_SDLOG_FAST (2026-10-09, the NGA boot power cut): the SD log every 1 s with the battery reading, so a
 // sudden power loss (no fault, no PowerDown, DRAM lost) still leaves its last second for the slot A replay
@@ -1912,15 +1913,24 @@ static void PowerSample()
 	// The input is acted on only once it has been stable: gone for 5 samples (1 s), back for 10 (2 s). A supply that flickers
 	// (the modem's GSM bursts on a weak port, boot 2790: ~100 ms cycles) must not reset the USB core each time; the trace
 	// still prints every change below.
-	static TInt acted = -1, seen = -1, stable;
+	static TInt acted = -1, seen = -1, stable, fastLeft;
 	if (present != (seen != 0))
 		{
 		seen = present ? 1 : 0;
 		stable = 0;
 		trig = ETrue;
+		// The battery reading the user sees (HWRM's charging indicator, the status bar) follows the cable at once, not with
+		// the USB debounce below and not with the 5/30 s battery tick: refresh now and for the next 4 samples (~3 s), while
+		// the charge current settles after REG00 flips.
+		fastLeft = 5;
 		}
 	else
 		++stable;
+	if (fastLeft > 0)
+		{
+		--fastLeft;
+		A64BatteryRefresh();
+		}
 	if (acted < 0)
 		acted = seen;							// the state at start-up: nothing to do
 	else if (seen != acted && stable >= (seen ? 10 : 5))
@@ -2175,7 +2185,27 @@ static void BattPrint(const char* aWhy, const TInt* b)
 	ekseam_puts("[EKERN][batt]   REG00/01="); ekseam_puthex((unsigned)((b[0] << 8) | (b[1] & 0xFF)));
 	}
 
+// The battery guard's input (power-off decisions): the charger is on, or any charge current flows. Unchanged: a stricter
+// definition could power the phone off while it sits on a weak supply.
 static TBool BattCharging(const TInt* b) { return (b[1] & 0x40) || b[4] > 0; }
+// The indicator's input (the status bar, HWRM's charging key): charge current going into the cell (REG7A/7B, b[4] mA,
+// positive). The charge bit (REG01 b6) stays set on a weak supply (a port that cannot carry the phone's load) while the cell
+// discharges, so the indicator said "charging" on a falling battery. Input present but no current in = "not charging".
+static TBool BattChargeFlowing(const TInt* b) { return b[4] > 0; }
+
+// A fresh reading now (the power-input sampler calls it when the cable comes or goes): the same update as A64BatteryTick,
+// without its logging or its power-off bookkeeping. A busy bus leaves the last reading.
+static void A64BatteryRefresh()
+	{
+#ifdef A64_NO_PMIC
+	return;
+#endif
+	TInt b[6];
+	if (A64PmicReadBatt(b) != KErrNone)
+		return;
+	memcpy(BattLast, b, sizeof(b));
+	A64StatusBattery(b[3], BattChargeFlowing(b), b[2]);
+	}
 
 static void A64PowerOffNow(const char* aWhy)
 	{
@@ -2204,7 +2234,7 @@ static void A64BatteryGuard()
 		return;
 	BattPrint("at boot", b);
 	memcpy(BattLast, b, sizeof(b));
-	A64StatusBattery(b[3], BattCharging(b), b[2]);
+	A64StatusBattery(b[3], BattChargeFlowing(b), b[2]);
 	if (b[2] >= KBattBootMv)
 		return;
 	TInt noCharge = 0;
@@ -2232,7 +2262,7 @@ static void A64BatteryGuard()
 		}
 	BattPrint("charged enough -- booting", b);
 	memcpy(BattLast, b, sizeof(b));
-	A64StatusBattery(b[3], BattCharging(b), b[2]);
+	A64StatusBattery(b[3], BattChargeFlowing(b), b[2]);
 	}
 
 // Every 30 s from the monitor DFC: log, and power off before the cell goes below the floor with no charger.
@@ -2255,7 +2285,7 @@ static void A64BatteryTick()
 		return;
 	memcpy(BattLast, b, sizeof(b));
 	BattPrint("now", b);
-	A64StatusBattery(b[3], BattCharging(b), b[2]);
+	A64StatusBattery(b[3], BattChargeFlowing(b), b[2]);
 	low = (b[2] < KBattOffMv && !BattCharging(b)) ? low + 1 : 0;
 	if (low >= 2)
 		A64PowerOffNow("battery critical, not charging");
@@ -2319,7 +2349,7 @@ TInt DA64PowerHal::PowerHalFunction(TInt aFunction, TAny* a1, TAny*)
 		{	// OURS (2026-10-08): the battery for HWRM's power-state plug-in (src/phorepoc/hwrm/PowerStatePlugin.cpp),
 			// which turns it into the KPSUidHWRMPowerState keys SysAp shows in Avkon's battery pane:
 			// [0] fuel gauge % (-1 = not valid), [1] charging, [2] battery mV, [3] VBUS/ACIN present
-		TInt out[4] = { BattLast[3], BattCharging(BattLast), BattLast[2], (BattLast[0] & 0xA0) != 0 };
+		TInt out[4] = { BattLast[3], BattChargeFlowing(BattLast), BattLast[2], (BattLast[0] & 0xA0) != 0 };
 		if (BattLast[2] <= 0)
 			return KErrNotReady;			// no reading yet
 		Kern::InfoCopy(*(TDes8*)a1, TPtrC8((const TUint8*)out, sizeof(out)));
