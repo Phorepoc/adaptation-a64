@@ -666,7 +666,12 @@ extern "C" void __wrap__ZN11ExecHandler10DebugPrintEPvi(void* aDes, int aMode)
 			"[pheltsy]",
 			// (2026-11-18) the scripted modem's own lines (boot, registration, network, call states: a handful per boot): a start-up that
 			// stalls in the Phone application's chain shows there whether the modem answered
-			"[fakemodem]" };
+			"[fakemodem]",
+			// (2026-11-19) the Bluetooth LE host (core pheble: pheblerouter / pheblehost / pheblesrv / phebletest lines, NimBLE's own
+			// "nimble[n]" log) and the Pebble app: whether the chip does LE, the scan, the pairing -- a few lines per scan
+			"pheble", "nimble[", "phepebble", "[phepebble]",
+			// (2026-11-19) a board's mobile-data test: its [phedata] result lines (about 15 per run)
+			"[phedata]" };
 		for (unsigned i = 0; i < sizeof(KPass) / sizeof(KPass[0]); ++i)
 			{
 			const char* p = KPass[i];
