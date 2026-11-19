@@ -31,4 +31,9 @@ VAROBJS+=("$USBHOST_OBJ" .variant-build/phe_usb_ekern.o .variant-build/a64_usbho
 if [ "${USBHOST_NET:-0}" = 1 ]; then
   ccq -k "$UH/ekern/phe_usb_ether.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} -o .variant-build/phe_usb_ether.o
   VAROBJS+=(.variant-build/phe_usb_ether.o)
+  # the REAL Ethernet LDD (d_ethernet.cpp, entry renamed as the Comm LDD's is): the PDD below installs it
+  ccq -k "$B/drivers/ethernet/d_ethernet.cpp" -I"$B/drivers/ethernet" -I"$B/include/drivers" -I"$B/include" -O2 -fno-function-sections \
+    -fno-data-sections "${EXTRA[@]}" -DCreateLogicalDevice=CreateLogicalDevice_enet -DKernelModuleEntry=KernelModuleEntry_enet \
+    -o .variant-build/d_ethernet.o
+  VAROBJS+=(.variant-build/d_ethernet.o)
 fi

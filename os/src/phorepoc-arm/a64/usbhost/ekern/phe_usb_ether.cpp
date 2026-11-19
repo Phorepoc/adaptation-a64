@@ -149,8 +149,13 @@ public:
 		}
 	};
 
+DLogicalDevice* CreateLogicalDevice_enet();					// d_ethernet.cpp (DECLARE_STANDARD_LDD, renamed by link_block.sh)
+
 TInt UsbEtherInstall()
 	{
+	DLogicalDevice* ld = CreateLogicalDevice_enet();
+	TInt rl = ld ? Kern::InstallLogicalDevice(ld) : KErrNoMemory;
+	ekseam_puts(rl == KErrNone ? "[usbh] Ethernet LDD installed\n" : "[usbh] Ethernet LDD install failed\n");
 	DPhysicalDevice* pd = new DUsbEtherFactory;
 	TInt r = pd ? Kern::InstallPhysicalDevice(pd) : KErrNoMemory;
 	ekseam_puts(r == KErrNone ? "[usbh] Ethernet.USB PDD installed (the modem's ECM/NCM interface)\n"
