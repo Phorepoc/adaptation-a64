@@ -28,12 +28,19 @@ KSRCS=(
 [ "${USBHOST_PHY:-0}" = 1 ] && KSRCS+=( "$FB/sys/arm/allwinner/aw_usbphy.c" "$HERE/../phe_usb_fdt.c" )
 # USBHOST_SERIAL=1 (default): ucom + uftdi + u3g (unmodified) on our tty layer (phe_usb_tty.c); usbdevs.h is generated
 # from FreeBSD's usbdevs list by its own awk script, as the FreeBSD build does
-GEN=()
+GEN=(); EXTRA_INC=()
 if [ "${USBHOST_SERIAL:-1}" = 1 ]; then
   mkdir -p "$O/gen"
   ( cd "$O/gen" && awk -f "$FB/sys/tools/usbdevs2h.awk" "$U/usbdevs" -h )
   GEN=( -I"$O/gen" )
   KSRCS+=( "$U/serial/usb_serial.c" "$U/serial/uftdi.c" "$U/serial/u3g.c" "$HERE/../phe_usb_tty.c" )
+fi
+# USBHOST_NET=1 (the mobile-data path): the CDC ECM/NCM class driver (FreeBSD if_cdce.c, BSD-4-Clause, unmodified, from
+# modem-eg25/third_party) on our mbuf/ifnet/uether replacement (phe_usb_net.c); MODEM_EG25 = the modem-eg25 checkout
+if [ "${USBHOST_NET:-0}" = 1 ]; then
+  MODEM_EG25="${MODEM_EG25:-$HERE/../../../../../../../modem-eg25}"
+  KSRCS+=( "$MODEM_EG25/third_party/freebsd/sys/dev/usb/net/if_cdce.c" "$HERE/../phe_usb_net.c" )
+  EXTRA_INC=( -I"$MODEM_EG25/third_party/freebsd/sys" )
 fi
 SRCS=( "$FB/stand/usb/usb_busdma_loader.c" )
 # the kernel's ABI: ARMv7-A, ARM state, soft float, 32-bit enums, no unaligned accesses, no libc headers
@@ -44,7 +51,7 @@ CFLAGS=( "${ARCH[@]}" -nostdinc -isystem "$("$GCC" -print-file-name=include)" -D
   -Wall -Wno-unused -Wno-pointer-sign -Wno-unused-but-set-variable
   -I"$FB/stand/kshim" -I"$FB/sys" -I"$HERE/../kinc"
   -DUSB_GLOBAL_INCLUDE_FILE='"bsd_global.h"' -D'__uintptr_t=unsigned long' -DUSB_MSCTEST_BULK_SIZE=65536
-  "${GEN[@]}" ${USBHOST_DEFS:-} )
+  "${GEN[@]}" "${EXTRA_INC[@]}" ${USBHOST_DEFS:-} )
 objs=(); sysobjs=()
 for s in "${KSRCS[@]}" "${SRCS[@]}"; do
   o="$O/$(basename "${s%.c}").o"; "$GCC" "${CFLAGS[@]}" -c "$s" -o "$o"; objs+=("$o")

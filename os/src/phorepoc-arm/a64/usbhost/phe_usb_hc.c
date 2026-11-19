@@ -223,6 +223,8 @@ SYSINIT(phe_usb_root_load, SI_SUB_RUN_SCHEDULER, SI_ORDER_MIDDLE, phe_usb_root_l
 
 /* phe_usb_tty.c (the serial ports); weak: builds without the serial drivers leave it out */
 void phe_usb_tty_service(void) __attribute__((weak));
+/* phe_usb_net.c (the Ethernet class driver glue); weak likewise */
+void phe_usb_net_service(void) __attribute__((weak));
 
 void
 phe_usb_service(void)
@@ -233,6 +235,8 @@ phe_usb_service(void)
 	device_run_interrupts(phe_usb_root);
 	if (phe_usb_tty_service != NULL)
 		phe_usb_tty_service();
+	if (phe_usb_net_service != NULL)
+		phe_usb_net_service();
 	usb_idle();
 	while ((uint32_t)(now - last) >= 1000) {
 		last += 1000;

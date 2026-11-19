@@ -294,6 +294,9 @@ extern "C" void phe_usb_irq_attach(int aIrq)
 	}
 
 TInt UsbCommInstall();						// phe_usb_comm.cpp
+#ifdef A64_USBHOST_NET
+TInt UsbEtherInstall();						// phe_usb_ether.cpp
+#endif
 
 #if defined(PHE_USBHOST_TRACE) && !defined(A64_H3TEST)
 // Boot-trial breadcrumbs: this runs in the Supervisor thread between SD-log stages 3 and 4. A hang here is a watchdog
@@ -339,6 +342,9 @@ TInt InitExtension_usbhost()
 		return KErrNoMemory;
 	USBH_STEP(5, "5: Comm.USB PDD");
 	UsbCommInstall();						// phe_usb_comm.cpp: the "Comm.USB" PDD for the serial ports
+#ifdef A64_USBHOST_NET
+	UsbEtherInstall();						// phe_usb_ether.cpp: the "Ethernet.USB" PDD (the modem in ECM/NCM mode)
+#endif
 #ifdef A64_H3TEST
 	gServiceDfc->Enque();					// the first run calls usb_init()
 	gDumpTimer->OneShot(NKern::TimerTicks(8000));

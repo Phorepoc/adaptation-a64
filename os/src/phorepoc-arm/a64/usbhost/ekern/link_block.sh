@@ -15,13 +15,20 @@ fi
 if [ -z "${USBHOST_OBJ:-}" ]; then
   # the H3 model (A64_H3TEST) has no USB PHY to program; the A64 builds aw_usbphy.c
   case " ${EXTRA[*]} " in *" -DA64_H3TEST "*) UPHY=0 ;; *) UPHY=1 ;; esac
-  USBHOST_PHY="$UPHY" GCC="${ARMGCC:-$GCC}" USBHOST_DEFS="${USBHOST_DEFS:-}" bash "$UH/ekern/build_bsd.sh" .variant-build/usbhost >&2
+  USBHOST_NET="${USBHOST_NET:-0}" MODEM_EG25="${MODEM_EG25:-../modem-eg25}" USBHOST_PHY="$UPHY" GCC="${ARMGCC:-$GCC}" USBHOST_DEFS="${USBHOST_DEFS:-}" bash "$UH/ekern/build_bsd.sh" .variant-build/usbhost >&2
   USBHOST_OBJ=.variant-build/usbhost/usbhost_bsd.o
 fi
 A64DEFS="${A64DEFS:-} -DA64_USBHOST"
+[ "${USBHOST_NET:-0}" = 1 ] && A64DEFS="${A64DEFS} -DA64_USBHOST_NET"
 ccq -k "$UH/ekern/phe_usb_ekern.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} \
   -o .variant-build/phe_usb_ekern.o
 ccq -k "$UH/ekern/a64_usbhost.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} \
   -o .variant-build/a64_usbhost.o
 ccq -k "$UH/ekern/phe_usb_comm.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-}   -o .variant-build/phe_usb_comm.o
 VAROBJS+=("$USBHOST_OBJ" .variant-build/phe_usb_ekern.o .variant-build/a64_usbhost.o .variant-build/phe_usb_comm.o)
+# USBHOST_NET=1: mobile data -- the CDC ECM/NCM class driver (modem-eg25's if_cdce.c, in usbhost_bsd.o above) as the
+# "Ethernet.USB" PDD under the Ethernet LDD (phe_usb_ether.cpp)
+if [ "${USBHOST_NET:-0}" = 1 ]; then
+  ccq -k "$UH/ekern/phe_usb_ether.cpp" -O2 -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${A64DEFS:-} -o .variant-build/phe_usb_ether.o
+  VAROBJS+=(.variant-build/phe_usb_ether.o)
+fi

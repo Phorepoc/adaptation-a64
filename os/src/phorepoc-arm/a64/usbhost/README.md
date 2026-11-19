@@ -27,3 +27,13 @@ O=<out> DEVS="-drive if=none,id=d0,file=disk.img,format=raw -device usb-storage,
 Needs `arm-none-eabi-gcc` and `qemu-system-arm`. The H3's USB1 pair (EHCI1 at 0x01C1B000, OHCI1 at 0x01C1B400) has the
 same addresses as the A64's USB1, the modem port. QEMU wires no EHCI/OHCI companion routing: put high-speed devices on
 usb-bus.1 and full/low-speed ones on usb-bus.5.
+
+## USB Ethernet (mobile data): `USBHOST_NET=1`
+
+The modem's data interface in `AT+QCFG="usbnet",1` (ECM) mode is a CDC Ethernet function. `build_bsd.sh` with
+`USBHOST_NET=1` adds FreeBSD's `if_cdce.c` (CDC ECM and NCM, imported unmodified into `modem-eg25/third_party`,
+`MODEM_EG25` = that checkout) and `phe_usb_net.c`, which replaces the pieces of FreeBSD's networking that `if_cdce.c`
+calls (a flat `struct mbuf`, `struct ifnet`, `ifmedia`, `uether_*`; headers in `kinc/net`, `kinc/sys/mbuf.h`,
+`kinc/dev/usb/net`). The port seam is `phe_usb_net.h` (`phe_usb_net_up/_tx/_eaddr/_link`, `phe_usb_net_rx_cb`);
+`ekern/phe_usb_ether.cpp` is the "Ethernet.USB" PDD under the real Ethernet LDD (same contract as the e1000 PDD on x86).
+`link_block.sh` takes `USBHOST_NET=1` too. Compile-checked: `usbhost_bsd.o` links with and without it.
