@@ -27,6 +27,9 @@ struct net_if {
 	volatile unsigned int txhead, txtail;
 };
 static struct net_if nifs[PHE_USB_NET_MAX_IFS];
+/* bounded [usbh] net markers: the first frames each way, then one line per 256 */
+static unsigned int n_tx_ok, n_tx_drop, n_rx;
+#define NET_EVERY(n) ((n) <= 8 || ((n) & 255) == 0)
 
 void phe_usb_kick(void) __attribute__((weak));
 void phe_usb_net_notify(int idx, int events) __attribute__((weak));
@@ -210,6 +213,7 @@ if_link_state_change(if_t i, int state)
 	struct net_if *n = net_of(i);
 
 	i->link = state;
+	printf("[usbh] net: link %s\n", state == LINK_STATE_UP ? "UP" : "DOWN");
 	if (state == LINK_STATE_UP)
 		n->events |= PHE_USB_NET_LINK;
 	else
@@ -273,6 +277,8 @@ uether_ifattach(struct usb_ether *ue)
 	if (ue->ue_methods->ue_attach_post_sub != NULL)
 		(void)ue->ue_methods->ue_attach_post_sub(ue);
 	nifs[idx].events = PHE_USB_NET_ATTACHED;
+	printf("[usbh] net: %s attached, MAC %02x:%02x:%02x:%02x:%02x:%02x, flags %x\n", nifs[idx].name,
+	    ue->ue_eaddr[0], ue->ue_eaddr[1], ue->ue_eaddr[2], ue->ue_eaddr[3], ue->ue_eaddr[4], ue->ue_eaddr[5], ifs[idx].flags);
 	if (phe_usb_net_notify != NULL)
 		phe_usb_net_notify(idx, nifs[idx].events);
 	return (0);
@@ -283,6 +289,7 @@ uether_ifdetach(struct usb_ether *ue)
 {
 	struct net_if *n = &nifs[ue->ue_idx];
 
+	printf("[usbh] net: %s detached\n", n->name);
 	n->events = PHE_USB_NET_GONE;
 	if (phe_usb_net_notify != NULL)
 		phe_usb_net_notify(ue->ue_idx, n->events);
@@ -357,6 +364,10 @@ uether_rxflush(struct usb_ether *ue)
 	ue->ue_rxq = ue->ue_rxq_tail = NULL;
 	for (; m != NULL; m = next) {
 		next = m->m_nextpkt;
+		n_rx++;
+		if (NET_EVERY(n_rx))
+			printf("[usbh] net: rx #%u len %d type %02x%02x%s\n", n_rx, m->m_len, m->m_len > 13 ? m->m_data[12] : 0,
+			    m->m_len > 13 ? m->m_data[13] : 0, (ue->ue_ifp->drvflags & IFF_DRV_RUNNING) ? "" : " (dropped: not running)");
 		if (phe_usb_net_rx_cb != NULL && (ue->ue_ifp->drvflags & IFF_DRV_RUNNING))
 			phe_usb_net_rx_cb(ue->ue_idx, m->m_data, m->m_len);
 		m_freem(m);
@@ -420,8 +431,13 @@ phe_usb_net_tx(int idx, const void *frame, int len)
 	struct net_if *n = slot(idx);
 	unsigned int h;
 
-	if (n == NULL || !(n->ue->ue_ifp->drvflags & IFF_DRV_RUNNING) || len <= 0 || len > NET_FRAME_MAX)
+	if (n == NULL || !(n->ue->ue_ifp->drvflags & IFF_DRV_RUNNING) || len <= 0 || len > NET_FRAME_MAX) {
+		n_tx_drop++;
+		if (NET_EVERY(n_tx_drop))
+			printf("[usbh] net: tx REFUSED #%u (len %d, interface %s, running %d)\n", n_tx_drop, len, n ? "ok" : "none",
+			    n ? (n->ue->ue_ifp->drvflags & IFF_DRV_RUNNING) != 0 : 0);
 		return (-1);
+	}
 	h = n->txhead;
 	if (h - n->txtail >= NET_TXQ)
 		return (-2);
@@ -429,6 +445,9 @@ phe_usb_net_tx(int idx, const void *frame, int len)
 	n->txlen[h % NET_TXQ] = (unsigned short)len;
 	__sync_synchronize();
 	n->txhead = h + 1;
+	n_tx_ok++;
+	if (NET_EVERY(n_tx_ok))
+		printf("[usbh] net: tx #%u len %d type %02x%02x\n", n_tx_ok, len, ((const unsigned char *)frame)[12], ((const unsigned char *)frame)[13]);
 	n->want_start = 1;
 	phe_usb_kick();
 	return (len);
@@ -451,10 +470,12 @@ phe_usb_net_service(void)
 			n->want_up = 0;
 			if (!(ifp->drvflags & IFF_DRV_RUNNING))
 				uether_init(ue);
+			printf("[usbh] net: up, drv flags %x, link %d\n", ifp->drvflags, ifp->link);
 		}
 		if (n->want_down) {
 			n->want_down = 0;
 			ifp->flags &= ~IFF_UP;
+			printf("[usbh] net: down\n");
 			if (ue->ue_methods->ue_stop != NULL)
 				ue->ue_methods->ue_stop(ue);
 		}

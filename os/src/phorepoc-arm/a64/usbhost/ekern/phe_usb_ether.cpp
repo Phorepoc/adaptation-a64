@@ -16,7 +16,17 @@
 extern "C" {
 #include "../phe_usb_net.h"
 void ekseam_puts(const char*);
+void ekseam_puthex(unsigned);
 }
+
+// bounded [usbh] markers for every step of the Ethernet LDD <-> PDD hand-over (the first few of each; counters never reset)
+static TInt gMk[8];
+static void Mk(TInt aSlot, TInt aMax, const char* aText, TUint aVal)
+	{
+	if (gMk[aSlot]++ >= aMax)
+		return;
+	ekseam_puts("[usbh] ether: "); ekseam_puts(aText); ekseam_puts(" = "); ekseam_puthex(aVal);
+	}
 
 _LIT(KPddName, "Ethernet.USB");
 
@@ -50,11 +60,13 @@ public:
 		{
 		gRing.iHead = gRing.iTail = 0;
 		iStarted = ETrue;
+		Mk(0, 4, "PDD Start (the LDD begins receiving)", (TUint)iLdd);
 		return phe_usb_net_up(0) == 0 ? KErrNone : KErrNotReady;	// IFF_UP + cdce_init: the bulk transfers start
 		}
 	virtual void Stop(TStopMode)
 		{
 		iStarted = EFalse;
+		Mk(1, 4, "PDD Stop", 0);
 		phe_usb_net_down(0);
 		}
 	virtual TInt ValidateConfig(const TEthernetConfigV01& aConfig) const
@@ -65,9 +77,10 @@ public:
 		{
 		aConfig.iEthSpeed = KEthSpeed100BaseTX;
 		aConfig.iEthDuplex = KEthDuplexFull;
-		TUint8 mac[PHE_USB_NET_EADDR_LEN];
+		TUint8 mac[PHE_USB_NET_EADDR_LEN] = { 0, 0, 0, 0, 0, 0 };
 		if (phe_usb_net_eaddr(0, mac) == 0)
 			memcpy(aConfig.iEthAddress, mac, 6);
+		Mk(2, 4, "GetConfig: MAC bytes 0..3", mac[0] << 24 | mac[1] << 16 | mac[2] << 8 | mac[3]);
 		}
 	virtual void CheckConfig(TEthernetConfigV01&)			{}
 	virtual void Caps(TDes8& aCaps) const
@@ -77,7 +90,11 @@ public:
 		aCaps = caps.Left(Min(caps.Length(), aCaps.MaxLength()));
 		}
 	virtual TInt Send(TBuf8<KMaxEthernetPacket + 32>& aBuffer)
-		{ return phe_usb_net_tx(0, aBuffer.Ptr(), aBuffer.Length()) > 0 ? KErrNone : KErrNotReady; }
+		{
+		const TInt r = phe_usb_net_tx(0, aBuffer.Ptr(), aBuffer.Length());
+		Mk(3, 8, r > 0 ? "Send: frame queued, length" : "Send REFUSED, result", (TUint)(r > 0 ? r : -r));
+		return r > 0 ? KErrNone : KErrNotReady;
+		}
 	virtual TInt ReceiveFrame(TBuf8<KMaxEthernetPacket + 32>& aBuffer, TBool aOkToUse)
 		{
 		if (!aOkToUse)
@@ -95,6 +112,7 @@ public:
 		while (gRing.iTail != gRing.iHead)
 			{
 			gRing.iCur = gRing.iTail % KRingN;
+			Mk(4, 8, (p.iLdd && p.iStarted) ? "rx frame to the LDD, length" : "rx frame DROPPED (no LDD or not started), length", gRing.iLen[gRing.iCur]);
 			if (p.iLdd && p.iStarted)
 				p.ReceiveIsr();								// the LDD pulls the frame with ReceiveFrame()
 			++gRing.iTail;
@@ -109,7 +127,10 @@ public:
 extern "C" void phe_usb_net_rx_cb(int aIdx, const void* aFrame, int aLen)
 	{
 	if (aIdx != 0 || !gPdd || aLen <= 0 || aLen > KFrameMax)
+		{
+		Mk(5, 4, "rx_cb ignored (no PDD open yet or bad length), length", (TUint)aLen);
 		return;
+		}
 	const TUint h = gRing.iHead;
 	if (h - gRing.iTail >= (TUint)KRingN)
 		return;												// the LDD is behind: dropped (TCP recovers)
@@ -138,12 +159,18 @@ public:
 		if (!p)
 			return KErrNoMemory;
 		gPdd = p;
+		Mk(6, 4, "PDD Create (the LDD opened it)", (TUint)p);
 		return KErrNone;
 		}
 	virtual TInt Validate(TInt aUnit, const TDesC8*, const TVersion& aVer)
 		{
 		// only once the modem's interface exists (the modem is in ECM/NCM mode and enumerated); one client at a time
-		if (!Kern::QueryVersionSupported(iVersion, aVer) || aUnit != 0 || !phe_usb_net_name(0) || (gPdd && gPdd->iLdd))
+		const TBool ver = Kern::QueryVersionSupported(iVersion, aVer);
+		const TBool nic = phe_usb_net_name(0) != NULL;
+		const TBool busy = gPdd && gPdd->iLdd;
+		// (bits: 1 = version ok, 2 = unit 0, 4 = the modem's interface exists, 8 = already opened by an LDD)
+		Mk(7, 6, "PDD Validate (1 ver, 2 unit0, 4 nic, 8 busy)", (ver ? 1 : 0) | (aUnit == 0 ? 2 : 0) | (nic ? 4 : 0) | (busy ? 8 : 0));
+		if (!ver || aUnit != 0 || !nic || busy)
 			return KErrNotSupported;
 		return KErrNone;
 		}
