@@ -1187,6 +1187,16 @@ static void CrumbSnapshot()
 	}
 
 static void WdogTimerFn(TAny*);
+// Ticks since a mark stored as NKern::TickCount() | 1 (the |1 keeps 0 = "none"). The |1 can put the mark ONE tick after
+// "now" (an even tick count): plain unsigned now - mark then wraps to 0xFFFFFFFF and every guard below tripped at once
+// (boot 2925: "boot incomplete ... waited s=0x10c6" = 0xFFFFFFFF ticks * 1000 us, truncated, a few seconds into the boot).
+// A mark in the future counts as 0.
+static TUint32 TicksSince(TUint32 aNow, TUint32 aMark)
+	{
+	const TInt d = (TInt)(aNow - aMark);
+	return d < 0 ? 0 : (TUint32)d;
+	}
+
 static NTimer WdogTimer(WdogTimerFn, 0);
 // UPLOAD STALL GUARD (2026-10-12, the first high-speed push froze the phone at 31 MB, the USB silent, cores at 100%):
 // an upload that makes no progress for 15 s stops the feeding -> the watchdog's warm reset -> slot A, the crumbs kept.
@@ -1203,7 +1213,7 @@ static TBool UsbGuardTripped()
 	if (!start)
 		start = NKern::TickCount() | 1;
 	if (UsbLinkSeen || !(BootCtlState == KStTrying || BootCtlState == KStGood)
-		|| NKern::TickCount() - start < (TUint32)NKern::TimerTicks(120000))
+		|| TicksSince(NKern::TickCount(), start) < (TUint32)NKern::TimerTicks(120000))
 		return EFalse;
 	if (!said)
 		{
@@ -1253,11 +1263,11 @@ static TBool UiGuardTripped()
 	const char* why = 0;
 	if (!last)
 		{
-		if (now - start >= (TUint32)NKern::TimerTicks(UiBootGuardS * 1000))
+		if (TicksSince(now, start) >= (TUint32)NKern::TimerTicks(UiBootGuardS * 1000))
 			why = "[EKERN][guard] boot incomplete: UI not up in time on slot B -> watchdog reset -> golden A\n";
 		}
 #ifndef A64_NO_LIVE_GUARD
-	else if (now - last >= (TUint32)NKern::TimerTicks(A64_LIVE_GUARD_S * 1000))
+	else if (TicksSince(now, last) >= (TUint32)NKern::TimerTicks(A64_LIVE_GUARD_S * 1000))
 		why = "[EKERN][guard] UI heartbeat lost on slot B -> watchdog reset -> golden A\n";
 #endif
 	if (!why)
@@ -1269,7 +1279,7 @@ static TBool UiGuardTripped()
 		// how long it waited and the limit: a slow (trace-heavy) image whose HWRM server -- the ping source -- starts after
 		// the boot window looks like a random reset otherwise (a ping within the watchdog's ~16 s still rescues the boot)
 		ekseam_puts("[EKERN][guard] waited s=");
-		ekseam_puthex((unsigned)((now - start) * NKern::TickPeriod() / 1000000));
+		ekseam_puthex((unsigned)((TUint64)TicksSince(now, start) * NKern::TickPeriod() / 1000000));
 		ekseam_puts(" boot limit s=");
 		ekseam_puthex((unsigned)UiBootGuardS);
 		ekseam_puts("\n");
@@ -1282,7 +1292,7 @@ static TBool UiGuardTripped()
 static void WdogTimerFn(TAny*)
 	{
 	const TUint32 last = UpLastProgress;
-	if (!(UpActiveSince && last && NKern::TickCount() - last > (TUint32)NKern::TimerTicks(15000)) && !UsbGuardTripped()
+	if (!(UpActiveSince && last && TicksSince(NKern::TickCount(), last) > (TUint32)NKern::TimerTicks(15000)) && !UsbGuardTripped()
 		&& !UiGuardTripped())
 		WdogKick();
 	CrumbSnapshot();
