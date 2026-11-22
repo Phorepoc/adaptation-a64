@@ -51,8 +51,12 @@ for tu in $CPP $CIA; do
   o="$OUT/$(echo "$tu" | tr / _).o"
   src="$B/$tu"; [ "$tu" = nkernsmp/arm/ncsched.cia ] && src="$NCSCHED_CIA"
   [ "${GT:-1}" = 1 ] && [ "$tu" = nkernsmp/arm/ncutils.cia ] && src="$OUT/gt/ncutils.cia"   # GT: TEEHBR delta
+  # core's fixed copy of nk_bal.cpp (toolchain/shims/nkernsmp_board: ReBalance's heavy-thread share clamped, the boot-2992
+  # scheduler fault); its quoted includes come from the mirror's nkernsmp/ (-I below)
+  TUINC=(); KSHIM="$REPO/toolchain/shims/nkernsmp_board/nk_bal.cpp"
+  [ "$tu" = nkernsmp/nk_bal.cpp ] && [ -f "$KSHIM" ] && { src="$KSHIM"; TUINC=(-I"$B/nkernsmp"); }
   if SYMCC_PREINC="$PREINC" SYMCC_NKERN=nkernsmp SYMCC_ARM=1 bash "$REPO/toolchain/symcc" -k "$src" -O2 -mno-unaligned-access \
-        -fno-function-sections -fno-data-sections "${EXTRA[@]}" \
+        -fno-function-sections -fno-data-sections "${EXTRA[@]}" ${TUINC[@]+"${TUINC[@]}"} \
         -o "$o" >/dev/null 2>"$o.err"; then
     pass=$((pass+1))
   else
