@@ -3,7 +3,7 @@
 The USB host stack is FreeBSD's, imported unmodified in `os/third_party/freebsd-usb` (BSD-2-Clause; pin and file list
 there): the USB core (`sys/dev/usb`), the EHCI and OHCI controller drivers, and FreeBSD's own kernel shim for running
 that stack outside the FreeBSD kernel (`stand/kshim`, with `stand/usb/usb_busdma_loader.c`). The kshim supplies
-mutexes, condition variables, callouts, the device/devclass glue, bus_space and bus_dma. The files here are ours
+mutexes, condition variables, callouts, the device/devclass glue, bus_space and bus_dma. The files here are Phorepoc's own
 (EPL-1.0) and only fill the gaps:
 
 | File | What |

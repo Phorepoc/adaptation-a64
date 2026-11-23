@@ -5,9 +5,9 @@ master commit `9f2948010764d708bda27369d09ce6f194abe8e3` (2026-07-30, "wifi: rtw
 rtw_txq_push_skb()"), fetched 2026-10-10. Licence: **GPL-2.0 OR BSD-3-Clause** (every file's SPDX line) -- the BSD
 alternative is what lets this sit next to the Symbian (EPL) code; the copyright is Realtek's and the named authors'.
 
-**Nothing in this directory is edited.** The driver compiles as is against our freestanding "Linux"
+**Nothing in this directory is edited.** The driver compiles as is against Phorepoc's freestanding "Linux"
 (`../shim/include`: `shim_core.h` + thin `linux/*.h`, `net/{cfg80211,mac80211}.h`, `linux/ieee80211.h`), written from
-the driver's usage of the Linux interface, not copied from Linux headers. The parts of rtw88 we do not vendor are
+the driver's usage of the Linux interface, not copied from Linux headers. The parts of rtw88 not vendored here are
 no-op stubs with the real signatures in `../shim/rtw88_stubs.c` (regd, bf, sar, led, debugfs; `coex.c` was stubbed
 until W4 -- without it the shared-antenna arbiter stayed at its power-on defaults and nothing WiFi sent reached
 the air, 2026-10-10); `rtw8723cs.c`
@@ -23,6 +23,6 @@ driver instead of the default `rtl8703b/`; it joins WPA2, DHCP and NTP since boo
 : no external-XTAL/CLK_REQ bits in the pre-enable sequence (rtw8703b.c);
 management frames through the HIGH FIFO/queue, not EXTRA (rtw8703b.c rqpn, sdio.c); (3) HWSEQ_CTRL 0xFF (mac.c); (6)
 the WiFi-only coex table 0xAAAAAAAA with BT disabled (coex.c). Without the define the code is upstream as fetched.
-The bug that kept rtw88 deaf from 2026-10-10 to boot 952 was in OUR shim, not here: `__LITTLE_ENDIAN` was undefined, so
+The bug that kept rtw88 deaf from 2026-10-10 to boot 952 was in Phorepoc's shim, not here: `__LITTLE_ENDIAN` was undefined, so
 every little-endian bitfield in these files took its big-endian layout (the PHY table condition word skipped RF/MAC table
 entries; efuse TX-power nibbles and the PHY status were swapped). `../shim/include/rtw88_config.h` defines it now.

@@ -43,18 +43,18 @@ Apache NuttX through the `modem-eg25` repository (`MODEM=1` builds; `MODEM_EG25`
 
 ## Code from Linux
 
-Two drivers started from Linux code that's offered under a choice of licenses, and we use the permissive one:
+Two drivers started from Linux code that's offered under a choice of licenses, and Phorepoc uses the permissive one:
 
 - The Wi-Fi driver in `os/src/phorepoc-arm/a64/wlan/rtw88/` is Linux's rtw88, used under BSD-3-Clause.
 - The GPU scheduler in `os/src/phorepoc-arm/mali/mali_ldd.cpp` comes from Linux's lima driver, used under MIT.
 
-One thing we can't ship is the table of coefficients the display scaler uses, because the only source we know of is
+One thing Phorepoc cannot ship is the table of coefficients the display scaler uses, because the only known source is
 GPL-only. Without it, video at its own size looks right, and scaled video is a bit soft.
 
 ## License
 
-Code we wrote, and Symbian files we've changed, are EPL-2.0, with GPL-2.0-or-later as a Secondary License, and
-Symbian files we use unchanged stay EPL-1.0. The code from Linux keeps the license named above. The license texts are in
+Phorepoc-authored files and modified Symbian files are EPL-2.0, with GPL-2.0-or-later as a Secondary License, and
+unmodified Symbian files remain EPL-1.0. The code from Linux keeps the license named above. The license texts are in
 `LICENSES/`.
 
 Contributions are welcome under the same terms. Add your name to `AUTHORS` in your first pull request.
