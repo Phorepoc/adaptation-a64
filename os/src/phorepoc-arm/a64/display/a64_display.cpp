@@ -79,7 +79,13 @@ static TLinAddr Map(TInt aIdx, TPhysAddr aPhys, TInt aSize, TUint aAttr = EMapAt
 
 // Pauses only up to the PMIC: from the DSI link on, the sequence is timing-sensitive (pauses there = a white panel,
 // 2026-10-06) and runs back-to-back as in NuttX.
+#ifdef A64_DISP_FAST		// an image with a hard deadline (the 64-bit slot B test image, 16 s watchdog): no pauses, start at once
+static TBool StepPause = EFalse;
+const TInt KDispStartMs = 500;
+#else
 static TBool StepPause = ETrue;
+const TInt KDispStartMs = 4000;
+#endif
 static TBool Resuming;		// the bring-up replayed after a screen-off (power rung P4): no pauses, no test pattern, no rail cycle
 
 static TBool Step(const char* aWhat, TInt aR)
@@ -1917,6 +1923,6 @@ extern "C" void A64DisplayStart()
 		ekseam_puts("[EKERN][disp] no DFC queue r="); ekseam_puthex((unsigned)r);
 		return;
 		}
-	DispTimer.OneShot(NKern::TimerTicks(4000));
-	ekseam_puts("[EKERN][disp] display bring-up queued (in 4 s)\n");
+	DispTimer.OneShot(NKern::TimerTicks(KDispStartMs));
+	ekseam_puts("[EKERN][disp] display bring-up queued\n");
 	}
