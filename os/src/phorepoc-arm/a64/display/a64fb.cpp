@@ -90,7 +90,7 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 	switch (aFunction)
 		{
 		case EDisplayHalSetDisplayBrightness:
-			A64DisplaySetBrightness((TInt)a1);
+			A64DisplaySetBrightness((TInt)(TLinAddr)a1);
 			return KErrNone;
 		case EDisplayHalDisplayBrightness:
 			v = A64DisplayBrightness();
@@ -101,7 +101,7 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 			kumemput32(a1, &v, sizeof(v));
 			return KErrNone;
 		case EDisplayHalSetBacklightOn:		// HAL EBacklightState (the screensaver's display off, SysAp delta)
-			A64DisplayBacklightOff(!(TBool)a1);
+			A64DisplayBacklightOff(!(TBool)(TLinAddr)a1);
 			return KErrNone;
 		case EDisplayHalBacklightOn:
 			v = !A64DisplayBacklightIsOff();
@@ -115,10 +115,10 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 		case EDisplayHalSetState:
 			{
 			static TBool on = ETrue;
-			ekseam_puts((TBool)a1 ? "[EKERN][disp] HAL display state ON\n" : "[EKERN][disp] HAL display state OFF\n");
-			if ((TBool)a1 && !on)
+			ekseam_puts((TBool)(TLinAddr)a1 ? "[EKERN][disp] HAL display state ON\n" : "[EKERN][disp] HAL display state OFF\n");
+			if ((TBool)(TLinAddr)a1 && !on)
 				A64DisplayFrameWake();		// (the frame log: report the first frame after the wake)
-			on = (TBool)a1;
+			on = (TBool)(TLinAddr)a1;
 			return DoHalFunction(aPtr, aFunction, a1, a2);
 			}
 		// ONE display mode, index 0, as on a real phone (2026-10-15, DSA under NGA): Syborg lists 3 identical 32 bpp
@@ -130,7 +130,7 @@ static TInt A64FbHal(TAny* aPtr, TInt aFunction, TAny* a1, TAny* a2)
 			kumemput32(a1, &v, sizeof(v));
 			return KErrNone;
 		case EDisplayHalSetMode:
-			return (TInt)a1 == 0 ? KErrNone : KErrArgument;
+			return (TInt)(TLinAddr)a1 == 0 ? KErrNone : KErrArgument;
 		default:
 			return DoHalFunction(aPtr, aFunction, a1, a2);
 		}
