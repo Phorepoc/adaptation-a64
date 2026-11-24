@@ -24,7 +24,7 @@ extern "C" void ekseam_puthex(unsigned v);
 extern "C" void ekseam_board_panic();
 
 extern "C" {
-TUint32 ph_a64_de, ph_a64_io, ph_a64_dsi, ph_a64_r;
+TLinAddr ph_a64_de, ph_a64_io, ph_a64_dsi, ph_a64_r;	// (uintptr_t in nuttx/compat/hardware/a64_memorymap.h)
 int a64_tcon0_init(TUint16 panel_width, TUint16 panel_height);
 int a64_mipi_dsi_enable(void);
 int a64_mipi_dphy_enable(void);
@@ -161,7 +161,7 @@ static TInt RsbInit()
 	}
 
 // Register dump after bring-up: a block whose clock/reset is off reads back zeros; PLL bit 28 = locked.
-static void DumpRange(const char* aName, TUint32 aBase, TUint32 aPhys, TUint32 aFrom, TUint32 aTo)
+static void DumpRange(const char* aName, TLinAddr aBase, TUint32 aPhys, TUint32 aFrom, TUint32 aTo)
 	{
 	ekseam_puts("[EKERN][disp] dump "); ekseam_puts(aName); ekseam_puts(" @"); ekseam_puthex(aPhys + aFrom);
 	TBuf8<128> line;
